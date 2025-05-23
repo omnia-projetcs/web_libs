@@ -29,7 +29,8 @@ Include the `PureChart.js` file in your HTML. You can also include a CSS file (e
 
 ```html
 <head>
-    <link rel="stylesheet" href="PureChart.css"> <script src="PureChart.js"></script>
+    <link rel="stylesheet" href="PureChart.css">
+    <script src="PureChart.js"></script>
 </head>
 ```
 

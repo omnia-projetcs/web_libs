@@ -23,7 +23,7 @@
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
-    background-color: #f8f9fa; /* Couleur de fond légèrement différente */
+    background-color: #f8f9fa; /* Slightly different background color */
     color: #212529;
     display: flex;
     flex-direction: column;
@@ -44,7 +44,7 @@ h1 {
     border: 1px solid #dee2e6;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.075);
-    padding: 25px; /* Un peu plus de padding interne */
+    padding: 25px; /* A bit more internal padding */
     margin: 25px auto; 
     width: 90%;
     max-width: 750px; 
@@ -53,8 +53,8 @@ h1 {
 canvas {
     display: block; 
     margin: 0 auto; 
-    max-width: 100%; /* Assurer la responsivité de base */
-    height: auto;    /* Maintenir le ratio d'aspect */
+    max-width: 100%; /* Ensure basic responsiveness */
+    height: auto;    /* Maintain aspect ratio */
 }
 
 p.info {

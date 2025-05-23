@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Démonstration Dynamic Table (Externe)</title>
+    <title>Dynamic Table Demo (External)</title>
     <link rel="stylesheet" href="dynamic-table.css"> 
     <style>
         body {
@@ -34,10 +34,10 @@
 </head>
 <body>
     <div class="page-container">
-        <h1>Tableau Dynamique - Données Externes</h1>
+        <h1>Dynamic Table - External Data</h1>
         <div class="table-demo-container">
-            <h2>Tableau Principal</h2>
-            <p class="description">Ce tableau charge ses données depuis <code>sample-data.json</code> et utilise <code>jsonPath</code>.</p>
+            <h2>Main Table</h2>
+            <p class="description">This table loads its data from <code>sample-data.json</code> and uses <code>jsonPath</code>.</p>
             <div id="main-dynamic-table"></div>
         </div>
     </div>
@@ -49,21 +49,21 @@
     document.addEventListener('DOMContentLoaded', () => {
         createDynamicTable({
             containerId: 'main-dynamic-table',
-            jsonPath: 'sample-data.json', // Chargement depuis le fichier JSON externe
-            // Note: dynamic-table.js (v11) s'attend à ce que sample-data.json soit un tableau.
-            // Si sample-data.json est un objet avec des clés (comme marketData, etc.), 
-            // vous devriez le fetcher ici et passer la section appropriée via `jsonData`.
-            // Pour cette démo, on va supposer que sample-data.json est directement un tableau d'objets 'marketData' pour simplifier.
-            // Pour un cas réel avec le sample_data.json fourni, il faudrait faire un fetch et extraire la section.
-            // Exemple (non exécuté ici, mais pour illustrer):
+            jsonPath: 'sample-data.json', // Loading from the external JSON file
+            // Note: dynamic-table.js (v11) expects sample-data.json to be an array.
+            // If sample-data.json is an object with keys (like marketData, etc.), 
+            // you should fetch it here and pass the appropriate section via `jsonData`.
+            // For this demo, we'll assume sample-data.json is directly an array of 'marketData' objects to simplify.
+            // For a real case with the provided sample_data.json, you would need to fetch and extract the section.
+            // Example (not executed here, but to illustrate):
             // fetch('sample-data.json').then(r => r.json()).then(data => {
-            //     createDynamicTable({ containerId: 'main-dynamic-table', jsonData: data.marketData, columns: [...] /* le reste de la config */ });
+            //     createDynamicTable({ containerId: 'main-dynamic-table', jsonData: data.marketData, columns: [...] /* rest of the config */ });
             // });
-            // Pour cette démo, sample_data.json devrait contenir directement le tableau [marketData items]
+            // For this demo, sample_data.json should directly contain the [marketData items] array
             columns: [
                 {
                     key: 'name', 
-                    header: 'Indice',
+                    header: 'Index', // Translated from 'Indice'
                     sortable: true, 
                     render: (value, rowData, cell) => {
                         const link = document.createElement('a');
@@ -76,7 +76,7 @@
                     }
                 },
                 { 
-                    header: 'Graphique 1 an',
+                    header: '1 Year Chart', // Translated from 'Graphique 1 an'
                     renderAs: 'chart',
                     chartConfig: {
                         type: 'line',
@@ -92,11 +92,11 @@
                     }
                 },
                 { key: 'ytd', header: 'YTD', sortable: true, format: 'percent:2' },
-                { key: 'y1', header: '1 An', sortable: true, format: 'percent_neutral:2' },                
+                { key: 'y1', header: '1 Year', sortable: true, format: 'percent_neutral:2' }, // Translated from '1 An'              
             ],
             uniformChartHeight: 45,
             rowsPerPage: 5,
-            rowsPerPageOptions: [3, 5, 10, 20, 'Tout'],
+            rowsPerPageOptions: [3, 5, 10, 20, 'All'], // Translated 'Tout' to 'All'
             showSearchControl: true,
             showResultsCount: true,
             showPagination: true, 

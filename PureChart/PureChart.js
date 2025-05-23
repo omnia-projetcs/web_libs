@@ -56,15 +56,37 @@ class PureChart {
                     labelColor: '#333', valueFont: '12px Arial bold', valueColor: '#333',
                     showValueText: true, labelPosition: 'left', valuePosition: 'right',
                     colors: null, 
-                    maxLabelWidth: 100, valueTextMargin: 8, sort: 'none',
+                    maxLabelWidth: 100, valueTextMargin: 8, sort: 'none', // 'none', 'ascending', 'descending'
                     borderWidth: 1, 
                     borderColor: undefined, 
                     borderDarkenPercent: 20,
-                    fillLightenPercent: undefined // Si > 0, active le nouveau style de "jauge"
+                    fillLightenPercent: undefined // If > 0, activates the new "gauge" style
                 },
-                font: '12px Arial',
+                font: '12px Arial', // Global default font
                 gridColor: '#e0e0e0',
-                tooltip: { enabled: true, backgroundColor: 'rgba(0,0,0,0.85)', color: 'white', font: '12px Arial', padding: '10px', borderRadius: '5px', offset: 10, formatter: (params) => { if (!params) return ''; if (params.type === 'percentageDistribution' && params.item) { return `<div style="text-align:left;"><strong>${params.item.label}</strong><br/>Valeur: ${params.item.value.toLocaleString()}<br/>Pourcentage: ${params.item.percentage.toFixed(1)}%</div>`; } let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`; (params.datasets || []).forEach(item => { if (item && item.dataset) { const markerColor = item.dataset.borderColor || (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor) || '#ccc'; html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label||'Dataset'}: ${item.value !== undefined ? item.value.toLocaleString() : 'N/A'}</div>`; } }); return html; } }
+                tooltip: { 
+                    enabled: true, 
+                    backgroundColor: 'rgba(0,0,0,0.85)', 
+                    color: 'white', 
+                    font: '12px Arial', 
+                    padding: '10px', 
+                    borderRadius: '5px', 
+                    offset: 10, 
+                    formatter: (params) => { // Default tooltip formatter
+                        if (!params) return ''; 
+                        if (params.type === 'percentageDistribution' && params.item) { 
+                            return `<div style="text-align:left;"><strong>${params.item.label}</strong><br/>Value: ${params.item.value.toLocaleString()}<br/>Percentage: ${params.item.percentage.toFixed(1)}%</div>`; // Translated
+                        } 
+                        let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`; 
+                        (params.datasets || []).forEach(item => { 
+                            if (item && item.dataset) { 
+                                const markerColor = item.dataset.borderColor || (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor) || '#ccc'; 
+                                html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label||'Dataset'}: ${item.value !== undefined ? item.value.toLocaleString() : 'N/A'}</div>`; // Translated "Dataset"
+                            } 
+                        }); 
+                        return html; 
+                    } 
+                }
             }
         };
 
@@ -72,6 +94,7 @@ class PureChart {
         this._validateConfig();
         if (!this.isValid) return;
 
+        // Set canvas dimensions after merging, as userOptions might override defaults
         this.canvas.width = this.config.width;
         this.canvas.height = this.config.height;
 
@@ -79,7 +102,7 @@ class PureChart {
             this._createTooltipElement();
             this.canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
             this.canvas.addEventListener('mouseout', this._onMouseOut.bind(this));
-            this.canvas.addEventListener('mouseleave', this._onMouseOut.bind(this));
+            this.canvas.addEventListener('mouseleave', this._onMouseOut.bind(this)); // Also hide on mouseleave
         }
         this._draw();
     }
@@ -91,12 +114,12 @@ class PureChart {
             Object.keys(source).forEach(key => {
                 if (isObject(source[key])) {
                     if (!(key in target) || !isObject(target[key])) {
-                        output[key] = { ...source[key] };
+                        output[key] = { ...source[key] }; // Assign if target doesn't have key or target[key] is not an object
                     } else {
                         output[key] = PureChart._mergeDeep(target[key], source[key]);
                     }
                 } else {
-                    output[key] = source[key];
+                    output[key] = source[key]; // Assign primitive values
                 }
             });
         }
@@ -111,17 +134,22 @@ class PureChart {
                 throw new Error(`PureChart Error: Failed to fetch JSON from ${jsonUrl}. Status: ${response.status}`);
             }
             const jsonConfigFromApi = await response.json();
+            
+            // Check if data is nested under a specific key like "chart_datas"
             let chartSpecificConfig = jsonConfigFromApi;
-
+            // Example: if API returns { "status": "success", "chart_datas": { ... actual config ... } }
+            // This part might need adjustment based on the actual API response structure.
             if (jsonConfigFromApi && typeof jsonConfigFromApi.chart_datas === 'object' && jsonConfigFromApi.chart_datas !== null) {
                 chartSpecificConfig = jsonConfigFromApi.chart_datas;
             }
 
+            // Merge fetched config with any override options
             let finalConfig = {};
             finalConfig = PureChart._mergeDeep(chartSpecificConfig, overrideOptions);
-
+            
+            // Ensure canvas dimensions from attributes are used if not in config
             const canvasForCheck = document.getElementById(elementId);
-            if (canvasForCheck) {
+            if (canvasForCheck) { // Check if canvas exists before accessing attributes
                 if (!finalConfig.width && canvasForCheck.width) finalConfig.width = canvasForCheck.width;
                 if (!finalConfig.height && canvasForCheck.height) finalConfig.height = canvasForCheck.height;
             }
@@ -129,16 +157,16 @@ class PureChart {
         } catch (error) {
             console.error("PureChart Error (fromJSON catch block):", error);
             const canvas = document.getElementById(elementId);
-            if (canvas && canvas.getContext) {
+            if (canvas && canvas.getContext) { // Display error on canvas
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.font = '12px Arial'; ctx.fillStyle = 'red'; ctx.textAlign = 'center';
-                const message = `Error loading chart from JSON: ${String(error.message).substring(0,100)}`;
+                const message = `Error loading chart from JSON: ${String(error.message).substring(0,100)}`; // Translated
                 String(message).split('\n').forEach((line, index) => {
                     ctx.fillText(line, canvas.width / 2, canvas.height / 2 - (String(message).split('\n').length-1)*7 + index * 14);
                 });
             }
-            return null;
+            return null; // Indicate failure
         }
     }
 
@@ -148,15 +176,16 @@ class PureChart {
                 console.error("PureChart Error (percentageDistribution): data.items array is required and non-empty.");
                 this.isValid = false; return;
             }
-            if (this.isValid) {
+            if (this.isValid) { // Only proceed if still valid
                 this.config.data.items.forEach((item, index) => {
                     if (item === null || typeof item !== 'object' || typeof item.label !== 'string' || typeof item.value !== 'number' || item.value < 0 || isNaN(item.value)) {
                         console.error(`PureChart Error (percentageDistribution): Item ${index} is invalid. Must be {label: string, value: non-negative number}. Item:`, item);
-                        this.isValid = false;
+                        this.isValid = false; // Invalidate on first bad item
                     }
                 });
             }
             if (!this.isValid) return;
+            // For percentageDistribution, axes and legend are typically off by default
             this.config.options.xAxis.display = this.config.options.xAxis.display ?? false;
             this.config.options.yAxis.display = this.config.options.yAxis.display ?? false;
             this.config.options.legend.display = this.config.options.legend.display ?? false;
@@ -165,14 +194,15 @@ class PureChart {
                 console.error("PureChart Error (bar/line): data.labels and data.datasets are required.");
                 this.isValid = false; return;
             }
-            if (this.isValid) {
+            if (this.isValid) { // Only proceed if still valid
                 this.config.data.datasets.forEach((ds, index) => {
                     if (!ds.values || !Array.isArray(ds.values)) {
                         console.error(`PureChart Error (bar/line): Dataset ${index} missing 'values' array.`);
                         this.isValid = false;
                     }
+                    // Default 'fill' for line charts if not specified
                     if (this.config.type === 'line' && ds.fill === undefined) {
-                        ds.fill = false;
+                        ds.fill = false; 
                     }
                 });
             }
@@ -180,37 +210,42 @@ class PureChart {
         }
     }
 
-    _resolveColor(colorOption, elementRect) {
+    _resolveColor(colorOption, elementRect) { // elementRect for gradient context
         if (typeof colorOption === 'function') return colorOption(this.ctx, elementRect);
-        if (Array.isArray(colorOption) && colorOption.length >= 2) {
+        if (Array.isArray(colorOption) && colorOption.length >= 2) { // Gradient
             const gradient = this.ctx.createLinearGradient(elementRect.x, elementRect.y, elementRect.x, elementRect.y + elementRect.h);
             gradient.addColorStop(0, colorOption[0]);
             gradient.addColorStop(1, colorOption[1]);
             return gradient;
         }
-        return colorOption || '#007bff';
+        return colorOption || '#007bff'; // Default color if undefined
     }
 
     _darkenColor(colorStr, percent) {
-        if (typeof colorStr !== 'string') return '#333333'; 
+        if (typeof colorStr !== 'string') return '#333333'; // Default dark color
         let r, g, b, a = 1; const factor = 1 - (percent / 100);
+        // Parse RGBA
         if (colorStr.startsWith('rgba')) { const parts = colorStr.match(/[\d.]+/g); if (parts && parts.length >= 3) { r = parseInt(parts[0]); g = parseInt(parts[1]); b = parseInt(parts[2]); a = parts.length >= 4 ? parseFloat(parts[3]) : 1; } else { return '#333333'; } }
+        // Parse RGB
         else if (colorStr.startsWith('rgb')) { const parts = colorStr.match(/\d+/g); if (parts && parts.length >= 3) { r = parseInt(parts[0]); g = parseInt(parts[1]); b = parseInt(parts[2]); } else { return '#333333'; } }
+        // Parse HEX
         else if (colorStr.startsWith('#')) { let hex = colorStr.slice(1); if (hex.length === 3) hex = hex.split('').map(char => char + char).join(''); if (hex.length === 6) { const num = parseInt(hex, 16); r = (num >> 16) & 255; g = (num >> 8) & 255; b = num & 255; } else { return '#333333'; } }
-        else { return '#333333'; }
+        // Unknown format or named color (difficult to handle without a full parser)
+        else { return '#333333'; /* Fallback for named colors or complex inputs */ }
         r = Math.max(0, Math.floor(r * factor)); g = Math.max(0, Math.floor(g * factor)); b = Math.max(0, Math.floor(b * factor));
         return `rgba(${r},${g},${b},${a})`;
     }
 
     _lightenColor(colorStr, percent) {
-        if (typeof colorStr !== 'string') return '#EEEEEE';
+        if (typeof colorStr !== 'string') return '#EEEEEE'; // Default light color
         let r, g, b, a = 1; const factor = percent / 100;
         if (colorStr.startsWith('rgba')) { const parts = colorStr.match(/[\d.]+/g); if (parts && parts.length >= 3) { r = parseInt(parts[0]); g = parseInt(parts[1]); b = parseInt(parts[2]); a = parts.length >= 4 ? parseFloat(parts[3]) : 1; } else { return '#EEEEEE'; } }
         else if (colorStr.startsWith('rgb')) { const parts = colorStr.match(/\d+/g); if (parts && parts.length >= 3) { r = parseInt(parts[0]); g = parseInt(parts[1]); b = parseInt(parts[2]); } else { return '#EEEEEE'; } }
         else if (colorStr.startsWith('#')) { let hex = colorStr.slice(1); if (hex.length === 3) hex = hex.split('').map(char => char + char).join(''); if (hex.length === 6) { const num = parseInt(hex, 16); r = (num >> 16) & 255; g = (num >> 8) & 255; b = num & 255; } else { return '#EEEEEE'; } }
         else { 
+            // Attempt to parse named colors by assigning to canvas fillStyle and reading back
             try { const tempCtx = this.canvas.getContext('2d'); tempCtx.fillStyle = colorStr; const parsedColor = tempCtx.fillStyle; if (parsedColor.startsWith('#') || parsedColor.startsWith('rgb')) return this._lightenColor(parsedColor, percent); } catch(e) {/*ignore*/}
-            return '#EEEEEE';
+            return '#EEEEEE'; // Fallback
         }
         r = Math.min(255, Math.floor(r + (255 - r) * factor));
         g = Math.min(255, Math.floor(g + (255 - g) * factor));
@@ -218,36 +253,41 @@ class PureChart {
         return `rgba(${r},${g},${b},${a})`;
     }
 
-    _getAutoColor(index, totalItems) {
+    _getAutoColor(index, totalItems) { // For percentageDistribution if no colors provided
         const colors = this.config.options.percentageDistribution.colors;
         if (colors && colors[index % colors.length]) return colors[index % colors.length];
-        const hue = Math.round((index * (360 / (totalItems > 1 ? totalItems : 2))) % 360);
-        // Préférer HEX/RGB pour _lightenColor/_darkenColor, donc éviter HSL ici si possible ou convertir.
-        // Pour l'instant, si pas de 'colors' fourni, le lighten/darken sur HSL pourrait ne pas être idéal.
+        // Generate HSL colors if not provided
+        const hue = Math.round((index * (360 / (totalItems > 1 ? totalItems : 2))) % 360); // Distribute hues
+        // Prefer HEX/RGB for _lightenColor/_darkenColor, so HSL here might not be ideal with current helpers or convert.
+        // For now, if no 'colors' provided, lighten/darken on HSL might not be ideal.
         return `hsl(${hue}, 70%, 55%)`; 
     }
 
     _getDrawingArea() {
         let { top, right, bottom, left } = { ...this.config.options.padding }; const options = this.config.options;
-        if (options.title.display && options.title.text) { this.ctx.font = options.title.font; top += this.ctx.measureText('M').width*1.5 + options.title.padding; }
+        // Title height
+        if (options.title.display && options.title.text) { this.ctx.font = options.title.font; top += this.ctx.measureText('M').width*1.5 + options.title.padding; } // Approximate text height
+        // Legend height (if not percentageDistribution)
         if (options.legend.display && this.config.type !== 'percentageDistribution') { this.ctx.font = options.legend.font; const legendHeight = this.ctx.measureText('M').width*1.5 + options.legend.padding; if(options.legend.position==='top') top+=legendHeight; else bottom+=legendHeight; }
+        // Axes space (if not percentageDistribution)
         if (this.config.type !== 'percentageDistribution') {
             if (options.yAxis.display) { this.ctx.font = options.yAxis.labelFont; const sampleYLabel = options.yAxis.sampleLabelForWidthEstimation || "-9,999.9"; left += this.ctx.measureText(sampleYLabel).width + 10; if (options.yAxis.displayTitle && options.yAxis.title) { this.ctx.font = options.yAxis.titleFont; left += this.ctx.measureText('M').width*1.5 + 5; } }
             if (options.xAxis.display) { this.ctx.font = options.xAxis.labelFont; bottom += this.ctx.measureText('M').width*1.5 + 5; if (options.xAxis.displayTitle && options.xAxis.title) { this.ctx.font = options.xAxis.titleFont; bottom += this.ctx.measureText('M').width*1.5 + 5; } }
-        } else {
+        } else { // Specific padding for percentageDistribution labels/values
             this.ctx.font = options.percentageDistribution.labelFont; if (options.percentageDistribution.labelPosition === 'left') left = Math.max(left, (options.percentageDistribution.maxLabelWidth||0)+10);
             this.ctx.font = options.percentageDistribution.valueFont; if (options.percentageDistribution.showValueText && options.percentageDistribution.valuePosition === 'right') right = Math.max(right, this.ctx.measureText("100.0%").width + (options.percentageDistribution.valueTextMargin||0) + 5);
         }
-        top=Math.max(5,top); right=Math.max(5,right); bottom=Math.max(5,bottom); left=Math.max(5,left);
+        top=Math.max(5,top); right=Math.max(5,right); bottom=Math.max(5,bottom); left=Math.max(5,left); // Ensure minimum padding
         const drawWidth = this.canvas.width - left - right; const drawHeight = this.canvas.height - top - bottom;
         return { x: left, y: top, width: drawWidth > 0 ? drawWidth : 0, height: drawHeight > 0 ? drawHeight : 0 };
     }
 
     _createTooltipElement() {
-        if (this.tooltipElement || !this.config.options.tooltip.enabled) return;
+        if (this.tooltipElement || !this.config.options.tooltip.enabled) return; // Already exists or disabled
         this.tooltipElement = document.createElement('div');
         this.tooltipElement.style.position = 'absolute'; this.tooltipElement.style.visibility = 'hidden';
-        this.tooltipElement.style.pointerEvents = 'none'; this.tooltipElement.style.zIndex = '100';
+        this.tooltipElement.style.pointerEvents = 'none'; this.tooltipElement.style.zIndex = '100'; // High z-index
+        // Apply styles from config
         const tO = this.config.options.tooltip;
         this.tooltipElement.style.backgroundColor = tO.backgroundColor; this.tooltipElement.style.color = tO.color;
         this.tooltipElement.style.font = tO.font; this.tooltipElement.style.padding = tO.padding;
@@ -258,26 +298,27 @@ class PureChart {
     _draw() {
         if (!this.isValid) return;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.textBaseline = 'middle'; this.interactiveElements = [];
+        this.ctx.textBaseline = 'middle'; // Consistent baseline
+        this.interactiveElements = []; // Reset for new draw
         this.drawArea = this._getDrawingArea();
-        if (this.drawArea.width <= 0 || this.drawArea.height <= 0) {
+        if (this.drawArea.width <= 0 || this.drawArea.height <= 0) { // Check for drawable area
             console.warn("PureChart Warning: Drawing area too small.");
             this.ctx.font = '12px Arial'; this.ctx.fillStyle = '#333'; this.ctx.textAlign = 'center';
-            this.ctx.fillText("Drawing area too small.", this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.fillText("Drawing area too small.", this.canvas.width / 2, this.canvas.height / 2); // Translated
             return;
         }
-        if (this.config.type !== 'percentageDistribution') {
+        if (this.config.type !== 'percentageDistribution') { // Scale needed for bar/line
             this._calculateScale();
-            if (!this.isValid) {
+            if (!this.isValid) { // If scale calculation fails
                 console.error("PureChart: Scale calculation failed.");
                 this.ctx.font = '12px Arial'; this.ctx.fillStyle = 'red'; this.ctx.textAlign = 'center';
-                this.ctx.fillText("Error: Scale calculation failed.", this.canvas.width / 2, this.canvas.height / 2);
+                this.ctx.fillText("Error: Scale calculation failed.", this.canvas.width / 2, this.canvas.height / 2); // Translated
                 return;
             }
         }
         if (this.config.options.title.display && this.config.options.title.text) this._drawTitle();
         if (this.config.type === 'percentageDistribution') this._drawPercentageBarChart();
-        else {
+        else { // Bar or Line
             if (this.config.options.legend.display) this._drawLegend();
             this._drawAxesAndGrid();
             if (this.config.type === 'bar') this._drawBarChart();
@@ -296,11 +337,14 @@ class PureChart {
         this.ctx.font = legend.font; this.ctx.fillStyle = legend.color; this.ctx.textAlign = 'left'; this.ctx.textBaseline = 'middle';
         const markerSize = legend.markerSize; const itemHeight = Math.max(markerSize, this.ctx.measureText('M').width*1.2); const itemSpacing = 5;
         let currentX, currentY; let titleActualHeight = options.padding.top;
+        // Adjust Y start based on title presence for 'top' legend
         if (options.title.display && options.title.text) { const tempFont=this.ctx.font; this.ctx.font=options.title.font; titleActualHeight=(this.ctx.measureText('M').width*1.5)+options.title.padding+options.padding.top; this.ctx.font=tempFont; }
-        if(legend.position==='top') currentY=titleActualHeight+legend.padding+(itemHeight/2); else currentY=this.canvas.height-options.padding.bottom-legend.padding-(itemHeight/2);
-        const legendItems = data.datasets.map((ds,index)=>({label:ds.label||`Dataset ${index+1}`,color:ds.borderColor||(Array.isArray(ds.backgroundColor)?ds.backgroundColor[0]:ds.backgroundColor)||'#ccc',textWidth:this.ctx.measureText(ds.label||`Dataset ${index+1}`).width}));
-        const totalLegendItemWidth=legendItems.reduce((sum,item)=>sum+markerSize+5+item.textWidth+15,0)-15;
-        currentX=Math.max(this.drawArea.x,this.drawArea.x+(this.drawArea.width-totalLegendItemWidth)/2); const maxLegendX=this.drawArea.x+this.drawArea.width;
+        if(legend.position==='top') currentY=titleActualHeight+legend.padding+(itemHeight/2); else currentY=this.canvas.height-options.padding.bottom-legend.padding-(itemHeight/2); // 'bottom' position
+        // Prepare legend items with their text widths
+        const legendItems = data.datasets.map((ds,index)=>({label:ds.label||`Dataset ${index+1}`,color:ds.borderColor||(Array.isArray(ds.backgroundColor)?ds.backgroundColor[0]:ds.backgroundColor)||'#ccc',textWidth:this.ctx.measureText(ds.label||`Dataset ${index+1}`).width})); // Translated "Dataset"
+        const totalLegendItemWidth=legendItems.reduce((sum,item)=>sum+markerSize+5+item.textWidth+15,0)-15; // Calculate total width for centering
+        currentX=Math.max(this.drawArea.x,this.drawArea.x+(this.drawArea.width-totalLegendItemWidth)/2); // Center legend items
+        const maxLegendX=this.drawArea.x+this.drawArea.width; // Right boundary for legend items
         legendItems.forEach(item=>{ const itemSegmentWidth=markerSize+5+item.textWidth+15; if(currentX+itemSegmentWidth>maxLegendX && currentX>Math.max(this.drawArea.x,this.drawArea.x+(this.drawArea.width-totalLegendItemWidth)/2)){currentY+=itemHeight+itemSpacing;currentX=Math.max(this.drawArea.x,this.drawArea.x+(this.drawArea.width-totalLegendItemWidth)/2);} if(currentX<this.drawArea.x)currentX=this.drawArea.x; this.ctx.fillStyle=item.color; if(legend.markerStyle==='circle'){this.ctx.beginPath();this.ctx.arc(currentX+markerSize/2,currentY,markerSize/2,0,Math.PI*2);this.ctx.fill();} else{this.ctx.fillRect(currentX,currentY-markerSize/2,markerSize,markerSize);} currentX+=markerSize+5; this.ctx.fillStyle=legend.color; this.ctx.fillText(item.label,currentX,currentY); currentX+=item.textWidth+15; });
         this.ctx.restore();
     }
@@ -309,26 +353,30 @@ class PureChart {
         const { data, options } = this.config; let allValues = [];
         if (!data.datasets || data.datasets.length === 0) { console.warn("PureChart _calculateScale: No datasets."); this.isValid = false; return; }
         data.datasets.forEach(dataset => { if (dataset.values && Array.isArray(dataset.values) && dataset.values.length > 0) { allValues = allValues.concat(dataset.values.filter(v => typeof v === 'number' && !isNaN(v))); } });
-        if (allValues.length === 0) { console.warn("PureChart _calculateScale: No valid numeric data. Using [0,1]."); allValues = [0, 1]; }
+        if (allValues.length === 0) { console.warn("PureChart _calculateScale: No valid numeric data. Using [0,1]."); allValues = [0, 1]; } // Fallback if no numbers
         this.minValue = options.yAxis.beginAtZero ? 0 : Math.min(...allValues); this.maxValue = Math.max(...allValues);
+        // Adjust if beginAtZero is true
         if (options.yAxis.beginAtZero) { this.minValue = Math.min(0, this.minValue); this.maxValue = Math.max(0, this.maxValue); }
+        // Handle case where min and max are equal
         if (this.minValue === this.maxValue) { if (this.minValue === 0) this.maxValue = 1; else { const buffer = Math.abs(this.maxValue*0.1)||1; this.maxValue+=buffer; if(!options.yAxis.beginAtZero)this.minValue-=buffer; else this.minValue=Math.min(0,this.minValue-buffer);}}
-        if (this.minValue === this.maxValue) this.maxValue += 1;
+        if (this.minValue === this.maxValue) this.maxValue += 1; // Final safety for equal min/max
         if (this.drawArea.height === 0 || (this.maxValue - this.minValue === 0)) this.yScale = 1; else this.yScale = this.drawArea.height / (this.maxValue - this.minValue);
         if (!isFinite(this.yScale) || this.yScale <= 0) { console.error(`PureChart _calculateScale: yScale issue (${this.yScale}).`); this.yScale = 1; this.isValid = false; }
     }
 
     _drawAxesAndGrid() {
         const { options, data } = this.config; const oY = options.yAxis; const oX = options.xAxis; this.ctx.save();
-        this.ctx.lineWidth = 1; this.ctx.font = options.font;
+        this.ctx.lineWidth = 1; this.ctx.font = options.font; // Global font for context
+        // Y-Axis
         if (oY.display && this.drawArea.height > 0) {
             this.ctx.strokeStyle = oY.color; this.ctx.fillStyle = oY.color; this.ctx.beginPath(); this.ctx.moveTo(this.drawArea.x, this.drawArea.y); this.ctx.lineTo(this.drawArea.x, this.drawArea.y + this.drawArea.height); this.ctx.stroke();
             this.ctx.font = oY.labelFont; this.ctx.textAlign = 'right'; this.ctx.textBaseline = 'middle'; const numTicks = Math.max(2, oY.maxTicks);
-            if (this.maxValue !== undefined && this.minValue !== undefined && (this.maxValue - this.minValue !== 0)) {
+            if (this.maxValue !== undefined && this.minValue !== undefined && (this.maxValue - this.minValue !== 0)) { // Ensure scale is valid
                 for (let i = 0; i <= numTicks; i++) { const value = this.maxValue-(i*(this.maxValue-this.minValue)/numTicks); const yPos=this.drawArea.y+(i*this.drawArea.height/numTicks); if(yPos>=this.drawArea.y-1 && yPos<=this.drawArea.y+this.drawArea.height+1)this.ctx.fillText(value.toLocaleString(),this.drawArea.x-8,yPos); if(oY.gridLines && i>0 && i<numTicks){if(yPos>this.drawArea.y && yPos<this.drawArea.y+this.drawArea.height){this.ctx.save();this.ctx.strokeStyle=options.gridColor;this.ctx.lineWidth=0.5;this.ctx.beginPath();this.ctx.moveTo(this.drawArea.x+1,yPos);this.ctx.lineTo(this.drawArea.x+this.drawArea.width,yPos);this.ctx.stroke();this.ctx.restore();}}}
-            } else if (this.maxValue !== undefined) this.ctx.fillText(this.maxValue.toLocaleString(),this.drawArea.x-8,this.drawArea.y+this.drawArea.height/2);
+            } else if (this.maxValue !== undefined) this.ctx.fillText(this.maxValue.toLocaleString(),this.drawArea.x-8,this.drawArea.y+this.drawArea.height/2); // Fallback if scale is weird
             if (oY.displayTitle && oY.title) { this.ctx.font=oY.titleFont;this.ctx.textAlign='center';this.ctx.save(); const tempFont=this.ctx.font;this.ctx.font=oY.labelFont; const sampleYLabelForTitle=options.yAxis.sampleLabelForWidthEstimation||String(this.maxValue)||"-9,999.9"; const yLabelWidthEstimate=this.ctx.measureText(sampleYLabelForTitle).width; this.ctx.font=tempFont; const yTitleX=Math.max(10,this.drawArea.x-yLabelWidthEstimate-15-(this.ctx.measureText('M').width*0.5)); this.ctx.translate(yTitleX,this.drawArea.y+this.drawArea.height/2);this.ctx.rotate(-Math.PI/2);this.ctx.fillText(oY.title,0,0);this.ctx.restore(); }
         }
+        // X-Axis
         if (oX.display && this.drawArea.width > 0) {
             this.ctx.strokeStyle = oX.color; this.ctx.fillStyle = oX.color; this.ctx.beginPath(); this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height); this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height); this.ctx.stroke();
             this.ctx.font = oX.labelFont; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'top';
@@ -339,14 +387,15 @@ class PureChart {
     }
 
     _fillRoundRect(ctx, x, y, width, height, radius) {
-        if (width <= 0 || height <= 0) return; 
+        if (width <= 0 || height <= 0) return; // No need to draw if no size
         let tl = 0, tr = 0, br = 0, bl = 0;
         if (typeof radius === 'number') { tl = tr = br = bl = Math.max(0, radius); }
         else if (typeof radius === 'object' && radius !== null) { tl = Math.max(0, radius.tl || 0); tr = Math.max(0, radius.tr || 0); br = Math.max(0, radius.br || 0); bl = Math.max(0, radius.bl || 0); }
+        // Clamp radii to half width/height
         const maxRadiusHor = width / 2; const maxRadiusVer = height / 2;
         tl = Math.min(tl, maxRadiusHor, maxRadiusVer); tr = Math.min(tr, maxRadiusHor, maxRadiusVer);
         br = Math.min(br, maxRadiusHor, maxRadiusVer); bl = Math.min(bl, maxRadiusHor, maxRadiusVer);
-        if (tl <=0 && tr <= 0 && br <= 0 && bl <= 0) { ctx.fillRect(x, y, width, height); return; }
+        if (tl <=0 && tr <= 0 && br <= 0 && bl <= 0) { ctx.fillRect(x, y, width, height); return; } // No radius, use fillRect
         ctx.beginPath(); ctx.moveTo(x + tl, y); ctx.lineTo(x + width - tr, y); if (tr > 0) ctx.arcTo(x + width, y, x + width, y + tr, tr);
         ctx.lineTo(x + width, y + height - br); if (br > 0) ctx.arcTo(x + width, y + height, x + width - br, y + height, br);
         ctx.lineTo(x + bl, y + height); if (bl > 0) ctx.arcTo(x, y + height, x, y + height - bl, bl);
@@ -370,11 +419,11 @@ class PureChart {
         ctx.closePath(); ctx.stroke();
     }
 
-    _drawPercentageBarChart() { // MÉTHODE MODIFIÉE POUR LE NOUVEAU STYLE
+    _drawPercentageBarChart() { // MODIFIED METHOD FOR NEW STYLE
         if (!this.config.data || !Array.isArray(this.config.data.items)) {
             console.error("PureChart Error (_drawPercentageBarChart): data.items is missing or not an array.");
             this.ctx.font = '12px Arial'; this.ctx.fillStyle = 'red'; this.ctx.textAlign = 'center';
-            this.ctx.fillText("Error: Invalid data for percentage chart.", this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.fillText("Error: Invalid data for percentage chart.", this.canvas.width / 2, this.canvas.height / 2); // Translated
             return;
         }
 
@@ -382,10 +431,10 @@ class PureChart {
         const options = this.config.options.percentageDistribution;
         const drawArea = this.drawArea;
 
-        let itemsToDraw = [...originalItems];
+        let itemsToDraw = [...originalItems]; // Clone for sorting
         const totalValue = itemsToDraw.reduce((sum, item) => sum + ((typeof item.value === 'number' && !isNaN(item.value)) ? item.value : 0), 0);
         
-        itemsToDraw.forEach(item => {
+        itemsToDraw.forEach(item => { // Calculate percentage for each item
             const value = (typeof item.value === 'number' && !isNaN(item.value)) ? item.value : 0;
             item.percentage = (totalValue === 0) ? 0 : (value / totalValue) * 100;
         });
@@ -396,59 +445,59 @@ class PureChart {
         const plotAreaX = drawArea.x;
         const plotAreaWidth = drawArea.width;
 
-        if (plotAreaWidth <= 0) {
+        if (plotAreaWidth <= 0) { // Check if there's space to draw
             console.warn(`PureChart Warning: Not enough width for percentage bar drawing area. PlotAreaWidth: ${plotAreaWidth}`);
             this.ctx.font = '12px Arial'; this.ctx.fillStyle = 'orange'; this.ctx.textAlign = 'center';
-            this.ctx.fillText("Not enough space for bars.", this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.fillText("Not enough space for bars.", this.canvas.width / 2, this.canvas.height / 2); // Translated
             return;
         }
         
-        let currentY = drawArea.y + (options.barSpacing / 2);
+        let currentY = drawArea.y + (options.barSpacing / 2); // Start Y position
 
         itemsToDraw.forEach((item, index) => {
-            if (currentY + options.barHeight > drawArea.y + drawArea.height + options.barSpacing) return;
+            if (currentY + options.barHeight > drawArea.y + drawArea.height + options.barSpacing) return; // Stop if not enough vertical space
 
             const baseColorStr = this._getAutoColor(index, itemsToDraw.length);
-            const filledBarLength = Math.max(0, (item.percentage / 100) * plotAreaWidth);
-            const barTextY = currentY + options.barHeight / 2;
+            const filledBarLength = Math.max(0, (item.percentage / 100) * plotAreaWidth); // Ensure non-negative
+            const barTextY = currentY + options.barHeight / 2; // Y for text centering
 
             const fillLightenPercent = options.fillLightenPercent;
             const effectiveBorderWidth = options.borderWidth !== undefined ? options.borderWidth : 1;
 
             if (fillLightenPercent !== undefined && fillLightenPercent > 0 && typeof fillLightenPercent === 'number') {
-                // NOUVEAU STYLE: Couleur de base pour contour, remplissage éclairci, sur la longueur du %age
-                const contourColorStr = baseColorStr;
-                const remplissageCouleurStr = this._lightenColor(baseColorStr, fillLightenPercent);
+                // NEW STYLE: Base color for border, lightened fill, over the percentage length
+                const borderColorStr = baseColorStr;
+                const fillColorStr = this._lightenColor(baseColorStr, fillLightenPercent);
 
                 if (filledBarLength > 0) {
-                    // 1. Dessiner le remplissage éclairci
-                    this.ctx.fillStyle = this._resolveColor(remplissageCouleurStr, { x: plotAreaX, y: currentY, w: filledBarLength, h: options.barHeight });
+                    // 1. Draw the lightened fill
+                    this.ctx.fillStyle = this._resolveColor(fillColorStr, { x: plotAreaX, y: currentY, w: filledBarLength, h: options.barHeight });
                     this._fillRoundRect(this.ctx, plotAreaX, currentY, filledBarLength, options.barHeight, options.barBorderRadius);
                     
-                    // 2. Dessiner le contour (avec la couleur de base) AUTOUR de la partie remplie
+                    // 2. Draw the border (with base color) AROUND the filled part
                     if (effectiveBorderWidth > 0) {
-                        this.ctx.strokeStyle = this._resolveColor(contourColorStr, { x: plotAreaX, y: currentY, w: filledBarLength, h: options.barHeight });
+                        this.ctx.strokeStyle = this._resolveColor(borderColorStr, { x: plotAreaX, y: currentY, w: filledBarLength, h: options.barHeight });
                         this.ctx.lineWidth = effectiveBorderWidth;
                         this._strokeRoundRect(this.ctx, plotAreaX, currentY, filledBarLength, options.barHeight, options.barBorderRadius, effectiveBorderWidth);
                     }
                 }
             } else {
-                // COMPORTEMENT ORIGINAL (v0.9.2): Remplissage avec couleur de base, contour foncé optionnel
+                // ORIGINAL BEHAVIOR (v0.9.2): Fill with base color, optional darkened border
                 const fillColorStr = baseColorStr;
                 this.ctx.fillStyle = this._resolveColor(fillColorStr, { x: plotAreaX, y: currentY, w: filledBarLength, h: options.barHeight });
                 this._fillRoundRect(this.ctx, plotAreaX, currentY, filledBarLength, options.barHeight, options.barBorderRadius);
 
                 if (effectiveBorderWidth > 0) {
                     let effectiveBorderColor = options.borderColor;
-                    if (effectiveBorderColor === undefined) {
+                    if (effectiveBorderColor === undefined) { // Auto-darken if no specific border color
                         const resolvedFillColor = this._resolveColor(fillColorStr, { x: plotAreaX, y: currentY, w: filledBarLength, h: options.barHeight });
-                        if (typeof resolvedFillColor === 'string') {
+                        if (typeof resolvedFillColor === 'string') { // Can only darken if it's a solid color string
                             effectiveBorderColor = this._darkenColor(resolvedFillColor, options.borderDarkenPercent !== undefined ? options.borderDarkenPercent : 20);
                         } else {
-                            effectiveBorderColor = '#333333';
+                            effectiveBorderColor = '#333333'; // Fallback for gradients/functions
                         }
                     }
-                    if (effectiveBorderColor && effectiveBorderColor !== 'transparent') {
+                    if (effectiveBorderColor && effectiveBorderColor !== 'transparent') { // Draw border if color is valid
                         this.ctx.strokeStyle = effectiveBorderColor;
                         this.ctx.lineWidth = effectiveBorderWidth;
                         this._strokeRoundRect(this.ctx, plotAreaX, currentY, filledBarLength, options.barHeight, options.barBorderRadius, effectiveBorderWidth);
@@ -456,6 +505,7 @@ class PureChart {
                 }
             }
             
+            // Draw labels and values
             if (options.labelPosition === 'left') {
                 this.ctx.font = options.labelFont; this.ctx.fillStyle = options.labelColor;
                 this.ctx.textAlign = 'right'; this.ctx.textBaseline = 'middle';
@@ -464,7 +514,7 @@ class PureChart {
             if (options.labelPosition === 'insideStart') {
                 this.ctx.font = options.labelFont; this.ctx.fillStyle = options.labelColor;
                 this.ctx.textAlign = 'left'; this.ctx.textBaseline = 'middle';
-                if (this.ctx.measureText(item.label).width + 10 < filledBarLength) {
+                if (this.ctx.measureText(item.label).width + 10 < filledBarLength) { // Check if text fits
                     this.ctx.fillText(item.label, plotAreaX + 5 + (options.barBorderRadius / 2 || 0), barTextY);
                 }
             }
@@ -477,7 +527,7 @@ class PureChart {
                     this.ctx.fillText(percentageText, plotAreaX + filledBarLength + (options.valueTextMargin || 0), barTextY);
                 } else if (options.valuePosition === 'insideEnd') {
                     this.ctx.textAlign = 'right';
-                    if (this.ctx.measureText(percentageText).width + 10 < filledBarLength) {
+                    if (this.ctx.measureText(percentageText).width + 10 < filledBarLength) { // Check if text fits
                         this.ctx.fillText(percentageText, plotAreaX + filledBarLength - 5 - (options.barBorderRadius / 2 || 0), barTextY);
                     }
                 }
@@ -492,15 +542,17 @@ class PureChart {
         const options = this.config.options.bar;
         const totalItemSpacingFactor = options.itemSpacingFactor * (numInGroup > 1 ? numInGroup -1 : 0); 
         const barActualWidth = (groupDrawableWidth * (1 - totalItemSpacingFactor)) / numInGroup;
-        const xInGroup = barIndex * (barActualWidth + barActualWidth * options.itemSpacingFactor);
-        const val = parseFloat(value) || 0;
+        const xInGroup = barIndex * (barActualWidth + barActualWidth * options.itemSpacingFactor); // Position within the group
+        const val = parseFloat(value) || 0; // Ensure numeric value
+        // Calculate Y position and height based on scale
         const zeroLevelY = this.drawArea.y + this.drawArea.height - ((0 - (this.minValue || 0)) * (this.yScale || 1));
         let barHeight = Math.abs(val * (this.yScale || 1));
         let y;
         if (val >= 0) { y = zeroLevelY - barHeight; } else { y = zeroLevelY; }
+        // Clamp to drawing area
         if (y < this.drawArea.y) { barHeight -= (this.drawArea.y - y); y = this.drawArea.y; }
         if (y + barHeight > this.drawArea.y + this.drawArea.height) { barHeight = (this.drawArea.y + this.drawArea.height) - y; }
-        if (barHeight < 0) barHeight = 0;
+        if (barHeight < 0) barHeight = 0; // Ensure non-negative height
         return { x: xInGroup, y, w: barActualWidth > 0 ? barActualWidth : 0, h: barHeight };
     }
 
@@ -510,17 +562,17 @@ class PureChart {
             console.warn("PureChart _drawBarChart: Missing labels or datasets."); return;
         }
         const numLabels = data.labels.length; const numDatasets = data.datasets.length;
-        const groupTotalWidth = this.drawArea.width / numLabels;
-        const actualGroupSpacing = groupTotalWidth * chartOptions.bar.groupSpacingFactor;
-        const groupDrawableWidth = groupTotalWidth - actualGroupSpacing;
+        const groupTotalWidth = this.drawArea.width / numLabels; // Width per label group
+        const actualGroupSpacing = groupTotalWidth * chartOptions.bar.groupSpacingFactor; // Space between groups
+        const groupDrawableWidth = groupTotalWidth - actualGroupSpacing; // Actual width for bars in a group
         if (groupDrawableWidth <= 0) { console.warn("PureChart: Not enough width for bar groups."); return; }
 
-        data.labels.forEach((labelX, i) => {
-            const groupCanvasXStart = this.drawArea.x + (i * groupTotalWidth) + (actualGroupSpacing / 2);
-            data.datasets.forEach((dataset, j) => {
+        data.labels.forEach((labelX, i) => { // For each label on X-axis
+            const groupCanvasXStart = this.drawArea.x + (i * groupTotalWidth) + (actualGroupSpacing / 2); // Start X for this group
+            data.datasets.forEach((dataset, j) => { // For each dataset
                 const value = (dataset.values && dataset.values.length > i && typeof dataset.values[i] === 'number' && !isNaN(dataset.values[i])) ? dataset.values[i] : 0;
                 const rectInGroup = this._getBarRect(value, j, i, numDatasets, groupDrawableWidth); 
-                if (rectInGroup.w <= 0) return;
+                if (rectInGroup.w <= 0) return; // Skip if bar has no width
                 const finalBarX = groupCanvasXStart + rectInGroup.x;
                 const barRect = { x: finalBarX, y: rectInGroup.y, w: rectInGroup.w, h: rectInGroup.h };
                 const backgroundColor = this._resolveColor(dataset.backgroundColor, barRect);
@@ -528,12 +580,12 @@ class PureChart {
                 let borderWidth = dataset.borderWidth;
                 if (borderWidth === undefined) borderWidth = chartOptions.bar.defaultBorderWidth !== undefined ? chartOptions.bar.defaultBorderWidth : 1;
                 let borderColor = dataset.borderColor;
-                if (!borderColor && borderWidth > 0) {
+                if (!borderColor && borderWidth > 0) { // Auto-darken if no border color
                     if (typeof backgroundColor === 'string') borderColor = this._darkenColor(backgroundColor, chartOptions.bar.borderDarkenPercent !== undefined ? chartOptions.bar.borderDarkenPercent : 20);
-                    else borderColor = '#333333';
+                    else borderColor = '#333333'; // Fallback for gradients
                 }
                 this.ctx.strokeStyle = borderColor || 'transparent'; this.ctx.lineWidth = borderWidth;
-                if (barRect.h > 0) {
+                if (barRect.h > 0) { // Only draw if height is positive
                     this.ctx.fillRect(barRect.x, barRect.y, barRect.w, barRect.h);
                     if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') this.ctx.strokeRect(barRect.x, barRect.y, barRect.w, barRect.h);
                 }
@@ -544,6 +596,7 @@ class PureChart {
 
     _getControlPointsForSegment(p0, p1, p2, p3, tensionFactor) {
         tensionFactor = (typeof tensionFactor === 'number' && isFinite(tensionFactor)) ? tensionFactor : 0;
+        // Catmull-Rom to Bezier control points calculation (simplified)
         const t1x = (p2.x - p0.x) * tensionFactor; const t1y = (p2.y - p0.y) * tensionFactor;
         const t2x = (p3.x - p1.x) * tensionFactor; const t2y = (p3.y - p1.y) * tensionFactor;
         return { cp1: { x: p1.x + t1x, y: p1.y + t1y }, cp2: { x: p2.x - t2x, y: p2.y - t2y } };
@@ -551,46 +604,51 @@ class PureChart {
 
     _drawLineChart() {
         const { data: d, options: o } = this.config; const lO = o.line;
-        d.datasets.forEach((ds, dsI) => {
-            if (!ds.values || !Array.isArray(ds.values) || ds.values.length < 1) return;
+        d.datasets.forEach((ds, dsI) => { // For each dataset
+            if (!ds.values || !Array.isArray(ds.values) || ds.values.length < 1) return; // Skip if no values
             this.ctx.save();
+            // Map values to X/Y points
             const pts = ds.values.map((v, i) => {
                 const p = this._getPointPosition(v, i);
-                this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: dsI, pointIndex: i });
+                // Add point to interactive elements for tooltip
+                this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: dsI, pointIndex: i }); // Translated "Index"
                 return p;
             });
-            if (pts.length === 0) { this.ctx.restore(); return; }
-            const userTension = ds.tension !== undefined ? ds.tension : lO.tension;
+            if (pts.length === 0) { this.ctx.restore(); return; } // No points to draw
+            const userTension = ds.tension !== undefined ? ds.tension : lO.tension; // Line tension
             const effectiveLineWidth = ds.lineWidth !== undefined ? ds.lineWidth : lO.lineWidth;
-            const bezierTensionFactor = 0.2; 
+            const bezierTensionFactor = 0.2; // Factor for Catmull-Rom to Bezier conversion
+            // Draw filled area under line if enabled
             if (ds.fill && pts.length > 1) {
                 this.ctx.beginPath();
-                const baselineY = this.drawArea.y + this.drawArea.height - ((0 - (this.minValue || 0)) * (this.yScale || 1));
-                const clampedBaselineY = Math.max(this.drawArea.y, Math.min(this.drawArea.y + this.drawArea.height, baselineY));
+                const baselineY = this.drawArea.y + this.drawArea.height - ((0 - (this.minValue || 0)) * (this.yScale || 1)); // Y for 0-value
+                const clampedBaselineY = Math.max(this.drawArea.y, Math.min(this.drawArea.y + this.drawArea.height, baselineY)); // Clamp to draw area
                 this.ctx.moveTo(pts[0].x, clampedBaselineY); this.ctx.lineTo(pts[0].x, pts[0].y);
                 if (userTension > 0) { for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i === 0 ? 0 : i - 1]; const p1 = pts[i]; const p2 = pts[i + 1]; const p3 = pts[(i + 2 < pts.length) ? i + 2 : i + 1]; const { cp1, cp2 } = this._getControlPointsForSegment(p0, p1, p2, p3, bezierTensionFactor * userTension); this.ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y); } }
-                else { for (let i = 1; i < pts.length; i++) { this.ctx.lineTo(pts[i].x, pts[i].y); } }
+                else { for (let i = 1; i < pts.length; i++) { this.ctx.lineTo(pts[i].x, pts[i].y); } } // Straight lines
                 this.ctx.lineTo(pts[pts.length - 1].x, clampedBaselineY); this.ctx.closePath();
                 const fillRectPtsY = pts.map(p => p.y).concat([clampedBaselineY]);
                 const fillRect = { x: this.drawArea.x, y: Math.min(...fillRectPtsY), w: this.drawArea.width, h: Math.abs(Math.max(...fillRectPtsY) - Math.min(...fillRectPtsY)) };
                 this.ctx.fillStyle = this._resolveColor(ds.backgroundColor, fillRect); this.ctx.fill();
             }
+            // Draw the line itself
             if (effectiveLineWidth > 0 && pts.length > 0) {
                 this.ctx.beginPath(); this.ctx.moveTo(pts[0].x, pts[0].y);
                 if (userTension > 0 && pts.length > 1) { for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i === 0 ? 0 : i - 1]; const p1 = pts[i]; const p2 = pts[i + 1]; const p3 = pts[(i + 2 < pts.length) ? i + 2 : i + 1]; const { cp1, cp2 } = this._getControlPointsForSegment(p0, p1, p2, p3, bezierTensionFactor * userTension); this.ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y); } }
-                else if (pts.length > 1) { for (let i = 1; i < pts.length; i++) { this.ctx.lineTo(pts[i].x, pts[i].y); } }
+                else if (pts.length > 1) { for (let i = 1; i < pts.length; i++) { this.ctx.lineTo(pts[i].x, pts[i].y); } } // Straight lines
                 this.ctx.strokeStyle = this._resolveColor(ds.borderColor, this.drawArea); this.ctx.lineWidth = effectiveLineWidth; this.ctx.stroke();
             }
+            // Draw points on the line
             const pointRadiusToDraw = ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3);
             if (pointRadiusToDraw > 0 && pts.length > 0) {
                 pts.forEach((p) => {
                     const pointRect = { x: p.x - pointRadiusToDraw, y: p.y - pointRadiusToDraw, w: pointRadiusToDraw * 2, h: pointRadiusToDraw * 2 };
-                    let pointFillColor = ds.pointColor; 
+                    let pointFillColor = ds.pointColor; // Determine point fill color
                     if (pointFillColor === undefined) { if (ds.fill && ds.backgroundColor) { pointFillColor = ds.borderColor || lO.pointColor || '#000'; } else { pointFillColor = ds.backgroundColor || ds.borderColor || '#000'; } }
                     this.ctx.fillStyle = this._resolveColor(pointFillColor, pointRect); this.ctx.beginPath();
                     const currentPointStyle = ds.pointStyle || lO.pointStyle || 'circle';
                     if (currentPointStyle === 'square') { this.ctx.rect(pointRect.x, pointRect.y, pointRect.w, pointRect.h); }
-                    else { this.ctx.arc(p.x, p.y, pointRadiusToDraw, 0, Math.PI * 2); }
+                    else { this.ctx.arc(p.x, p.y, pointRadiusToDraw, 0, Math.PI * 2); } // Default to circle
                     this.ctx.fill();
                     const pointBorderWidthToDraw = ds.pointBorderWidth !== undefined ? ds.pointBorderWidth : 1; 
                     if (ds.pointBorderColor && pointBorderWidthToDraw > 0) { this.ctx.strokeStyle = this._resolveColor(ds.pointBorderColor, pointRect); this.ctx.lineWidth = pointBorderWidthToDraw; this.ctx.stroke(); }
@@ -602,12 +660,13 @@ class PureChart {
 
     _getPointPosition(value, index) {
         const numLabels = this.config.data.labels ? this.config.data.labels.length : 0;
-        if (numLabels === 0 || this.drawArea.width === 0) { return { x: this.drawArea.x + this.drawArea.width / 2, y: this.drawArea.y + this.drawArea.height / 2 }; }
-        const xSpacing = (numLabels > 1) ? this.drawArea.width / (numLabels - 1) : this.drawArea.width / 2;
+        if (numLabels === 0 || this.drawArea.width === 0) { return { x: this.drawArea.x + this.drawArea.width / 2, y: this.drawArea.y + this.drawArea.height / 2 }; } // Fallback
+        const xSpacing = (numLabels > 1) ? this.drawArea.width / (numLabels - 1) : this.drawArea.width / 2; // Avoid div by zero for single label
         const x = this.drawArea.x + (index * xSpacing); const yValue = parseFloat(value);
-        if (isNaN(yValue)) { return { x: x, y: this.drawArea.y + this.drawArea.height / 2 }; }
+        if (isNaN(yValue)) { return { x: x, y: this.drawArea.y + this.drawArea.height / 2 }; } // Center Y if value is not number
         let y = this.drawArea.y + this.drawArea.height - ((yValue - (this.minValue || 0)) * (this.yScale || 1));
-        if (!isFinite(y)) { y = this.drawArea.y + this.drawArea.height / 2; }
+        if (!isFinite(y)) { y = this.drawArea.y + this.drawArea.height / 2; } // Fallback for non-finite Y
+        // Clamp Y to drawing area
         y = Math.max(this.drawArea.y, Math.min(y, this.drawArea.y + this.drawArea.height));
         return { x, y };
     }
@@ -621,28 +680,32 @@ class PureChart {
         if (!this.tooltipElement || !this.config.options.tooltip.enabled || !this.interactiveElements) return;
         const mousePos = this._getMousePos(event); const canvasRect = this.canvas.getBoundingClientRect(); 
         let bestMatch = null; let minDistanceSq = Infinity; 
-        for (let i = this.interactiveElements.length - 1; i >= 0; i--) {
+        // Find the closest interactive element
+        for (let i = this.interactiveElements.length - 1; i >= 0; i--) { // Iterate backwards for potentially overlapping elements
             const el = this.interactiveElements[i]; let isHovered = false;
-            if (el.type === 'point' && el.pos) {
+            if (el.type === 'point' && el.pos) { // For line chart points
                 const radius = el.radius !== undefined ? el.radius : (this.config.options.line.pointRadius !== undefined ? this.config.options.line.pointRadius : 3);
-                const hoverRadius = radius + 3; const dx = mousePos.x - el.pos.x; const dy = mousePos.y - el.pos.y; const distanceSq = dx * dx + dy * dy;
+                const hoverRadius = radius + 3; // Larger hover area
+                const dx = mousePos.x - el.pos.x; const dy = mousePos.y - el.pos.y; const distanceSq = dx * dx + dy * dy;
                 if (distanceSq <= hoverRadius * hoverRadius) { if (distanceSq < minDistanceSq) { minDistanceSq = distanceSq; bestMatch = el; } isHovered = true; }
-            } else if ((el.type === 'bar' || el.type === 'percentageDistribution') && el.rect) {
-                if (mousePos.x >= el.rect.x && mousePos.x <= el.rect.x + el.rect.w && mousePos.y >= el.rect.y && mousePos.y <= el.rect.y + el.rect.h) { bestMatch = el; break; }
+            } else if ((el.type === 'bar' || el.type === 'percentageDistribution') && el.rect) { // For bars
+                if (mousePos.x >= el.rect.x && mousePos.x <= el.rect.x + el.rect.w && mousePos.y >= el.rect.y && mousePos.y <= el.rect.y + el.rect.h) { bestMatch = el; break; } // Bar hit, no need to check further for this event
             }
         }
         if (bestMatch) {
-            let tooltipContentParams; let anchorX, anchorY; 
+            let tooltipContentParams; let anchorX, anchorY; // Anchor for tooltip position
             if (bestMatch.type === 'point') { anchorX = bestMatch.pos.x + canvasRect.left; anchorY = bestMatch.pos.y + canvasRect.top; tooltipContentParams = { type: 'point', xLabel: bestMatch.xLabel, datasets: [{ dataset: bestMatch.dataset, value: bestMatch.value }] }; }
             else if (bestMatch.type === 'bar') { anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; anchorY = bestMatch.rect.y + canvasRect.top; 
-                const groupedDatasets = this.interactiveElements.filter(elem => elem.type === 'bar' && elem.xLabel === bestMatch.xLabel && elem.pointIndex === bestMatch.pointIndex).map(elem => ({ dataset: elem.dataset, value: elem.value })).sort((a,b) => (this.config.data.datasets.indexOf(a.dataset) - this.config.data.datasets.indexOf(b.dataset)));
+                // For grouped bars, find all datasets at this xLabel
+                const groupedDatasets = this.interactiveElements.filter(elem => elem.type === 'bar' && elem.xLabel === bestMatch.xLabel && elem.pointIndex === bestMatch.pointIndex).map(elem => ({ dataset: elem.dataset, value: elem.value })).sort((a,b) => (this.config.data.datasets.indexOf(a.dataset) - this.config.data.datasets.indexOf(b.dataset))); // Ensure original dataset order
                 tooltipContentParams = { type: 'bar', xLabel: bestMatch.xLabel, datasets: groupedDatasets.length > 0 ? groupedDatasets : [{ dataset: bestMatch.dataset, value: bestMatch.value }] };
             } else if (bestMatch.type === 'percentageDistribution') { anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; anchorY = bestMatch.rect.y + bestMatch.rect.h / 2 + canvasRect.top; tooltipContentParams = { type: 'percentageDistribution', item: bestMatch.item }; }
+            
             if (tooltipContentParams) { 
-                tooltipContentParams.anchorX = anchorX; tooltipContentParams.anchorY = anchorY;
-                const currentHoverSignature = JSON.stringify(tooltipContentParams); 
+                tooltipContentParams.anchorX = anchorX; tooltipContentParams.anchorY = anchorY; // Pass anchor to formatter if needed
+                const currentHoverSignature = JSON.stringify(tooltipContentParams); // To check if hover target changed
                 if (!this.activeTooltipData || this.activeTooltipData.signature !== currentHoverSignature) { this.activeTooltipData = { signature: currentHoverSignature, data: tooltipContentParams }; this._showTooltip(tooltipContentParams); }
-                else { this._positionTooltip(anchorX, anchorY); }
+                else { this._positionTooltip(anchorX, anchorY); } // Just reposition if same target
                 this.canvas.style.cursor = 'pointer';
             } else { this._onMouseOut(); }
         } else { this._onMouseOut(); }
@@ -658,19 +721,26 @@ class PureChart {
     _positionTooltip(anchorPageX, anchorPageY) {
         if (!this.tooltipElement || this.tooltipElement.style.visibility === 'hidden') return;
         const tooltipRect = this.tooltipElement.getBoundingClientRect(); const tooltipWidth = tooltipRect.width; const tooltipHeight = tooltipRect.height; const offset = this.config.options.tooltip.offset || 10;
+        // Default position: centered above anchor
         let left = anchorPageX - tooltipWidth / 2; let top = anchorPageY - tooltipHeight - offset;
+        // Window boundaries
         const winScrollX = window.scrollX || window.pageXOffset; const winScrollY = window.scrollY || window.pageYOffset; const winWidth = window.innerWidth; const winHeight = window.innerHeight;
+        // Adjust if too high
         if (top < winScrollY + 5) { top = anchorPageY + offset; }
-        if (top + tooltipHeight > winScrollY + winHeight - 5) { let newTopAbove = anchorPageY - tooltipHeight - offset; if (newTopAbove >= winScrollY + 5) { top = newTopAbove; } else { top = winScrollY + winHeight - tooltipHeight - 5; if (top < winScrollY + 5) top = winScrollY + 5; } }
+        // Adjust if too low (try above first, then clamp to bottom)
+        if (top + tooltipHeight > winScrollY + winHeight - 5) { let newTopAbove = anchorPageY - tooltipHeight - offset; if (newTopAbove >= winScrollY + 5) { top = newTopAbove; } else { top = winScrollY + winHeight - tooltipHeight - 5; if (top < winScrollY + 5) top = winScrollY + 5; } } // Clamp to prevent going off-screen again
+        // Adjust if too far left
         if (left < winScrollX + 5) { left = winScrollX + 5; }
+        // Adjust if too far right
         if (left + tooltipWidth > winScrollX + winWidth - 5) { left = winScrollX + winWidth - tooltipWidth - 5; }
+        // Final left clamp if adjustments made it too far left again
         if (left < winScrollX + 5) left = winScrollX + 5;
         this.tooltipElement.style.left = `${left}px`; this.tooltipElement.style.top = `${top}px`;
     }
 
     _onMouseOut() {
         if (this.tooltipElement && this.config.options.tooltip.enabled) { this.tooltipElement.style.visibility = 'hidden'; }
-        this.activeTooltipData = null;
-        if (this.canvas) { this.canvas.style.cursor = 'default'; }
+        this.activeTooltipData = null; // Clear active tooltip data
+        if (this.canvas) { this.canvas.style.cursor = 'default'; } // Reset cursor
     }
 }

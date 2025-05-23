@@ -24,8 +24,8 @@
     const suggestionsBox = document.getElementById('search-suggestions');
 
     // ====================================================================================
-    // IMPORTANT : Remplacez ceci par l'URL de votre propre endpoint serveur
-    // Exemple : const SERVER_SEARCH_ENDPOINT = '/api/search';
+    // IMPORTANT: Replace this with the URL of your own server endpoint
+    // Example: const SERVER_SEARCH_ENDPOINT = '/api/search';
     const SERVER_SEARCH_ENDPOINT = 'YOUR_SERVER_ENDPOINT_HERE/search';
     // ====================================================================================
 
@@ -39,12 +39,12 @@
     };
 
     function handleSuggestionItemClick(symbol, name, price) {
-        console.log("Suggestion cliquée !");
-        console.log("  Symbole:", symbol);
-        console.log("  Nom    :", name);
-        console.log("  Prix   :", price, "(type:", typeof price, ")");
-        // Personnalisez cette fonction.
-        // Exemple: searchInput.value = name; // Remplir le champ avec le nom
+        console.log("Suggestion clicked!"); // Translated
+        console.log("  Symbol:", symbol); // Translated
+        console.log("  Name  :", name); // Translated
+        console.log("  Price :", price, "(type:", typeof price, ")"); // Translated
+        // Customize this function.
+        // Example: searchInput.value = name; // Fill the field with the name
         hideSuggestions();
     }
 
@@ -97,7 +97,7 @@
 
                         if (item.flag && typeof item.flag === 'string') {
                             const flagSpan = document.createElement('span');
-                            flagSpan.className = `fi ${item.flag}`;
+                            flagSpan.className = `fi ${item.flag}`; // Assuming 'fi' is for flag icons
                             nameLineDiv.appendChild(flagSpan);
                         }
                         const mainTextSpan = document.createElement('span');
@@ -130,9 +130,10 @@
                                 const priceDiv = document.createElement('div');
                                 let priceText = item.price;
                                 if (typeof item.price === 'number') {
-                                    priceText = item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    // Using 'en-US' for consistency, can be adapted or made locale-aware
+                                    priceText = item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                 }
-                                priceDiv.textContent = `${priceText} €`;
+                                priceDiv.textContent = `${priceText} €`; // Assuming Euro symbol is desired, adjust if needed
                                 priceDiv.classList.add('price-detail');
                                 rightColumn.appendChild(priceDiv);
                             }
@@ -142,7 +143,7 @@
                         groupDiv.appendChild(itemLink);
                     }
                 });
-                if (groupDiv.children.length > 1) {
+                if (groupDiv.children.length > 1) { // Only add group if it has items + title
                     suggestionsBox.appendChild(groupDiv);
                 }
             }
@@ -151,19 +152,20 @@
         if (hasContentToDisplay && suggestionsBox.children.length > 0) {
             suggestionsBox.classList.add('visible');
         } else {
+            // Only show "No results" if not already showing loading/error
             if (!suggestionsBox.querySelector('.loading-message') && !suggestionsBox.querySelector('.error-message')) {
-                 if (!suggestionsBox.querySelector('.info-message')) { // Ne pas écraser un message d'erreur existant
-                    suggestionsBox.innerHTML = '<p class="info-message">Aucun résultat trouvé.</p>';
+                 if (!suggestionsBox.querySelector('.info-message')) { // Do not overwrite an existing error message
+                    suggestionsBox.innerHTML = '<p class="info-message">No results found.</p>'; // Translated
                     suggestionsBox.classList.add('visible');
                  }
-            } else if (suggestionsBox.children.length === 0) { // Si seulement message chargement/erreur et rien d'autre
+            } else if (suggestionsBox.children.length === 0) { // If only loading/error message and nothing else
                  suggestionsBox.classList.remove('visible');
             }
         }
     };
 
     const hideSuggestions = () => {
-        if (!suggestionsBox.querySelector('.error-message')) { // Ne pas cacher si message d'erreur important
+        if (!suggestionsBox.querySelector('.error-message')) { // Do not hide if there's an important error message
             suggestionsBox.classList.remove('visible');
         }
     };
@@ -174,32 +176,34 @@
     };
 
     const fetchSuggestionsFromServer = async (query) => {
-        console.log(`Workspaceing suggestions for query: "${query}"`);
-        suggestionsBox.innerHTML = '<p class="loading-message">Chargement...</p>';
+        console.log(`Fetching suggestions for query: "${query}"`); // Translated
+        suggestionsBox.innerHTML = '<p class="loading-message">Loading...</p>'; // Translated
         suggestionsBox.classList.add('visible');
         try {
-            const response = await fetch(`${SERVER_SEARCH_ENDPOINT}?term=${encodeURIComponent(query)}`);
+            // Ensure your server endpoint handles 'term' or adapt parameter name here
+            const fetchURL = `${SERVER_SEARCH_ENDPOINT}?term=${encodeURIComponent(query)}`;
+            const response = await fetch(fetchURL);
             if (!response.ok) {
-                let errorText = `Erreur du serveur : ${response.status}`;
+                let errorText = `Server error: ${response.status}`; // Translated
                 try {
-                    const errorData = await response.json(); // Ou response.text()
+                    const errorData = await response.json(); // Or response.text()
                     errorText += ` - ${errorData.message || JSON.stringify(errorData)}`;
-                } catch (e) { /* ignore si la réponse d'erreur n'est pas JSON */ }
+                } catch (e) { /* ignore if error response is not JSON */ }
                 throw new Error(errorText);
             }
             const suggestionsData = await response.json();
-            console.log('Suggestions reçues du serveur:', suggestionsData);
+            console.log('Suggestions received from server:', suggestionsData); // Translated
             if (suggestionsData && suggestionsData.length > 0) {
                 displaySuggestions(suggestionsData);
             } else {
-                suggestionsBox.innerHTML = '<p class="info-message">Aucun résultat trouvé pour votre recherche.</p>';
+                suggestionsBox.innerHTML = '<p class="info-message">No results found for your search.</p>'; // Translated
                 if (!suggestionsBox.classList.contains('visible')) {
                      suggestionsBox.classList.add('visible');
                 }
             }
         } catch (error) {
-            console.error('Erreur lors de la récupération des suggestions du serveur:', error);
-            suggestionsBox.innerHTML = `<p class="error-message">Erreur: ${error.message}. Veuillez réessayer.</p>`;
+            console.error('Error fetching suggestions from server:', error); // Translated
+            suggestionsBox.innerHTML = `<p class="error-message">Error: ${error.message}. Please try again.</p>`; // Translated
             if (!suggestionsBox.classList.contains('visible')) {
                  suggestionsBox.classList.add('visible');
             }
@@ -213,54 +217,58 @@
         } else {
             clearSuggestionsOrMessage();
         }
-    }, 500));
+    }, 500)); // 500ms debounce for server requests
 
     suggestionsBox.addEventListener('click', function(event) {
         let targetElement = event.target;
+        // Traverse up to find the parent <a> tag if a child element was clicked
         while (targetElement && targetElement !== this && targetElement.tagName !== 'A') {
             targetElement = targetElement.parentNode;
         }
         if (targetElement && targetElement.tagName === 'A' && targetElement.dataset.symbol) {
-            event.preventDefault();
+            event.preventDefault(); // Prevent navigation if href is a link
             const symbol = targetElement.dataset.symbol;
-            const name = targetElement.dataset.name || '';
-            const price = targetElement.dataset.price;
+            const name = targetElement.dataset.name || ''; // Fallback for name
+            const price = targetElement.dataset.price; // Price might be undefined
             handleSuggestionItemClick(symbol, name, price);
         }
     });
 
+    // Hide suggestions when clicking outside the search component
     document.addEventListener('click', (e) => {
         const searchContainer = document.querySelector('.search-container');
         if (searchContainer && !searchContainer.contains(e.target) && e.target !== searchInput) {
-            if (!suggestionsBox.querySelector('.error-message')) {
+            if (!suggestionsBox.querySelector('.error-message')) { // Don't hide error messages
                  hideSuggestions();
             }
         }
     });
 
+    // Hide suggestions when Escape key is pressed
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             hideSuggestions();
         }
     });
 
+    // Re-show suggestions on focus if input is valid and suggestions exist (and not an error/loading message)
     searchInput.addEventListener('focus', () => {
         const query = searchInput.value.trim();
         const hasErrorOrLoadingMessage = suggestionsBox.querySelector('.error-message') || suggestionsBox.querySelector('.loading-message');
-        const hasInfoMessage = suggestionsBox.querySelector('.info-message');
+        const hasInfoMessage = suggestionsBox.querySelector('.info-message'); // e.g. "No results found"
 
         if (query.length >= 3 && suggestionsBox.children.length > 0 && 
             !hasErrorOrLoadingMessage && !hasInfoMessage &&
-            // S'assurer qu'il y a de vrais groupes de suggestions et pas juste un message "aucun résultat" précédent
+            // Ensure there are actual suggestion groups, not just a previous "no results" message
             suggestionsBox.querySelector('.suggestion-group')) {
             if (!suggestionsBox.classList.contains('visible')) {
                 suggestionsBox.classList.add('visible');
             }
-        } else if (query.length < 3) {
-            if(!hasErrorOrLoadingMessage) {
+        } else if (query.length < 3) { // If query is too short, ensure suggestions are hidden
+            if(!hasErrorOrLoadingMessage) { // Don't hide error/loading
                 hideSuggestions();
             }
         }
     });
-    console.log("Advanced search script (server-side) initialized.");
+    console.log("Advanced search script (server-side) initialized."); // Translated
 });
