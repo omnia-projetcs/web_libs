@@ -512,7 +512,8 @@
 
 .dt-column-selector-item {
     padding: 8px 12px;
-    display: block; /* Make the whole item area clickable if label wraps input */
+    display: flex; /* Use flexbox to align children (checkbox and label) */
+    align-items: center; /* Vertically center checkbox and label */
 }
 
 .dt-column-selector-item:hover {
@@ -520,7 +521,9 @@
 }
 
 .dt-column-selector-item label {
-    display: flex; /* Align checkbox and text */
+    /* display: flex; and align-items: center; are not strictly needed here if label only contains text */
+    /* However, keeping them doesn't harm and could be useful if label content becomes complex later */
+    display: flex; 
     align-items: center;
     font-weight: normal; /* Override general label bolding if any */
     font-size: 0.95rem; /* Slightly smaller for dropdown items */
@@ -532,6 +535,7 @@
 .dt-column-selector-item input[type="checkbox"] {
     margin-right: 8px; /* Space between checkbox and label text */
     cursor: pointer;
+    /* vertical-align: middle; /* Not needed due to parent flex align-items: center */ */
     /* Consider custom styling for checkboxes for better cross-browser consistency if needed */
 }
 

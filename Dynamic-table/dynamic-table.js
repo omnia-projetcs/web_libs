@@ -113,6 +113,7 @@ function createDynamicTable(config) {
     let sortColumn = defaultSortColumn;
     let sortDirection = defaultSortDirection;
     let columnVisibilityStates = [];
+    let activeChartInstances = []; // 1. Initialize activeChartInstances Array
 
     let tableWrapper, table, thead, tbody, controlsWrapper, globalSearchInput,
         filterSelects = {}, resultsCountSpan, paginationWrapper, prevButton,
@@ -668,6 +669,21 @@ function createDynamicTable(config) {
 
     function renderTableInternal() {
         if (!tbody) return;
+
+        // --- BEGIN NEW CLEANUP LOGIC ---
+        if (activeChartInstances && activeChartInstances.length > 0) {
+            activeChartInstances.forEach(chart => {
+                if (chart && typeof chart._onMouseOut === 'function') {
+                    chart._onMouseOut(); // Hide tooltip and reset cursor
+                }
+                if (chart && chart.tooltipElement && chart.tooltipElement.parentNode) {
+                    chart.tooltipElement.parentNode.removeChild(chart.tooltipElement);
+                }
+            });
+        }
+        activeChartInstances = []; // Reset for the current render pass
+        // --- END NEW CLEANUP LOGIC ---
+
         tbody.innerHTML = '';
 
         if (displayData.length === 0) {
@@ -720,7 +736,12 @@ function createDynamicTable(config) {
                     const chartData = item[col.chartConfig.dataKey];
                     if (chartData && typeof PureChart !== 'undefined') {
                         try {
-                            new PureChart(canvasId, { type: col.chartConfig.type, data: chartData, options: col.chartConfig.options || {} });
+                            const chartInstance = new PureChart(canvasId, { type: col.chartConfig.type, data: chartData, options: col.chartConfig.options || {} });
+                            // Assuming PureChart constructor throws on error or returns an instance.
+                            // The 'isValid' property is not standard in PureChart.js, so we'll store if an instance is created.
+                            if (chartInstance) { 
+                               activeChartInstances.push(chartInstance);
+                            }
                         } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = 'Chart Err.'; }
                     } else if (typeof PureChart === 'undefined') {
                         console.warn(`[DynamicTable] PureChart is not defined for column ${col.header}. Ensure PureChart.js is loaded.`);
