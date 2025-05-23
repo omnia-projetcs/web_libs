@@ -261,6 +261,17 @@ function createDynamicTable(config) {
         // Do not call showLoadingMessage here if data is passed directly and processed immediately
     }
 
+    function getCanonicalCountryCode(value) {
+        if (typeof value !== 'string' || !value.trim()) {
+            return ""; 
+        }
+        let code = value.trim().toLowerCase();
+        if (code.startsWith('fi-')) {
+            code = code.substring(3);
+        }
+        return code;
+    }
+
     function formatValue(value, formatType) {
         if (value === null || typeof value === 'undefined') return '';
         
@@ -313,10 +324,16 @@ function createDynamicTable(config) {
             }
             if (formatType === 'flag') {
                 if (typeof value === 'string' && value.trim() !== '') {
-                    const countryCode = value.trim().toLowerCase();
-                    return `<span class="fi fi-${countryCode}"></span>`;
+                    let countryCode = value.trim().toLowerCase();
+                    if (countryCode.startsWith('fi-')) {
+                        countryCode = countryCode.substring(3); // Remove 'fi-'
+                    }
+                    // Basic validation: ensure it's likely a 2-letter code, though not strictly enforced here
+                    if (countryCode.length >= 2) { 
+                        return `<span class="fi fi-${countryCode}"></span>`;
+                    }
                 }
-                return ''; // Return empty for non-string or empty string values
+                return ''; // Return empty if not a valid string, empty, or becomes too short
             }
         }
         return value;
@@ -372,22 +389,27 @@ function createDynamicTable(config) {
                 // Keep the first option (e.g., "All X")
                 while (selectElement.options.length > 1) selectElement.remove(1);
                 
-                const uniqueValues = [...new Set(originalData.map(item => item[key]))].sort();
-                
-                uniqueValues.forEach(val => {
-                    if (val !== null && typeof val !== 'undefined') {
-                        const option = document.createElement('option');
-                        option.value = val;
-                        
-                        if (columnConfig && columnConfig.format === 'flag') {
-                            const countryCodeStr = String(val);
-                            option.innerHTML = `<span class="fi fi-${countryCodeStr.toLowerCase()}"></span> ${countryCodeStr.toUpperCase()}`;
-                        } else {
-                            option.textContent = val;
+                if (columnConfig && columnConfig.format === 'flag') {
+                    const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
+                    canonicalValues.forEach(canonicalCode => {
+                        if (canonicalCode) { 
+                            const option = document.createElement('option');
+                            option.value = canonicalCode; 
+                            option.innerHTML = `<span class="fi fi-${canonicalCode}"></span> ${canonicalCode.toUpperCase()}`;
+                            selectElement.appendChild(option);
                         }
-                        selectElement.appendChild(option);
-                    }
-                });
+                    });
+                } else {
+                    const uniqueValues = [...new Set(originalData.map(item => item[key]))].sort();
+                    uniqueValues.forEach(val => {
+                        if (val !== null && typeof val !== 'undefined') {
+                            const option = document.createElement('option');
+                            option.value = val;
+                            option.textContent = val;
+                            selectElement.appendChild(option);
+                        }
+                    });
+                }
             }
         });
     }
@@ -401,10 +423,15 @@ function createDynamicTable(config) {
 
         let filteredData = originalData.filter(item => {
             // Check specific column filters
-            const specificFiltersMatch = Object.entries(activeFilters).every(([key, value]) =>
-                String(item[key]) === value // Ensure comparison as strings if needed
-            );
-             if (!specificFiltersMatch) return false;
+            const specificFiltersMatch = Object.entries(activeFilters).every(([key, value]) => {
+                const columnConfig = columns.find(col => col.key === key); 
+                if (columnConfig && columnConfig.format === 'flag') {
+                    const itemCanonicalValue = getCanonicalCountryCode(item[key]);
+                    return String(itemCanonicalValue) === value; 
+                }
+                return String(item[key]) === value; 
+            });
+            if (!specificFiltersMatch) return false;
 
             // Check global search term if active
             return !globalSearchTerm || Object.values(item).some(val =>
