@@ -68,7 +68,7 @@
     font-size: 0.9rem;
     color: #555;
     text-align: right;
-    margin-left: auto; /* Pushes the results counter to the right */
+    /* margin-left: auto; */ /* Removed to allow column selector to be on the far right */
     padding-bottom: 8px; /* Align with input bottoms if align-items: flex-end is on parent */
 }
 .dynamic-table-results-info strong {
@@ -342,7 +342,7 @@
 
 .dt-custom-select {
     position: relative; /* For positioning the options list */
-    min-width: 200px; /* Same as other filter controls */
+    min-width: 200px; /* Default for other custom selects if any, or standard filters */
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: #fff;
@@ -370,17 +370,21 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex-grow: 1; /* Allow value to take available space */
+    display: flex; /* For aligning content like text or a single icon */
+    align-items: center; /* Vertically align content */
+    /* justify-content: flex-start; by default for text */
 }
 
 /* Styling for the flag icon itself if it's placed directly in dt-custom-select-value */
 .dt-custom-select-value span.fi {
-    margin-right: 0; /* No text next to it in the display area */
+    /* margin-right: 0; */ /* Reset by more specific rule below if needed */
     vertical-align: middle; /* Align if there was text or for consistency */
+    /* Centering is handled by parent's justify-content if it's the only child */
 }
 
 
 .dt-custom-arrow {
-    margin-left: 10px;
+    margin-left: 10px; /* Provides space between value and arrow */
     font-size: 0.8em;
 }
 
@@ -401,11 +405,11 @@
 
 /* Individual option styling */
 .dt-custom-option {
-    padding: 8px 12px;
+    padding: 6px 10px; /* Slightly reduced padding */
     cursor: pointer;
-    display: flex; /* To help center content if needed */
-    justify-content: center; /* Center flag icon */
-    align-items: center; /* Center flag icon */
+    display: flex; 
+    align-items: center; /* Vertically align content */
+    justify-content: flex-start; /* Default for text options */
     min-height: 2em; /* Ensure a decent clickable height */
 }
 
@@ -422,7 +426,7 @@
 .dt-custom-option span.fi {
     /* flag-icon-css provides base size. Adjust if needed: */
     /* font-size: 1.2em; */ 
-    /* margin: 0; /* Already centered by flex on parent */
+    margin-right: 5px; /* Space if there were text next to it, not typical for centered flags */
 }
 
 /* Hide the options list by default (JS will toggle display: block/flex) */
@@ -434,9 +438,34 @@
 }
 
 
+/* Specific adjustments for FLAG custom filters */
+.dynamic-table-filter-control.custom-flag-filter .dt-custom-select {
+    min-width: 0; /* Override the generic min-width */
+    width: 80px;  /* Narrower for flag display */
+}
+
+.dynamic-table-filter-control.custom-flag-filter .dt-custom-select-trigger .dt-custom-select-value {
+    justify-content: center; /* Center the flag icon */
+    flex-grow: 1; /* Ensure it takes space before arrow */
+}
+.dynamic-table-filter-control.custom-flag-filter .dt-custom-select-trigger .dt-custom-select-value span.fi {
+    margin-right: 0; /* Remove margin, as it's centered */
+}
+
+.dynamic-table-filter-control.custom-flag-filter .dt-custom-option {
+    padding: 6px 8px; /* Reduced horizontal padding for narrower dropdown */
+    justify-content: center; /* Center flag icon in options */
+}
+
+.dynamic-table-filter-control.custom-flag-filter .dt-custom-option span.fi {
+    margin-right: 0; /* No text expected next to a centered flag */
+}
+
+
 /* === Column Visibility Selector Styles === */
 .dynamic-table-column-selector {
     position: relative; /* For positioning the dropdown */
+    margin-left: auto; /* Pushes the column selector to the far right */
     /* No specific min-width, it will be defined by its content (button) */
 }
 

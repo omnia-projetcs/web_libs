@@ -157,8 +157,10 @@ function createDynamicTable(config) {
         selectorContainer.className = 'dynamic-table-column-selector';
 
         const selectButton = document.createElement('button');
-        selectButton.textContent = 'Select Columns'; // Translated
+        selectButton.innerHTML = '&#x2699;'; // Gear icon
         selectButton.className = 'dt-column-selector-button';
+        selectButton.setAttribute('aria-label', 'Select columns to display');
+        selectButton.title = 'Select columns to display'; // Tooltip
         selectorContainer.appendChild(selectButton);
 
         const dropdown = document.createElement('div');
