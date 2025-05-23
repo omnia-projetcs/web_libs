@@ -296,7 +296,9 @@
         align-items: stretch;
     }
     .dynamic-table-controls input[type="search"],
-    .dynamic-table-controls .dt-common-select { /* Targets the common class for filters */
+    .dynamic-table-controls .dt-common-select, /* Targets the common class for filters */
+    .dynamic-table-controls .dt-custom-select, /* Ensure custom selects also go full width */
+    .dynamic-table-controls .dt-column-selector-button { /* Ensure new button also goes full width */
         min-width: 0;
         width: 100%;
     }
@@ -429,4 +431,95 @@
 }
 .dt-custom-select.open .dt-custom-options { /* Class 'open' will be toggled by JS */
     display: block;
+}
+
+
+/* === Column Visibility Selector Styles === */
+.dynamic-table-column-selector {
+    position: relative; /* For positioning the dropdown */
+    /* No specific min-width, it will be defined by its content (button) */
+}
+
+.dt-column-selector-button {
+    padding: 8px 12px; /* Similar to search input and common select */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #555; /* Standard text color for controls */
+    cursor: pointer;
+    font-size: 1rem; /* Match other controls */
+    font-family: inherit; /* Ensure font consistency */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dt-column-selector-button:hover {
+    border-color: #aaa;
+}
+
+.dt-column-selector-button:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.dt-column-selector-dropdown {
+    position: absolute;
+    top: 100%; /* Position below the button */
+    left: 0; 
+    /* If the button might be close to the right edge, 'right: 0;' might be better,
+       or JS positioning. For now, left: 0 is standard. */
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-top-color: #ddd; /* Slightly lighter top border for separation */
+    border-radius: 0 0 4px 4px; /* Rounded bottom corners */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1050; /* Higher than sticky header and custom flag dropdown */
+    min-width: 200px; /* Ensure a reasonable width */
+    max-height: 250px; /* Limit height for long lists */
+    overflow-y: auto;
+    padding: 5px 0; /* Padding top/bottom for the list */
+    /* display: none; is handled by JS inline style */
+}
+
+.dt-column-selector-item {
+    padding: 8px 12px;
+    display: block; /* Make the whole item area clickable if label wraps input */
+}
+
+.dt-column-selector-item:hover {
+    background-color: #f0f5f8; /* Consistent hover color */
+}
+
+.dt-column-selector-item label {
+    display: flex; /* Align checkbox and text */
+    align-items: center;
+    font-weight: normal; /* Override general label bolding if any */
+    font-size: 0.95rem; /* Slightly smaller for dropdown items */
+    color: #333;
+    cursor: pointer;
+    margin-bottom: 0; /* Reset from general label style */
+}
+
+.dt-column-selector-item input[type="checkbox"] {
+    margin-right: 8px; /* Space between checkbox and label text */
+    cursor: pointer;
+    /* Consider custom styling for checkboxes for better cross-browser consistency if needed */
+}
+
+/* Responsive adjustments for the column selector dropdown */
+@media (max-width: 768px) {
+    .dynamic-table-column-selector {
+        width: 100%; /* Make the container full width if button is full width */
+    }
+    /* The button .dt-column-selector-button is already set to width: 100% in the main responsive block */
+    
+    .dt-column-selector-dropdown {
+        width: 100%; /* Dropdown can also be full width or adapt */
+        /* Or, if preferred, it can remain a fixed width but might require JS to position
+           if it would overflow the screen. Full width is often simpler on mobile. */
+        min-width: 0; /* Override min-width for full-width behavior */
+        left: 0;
+        right: 0; /* Ensure it spans full width if parent is full width */
+        box-sizing: border-box;
+    }
 }
