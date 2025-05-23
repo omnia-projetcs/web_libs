@@ -173,8 +173,7 @@
     align-items: center;    /* Vertically centers the canvas */
     justify-content: center; /* Horizontally centers the canvas (optional, can be 'flex-start' or 'flex-end') */
     padding: 2px 5px; /* Reduced padding for chart cells to maximize chart space */
-    min-height: 50px; /* Minimum height to help with alignment if uniformChartHeight is small */
-                      /* Adjust this value based on uniformChartHeight */
+    /* min-height: 50px; /* REMOVED to allow more natural row height adjustment */ */
 }
 .dynamic-table tbody td.dt-chart-cell canvas {
     max-width: 100%; /* Ensure the canvas does not exceed the cell */
