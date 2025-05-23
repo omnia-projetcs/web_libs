@@ -49,9 +49,44 @@ class PureChart {
                     itemSpacingFactor: 0.1, 
                     groupSpacingFactor: 0.2,
                     defaultBorderWidth: 1,
-                    borderDarkenPercent: 20
+                    borderDarkenPercent: 20,
+                    averageLine: {
+                        display: false,
+                        color: '#888',
+                        lineWidth: 1,
+                        dashPattern: [3, 3],
+                        label: {
+                            display: true,
+                            font: '10px Arial',
+                            color: '#555',
+                            position: 'above-right',
+                            padding: 2,
+                            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                            formatter: (value) => `Avg: ${value !== null && value !== undefined ? value.toFixed(2) : 'N/A'}`
+                        }
+                    }
                 },
-                line: { pointRadius: 3, lineWidth: 2, tension: 0, pointStyle: 'circle' },
+                line: { 
+                    pointRadius: 3, 
+                    lineWidth: 2, 
+                    tension: 0, 
+                    pointStyle: 'circle',
+                    averageLine: {
+                        display: false,
+                        color: '#888',
+                        lineWidth: 1,
+                        dashPattern: [3, 3],
+                        label: {
+                            display: true,
+                            font: '10px Arial',
+                            color: '#555',
+                            position: 'above-right',
+                            padding: 2,
+                            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                            formatter: (value) => `Avg: ${value !== null && value !== undefined ? value.toFixed(2) : 'N/A'}`
+                        }
+                    }
+                },
                 percentageDistribution: {
                     barHeight: 20, barSpacing: 3, barBorderRadius: 4, labelFont: '12px Arial',
                     labelColor: '#333', valueFont: '12px Arial bold', valueColor: '#333',
@@ -141,6 +176,18 @@ class PureChart {
         }
         const padding = new Array(period - 1).fill(null);
         return padding.concat(smaValues);
+    }
+
+    static _calculateDatasetAverage(values) {
+        if (!Array.isArray(values)) {
+            return null;
+        }
+        const numericValues = values.filter(v => typeof v === 'number' && !isNaN(v));
+        if (numericValues.length === 0) {
+            return null;
+        }
+        const sum = numericValues.reduce((acc, val) => acc + val, 0);
+        return sum / numericValues.length;
     }
 
     static _mergeDeep(target, source) {
@@ -378,7 +425,128 @@ class PureChart {
             // Call both drawing functions. They will internally filter by type.
             this._drawBarChart(); 
             this._drawLineChart();
+            this._drawAverageLines();
         }
+    }
+
+    _drawAverageLines() {
+        if (!this.config.data || !this.config.data.datasets || this.config.type === 'percentageDistribution' || 
+            !this.config.options.yAxis.display || !isFinite(this.yScale) || this.yScale <= 0 ||
+            typeof this.minValue === 'undefined' || typeof this.maxValue === 'undefined') {
+            return;
+        }
+
+        this.ctx.save();
+
+        this.config.data.datasets.forEach(dataset => {
+            const datasetType = dataset.type || this.config.type;
+            if (dataset._hidden || datasetType === 'percentageDistribution' || datasetType === 'sma') {
+                return;
+            }
+
+            const defaultAvgLineConfig = (this.config.options[datasetType] && this.config.options[datasetType].averageLine) 
+                                       ? this.config.options[datasetType].averageLine 
+                                       : {};
+            const datasetAvgLineConfig = dataset.averageLine || {};
+            const avgLineCfg = PureChart._mergeDeep(defaultAvgLineConfig, datasetAvgLineConfig);
+
+
+            if (!avgLineCfg.display) {
+                return;
+            }
+
+            const averageValue = PureChart._calculateDatasetAverage(dataset.values);
+
+            if (averageValue === null) {
+                return;
+            }
+
+            let y = this.drawArea.y + this.drawArea.height - ((averageValue - this.minValue) * this.yScale);
+            y = Math.max(this.drawArea.y, Math.min(y, this.drawArea.y + this.drawArea.height)); // Clamp
+
+            // Draw the line
+            this.ctx.save();
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.drawArea.x, y);
+            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, y);
+            
+            this.ctx.strokeStyle = avgLineCfg.color;
+            this.ctx.lineWidth = avgLineCfg.lineWidth;
+
+            if (Array.isArray(avgLineCfg.dashPattern) && avgLineCfg.dashPattern.length > 0) {
+                this.ctx.setLineDash(avgLineCfg.dashPattern);
+            }
+            
+            this.ctx.stroke();
+            
+            if (Array.isArray(avgLineCfg.dashPattern) && avgLineCfg.dashPattern.length > 0) {
+                this.ctx.setLineDash([]); // Reset
+            }
+            this.ctx.restore();
+
+            // Draw the label
+            if (avgLineCfg.label && avgLineCfg.label.display && avgLineCfg.label.formatter) {
+                this.ctx.save();
+                const labelCfg = avgLineCfg.label;
+                const labelText = typeof labelCfg.formatter === 'function' ? labelCfg.formatter(averageValue) : String(averageValue);
+
+                this.ctx.font = labelCfg.font;
+                this.ctx.fillStyle = labelCfg.color;
+                
+                let labelX, labelY;
+                const padding = labelCfg.padding || 0;
+                const textMetrics = this.ctx.measureText(labelText);
+                // Approximate height based on font size
+                const fontHeight = parseInt(this.ctx.font.match(/(\d+)px/)?.[1] || '10'); 
+
+                // Default to 'above-right'
+                let textAlign = 'right';
+                let textBaseline = 'bottom';
+                labelX = this.drawArea.x + this.drawArea.width - padding;
+                labelY = y - padding;
+
+                if (labelCfg.position === 'above-left') {
+                    textAlign = 'left';
+                    labelX = this.drawArea.x + padding;
+                } else if (labelCfg.position === 'below-left') {
+                    textAlign = 'left';
+                    textBaseline = 'top';
+                    labelX = this.drawArea.x + padding;
+                    labelY = y + padding;
+                } else if (labelCfg.position === 'below-right') {
+                    textAlign = 'right';
+                    textBaseline = 'top';
+                    labelX = this.drawArea.x + this.drawArea.width - padding;
+                    labelY = y + padding;
+                }
+                // Add more positions as needed: 'center-left', 'center-right', 'above-center', 'below-center'
+                
+                this.ctx.textAlign = textAlign;
+                this.ctx.textBaseline = textBaseline;
+
+                if (labelCfg.backgroundColor) {
+                    const bgWidth = textMetrics.width + (padding * 2);
+                    const bgHeight = fontHeight + (padding * 2);
+                    let bgX = labelX;
+                    let bgY = labelY;
+
+                    if (textAlign === 'right') bgX = labelX - textMetrics.width - padding;
+                    else if (textAlign === 'center') bgX = labelX - textMetrics.width / 2 - padding;
+                    else bgX = labelX - padding; // left
+
+                    if (textBaseline === 'bottom') bgY = labelY - fontHeight - padding;
+                    else if (textBaseline === 'middle') bgY = labelY - fontHeight / 2 - padding;
+                    else bgY = labelY - padding; // top
+                    
+                    this.ctx.fillStyle = labelCfg.backgroundColor;
+                    this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+                    this.ctx.fillStyle = labelCfg.color; // Reset for text
+                }
+                this.ctx.fillText(labelText, labelX, labelY);
+                this.ctx.restore();
+            }
+        });
+        this.ctx.restore();
     }
 
     _drawTitle() {
