@@ -112,10 +112,112 @@ function createDynamicTable(config) {
     let currentPage = 1;
     let sortColumn = defaultSortColumn;
     let sortDirection = defaultSortDirection;
+    let columnVisibilityStates = [];
 
     let tableWrapper, table, thead, tbody, controlsWrapper, globalSearchInput,
         filterSelects = {}, resultsCountSpan, paginationWrapper, prevButton,
-        nextButton, pageInfoSpan, rowsPerPageSelectElement;
+        nextButton, pageInfoSpan, rowsPerPageSelectElement, columnSelectorWrapper;
+
+    // Initialize columnVisibilityStates
+    columns.forEach(col => {
+        columnVisibilityStates.push({
+            key: col.key, // Assuming each column has a key, crucial for matching
+            header: col.header, // Store header for selector UI
+            visible: col.visible !== undefined ? col.visible : true 
+        });
+    });
+
+    function getVisibleColumnsCount() {
+        return columnVisibilityStates.filter(col => col.visible).length;
+    }
+
+    function buildHeaderRow() {
+        if (!thead) return;
+        thead.innerHTML = ''; // Clear existing header
+        const headerRow = thead.insertRow();
+        columnVisibilityStates.forEach(colState => {
+            if (colState.visible) {
+                const originalCol = columns.find(c => c.key === colState.key); // Find original column for properties like 'sortable'
+                const th = document.createElement('th');
+                th.textContent = colState.header;
+                th.setAttribute('scope', 'col');
+                if (originalCol && originalCol.sortable && originalCol.key) {
+                    th.classList.add('sortable');
+                    th.dataset.column = originalCol.key;
+                }
+                headerRow.appendChild(th);
+            }
+        });
+        // Re-apply sort indicators after rebuilding the header
+        updateSortIndicatorsInternal();
+    }
+
+    function buildColumnSelector() {
+        const selectorContainer = document.createElement('div');
+        selectorContainer.className = 'dynamic-table-column-selector';
+
+        const selectButton = document.createElement('button');
+        selectButton.textContent = 'Select Columns'; // Translated
+        selectButton.className = 'dt-column-selector-button';
+        selectorContainer.appendChild(selectButton);
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'dt-column-selector-dropdown';
+        dropdown.style.display = 'none'; // Initially hidden
+
+        columnVisibilityStates.forEach(colState => {
+            const checkboxId = `${containerId}-col-toggle-${colState.key}`;
+            const listItem = document.createElement('div');
+            listItem.className = 'dt-column-selector-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = checkboxId;
+            checkbox.checked = colState.visible;
+            checkbox.dataset.columnKey = colState.key;
+
+            checkbox.addEventListener('change', function() {
+                const key = this.dataset.columnKey;
+                const stateToUpdate = columnVisibilityStates.find(cs => cs.key === key);
+                if (stateToUpdate) {
+                    stateToUpdate.visible = this.checked;
+                }
+                buildHeaderRow(); // Rebuild the header
+                renderTableInternal(); // Re-render table body
+                // updatePaginationControlsInternal(); // Already called by renderTableInternal if pagination is on
+            });
+
+            const label = document.createElement('label');
+            label.htmlFor = checkboxId;
+            label.textContent = colState.header;
+
+            listItem.appendChild(checkbox);
+            listItem.appendChild(label);
+            dropdown.appendChild(listItem);
+        });
+
+        selectorContainer.appendChild(dropdown);
+
+        selectButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const currentlyOpen = dropdown.style.display === 'block';
+            // Close other potential dropdowns if any (none in this component yet, but good practice)
+            document.querySelectorAll('.dt-column-selector-dropdown').forEach(d => {
+                if (d !== dropdown) d.style.display = 'none';
+            });
+            dropdown.style.display = currentlyOpen ? 'none' : 'block';
+        });
+        
+        // Global click to close dropdown
+        document.addEventListener('click', (event) => {
+            if (!selectorContainer.contains(event.target) && dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            }
+        });
+
+
+        return selectorContainer;
+    }
 
     function buildTableShell() {
         container.innerHTML = ''; 
@@ -130,16 +232,21 @@ function createDynamicTable(config) {
             searchDiv.className = 'dynamic-table-search-control';
             const searchLabel = document.createElement('label');
             searchLabel.htmlFor = `${containerId}-global-search`;
-            searchLabel.textContent = 'Global Search:'; // Translated
+            searchLabel.textContent = 'Global Search:';
             globalSearchInput = document.createElement('input');
             globalSearchInput.type = 'search';
             globalSearchInput.id = `${containerId}-global-search`;
-            globalSearchInput.placeholder = 'Search...'; // Translated
+            globalSearchInput.placeholder = 'Search...';
             searchDiv.appendChild(searchLabel);
             searchDiv.appendChild(globalSearchInput);
             controlsWrapper.appendChild(searchDiv);
             hasVisibleTopControls = true;
         }
+        
+        // Add Column Selector to controls
+        columnSelectorWrapper = buildColumnSelector(); // buildColumnSelector is now defined
+        controlsWrapper.appendChild(columnSelectorWrapper);
+        hasVisibleTopControls = true; // Assuming we always show it if columns exist
 
         columns.forEach(col => {
             if (col.filterable && col.key) {
@@ -235,17 +342,11 @@ function createDynamicTable(config) {
         thead = table.createTHead();
         tbody = table.createTBody();
 
-        const headerRow = thead.insertRow();
-        columns.forEach((col, index) => {
-            const th = document.createElement('th');
-            th.textContent = col.header;
-            th.setAttribute('scope', 'col');
-            if (col.sortable && col.key) {
-                th.classList.add('sortable');
-                th.dataset.column = col.key;
-            }
-            headerRow.appendChild(th);
-        });
+        // buildColumnSelector needs to be defined before this, or this part needs to be a separate function
+        // For now, let's assume buildHeaderRow will be called after buildColumnSelector is setup if needed
+        // Or, call a dedicated function to build/rebuild the header
+        buildHeaderRow(); 
+
         tableWrapper.appendChild(table);
         container.appendChild(tableWrapper);
 
@@ -394,17 +495,20 @@ function createDynamicTable(config) {
     }
 
     function showLoadingMessage() {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${columns.length}" class="message-row loading">Loading...</td></tr>`; // Translated
+        const visibleCols = getVisibleColumnsCount();
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row loading">Loading...</td></tr>`; 
     }
     function showNoResultsMessage() {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${columns.length}" class="message-row no-results">No results found.</td></tr>`; // Translated
+        const visibleCols = getVisibleColumnsCount();
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row no-results">No results found.</td></tr>`; 
     }
     
     function _initTableWithData(data) {
         originalData = data;
         if (!Array.isArray(originalData)) {
             console.error(`[DynamicTable ${containerId}] Error: Provided data is not an array.`);
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${columns.length}" class="message-row error">Error: Invalid data.</td></tr>`; // Translated
+            const visibleCols = getVisibleColumnsCount();
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error: Invalid data.</td></tr>`; 
             return;
         }
         populateFilterOptions();
@@ -414,7 +518,8 @@ function createDynamicTable(config) {
     async function _fetchAndInitData() {
         if (!jsonPath) { 
             console.error(`[DynamicTable ${containerId}] Error: jsonPath not defined.`);
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${columns.length}" class="message-row error">Error: JSON path not defined.</td></tr>`; // Translated
+            const visibleCols = getVisibleColumnsCount();
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error: JSON path not defined.</td></tr>`; 
             return;
         }
         showLoadingMessage();
@@ -425,7 +530,8 @@ function createDynamicTable(config) {
             _initTableWithData(data);
         } catch (error) {
             console.error(`[DynamicTable ${containerId}] Fetch error:`, error);
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${columns.length}" class="message-row error">Error loading data.</td></tr>`; // Translated
+            const visibleCols = getVisibleColumnsCount();
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error loading data.</td></tr>`; 
             if (globalSearchInput) globalSearchInput.disabled = true;
             Object.values(filterSelects).forEach(sel => sel.disabled = true);
             if (prevButton) prevButton.disabled = true;
@@ -586,7 +692,14 @@ function createDynamicTable(config) {
 
         pageData.forEach((item, itemIndex) => {
             const row = tbody.insertRow();
-            columns.forEach((col, colIndex) => {
+            columnVisibilityStates.forEach((colState, colIndexOriginal) => {
+                if (!colState.visible) return; // Skip hidden columns
+
+                // Find the original column config using key; crucial if columnVisibilityStates could be reordered
+                // For now, assume columnVisibilityStates maintains order relative to original `columns`
+                const col = columns.find(c => c.key === colState.key);
+                if (!col) return; // Should not happen if keys are consistent
+
                 const cell = row.insertCell();
                 cell.innerHTML = ''; // Clear previous content
 
@@ -596,7 +709,7 @@ function createDynamicTable(config) {
                     col.render(value, item, cell);
                 } else if (col.renderAs === 'chart' && col.chartConfig) {
                     cell.classList.add('dt-chart-cell');
-                    const canvasId = `${containerId}-chart-${startIndex + itemIndex}-${colIndex}`;
+                    const canvasId = `${containerId}-chart-${startIndex + itemIndex}-${colIndexOriginal}`; // Use original index for unique ID
                     const canvas = document.createElement('canvas');
                     canvas.id = canvasId;
                     canvas.width = col.chartConfig.width || 150;
@@ -606,31 +719,29 @@ function createDynamicTable(config) {
                     if (chartData && typeof PureChart !== 'undefined') {
                         try {
                             new PureChart(canvasId, { type: col.chartConfig.type, data: chartData, options: col.chartConfig.options || {} });
-                        } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = 'Chart Err.'; } // Translated
+                        } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = 'Chart Err.'; }
                     } else if (typeof PureChart === 'undefined') {
                         console.warn(`[DynamicTable] PureChart is not defined for column ${col.header}. Ensure PureChart.js is loaded.`);
-                        cell.textContent = 'PureChart?'; // Translated
+                        cell.textContent = 'PureChart?';
                     } else {
                         console.warn(`[DynamicTable] Data for chart not found via dataKey '${col.chartConfig.dataKey}' for column ${col.header}.`);
-                        cell.textContent = 'Data?'; // Translated
+                        cell.textContent = 'Data?';
                     }
                 } else {
-                    // Handle specific case for percent_neutral and 0 value
                     const formattedValue = formatValue(value, col.format);
                     if (typeof col.format === 'string' && col.format.startsWith('percent_neutral') && typeof value === 'number' && value === 0) {
-                        cell.innerHTML = ''; // Or cell.textContent, as it's empty
+                        cell.innerHTML = '';
                     } else if (col.format === 'flag') {
                         cell.innerHTML = formattedValue;
                     } else {
                         cell.textContent = formattedValue;
                     }
 
-                    // Apply positive/negative classes for non-neutral percentages
                     if (typeof col.format === 'string' && col.format.startsWith('percent') && !col.format.includes('_neutral') && typeof value === 'number') {
-                        cell.classList.remove('dt-value-positive', 'dt-value-negative'); // Reset classes
+                        cell.classList.remove('dt-value-positive', 'dt-value-negative');
                         if (value > 0) {
                             cell.classList.add('dt-value-positive');
-                        } else if (value <= 0) { // Handles 0 and negative
+                        } else if (value <= 0) {
                             cell.classList.add('dt-value-negative');
                         }
                     }
@@ -794,7 +905,7 @@ function createDynamicTable(config) {
     }
     
     // Initial setup
-    buildTableShell(); 
+    buildTableShell(); // This will also call buildHeaderRow and buildColumnSelector internally
     attachEventListeners(); 
     
     // Load data
