@@ -64,7 +64,8 @@ function createDynamicTable(config) {
         showRowsPerPageSelector = true,
         rowsPerPageOptions = [10, 25, 50, 100, 'All'], // Default 'Tout' changed to 'All'
         tableMaxHeight = null,
-        uniformChartHeight = null
+        uniformChartHeight = null,
+        showColumnVisibilitySelector = true // New configuration option
     } = config;
 
     let initialRowsPerPageSetting = config.rowsPerPage !== undefined ? config.rowsPerPage : (rowsPerPageOptions[0] || 10);
@@ -335,12 +336,18 @@ function createDynamicTable(config) {
         }
 
         // Always add column selector to the right group
-        rightControlsGroup.appendChild(columnSelectorWrapper);
-        hasRightControls = true;
+        // rightControlsGroup.appendChild(columnSelectorWrapper); // Made conditional below
+        // hasRightControls = true; // Will be set if column selector is added
+
+        if (showColumnVisibilitySelector) {
+            columnSelectorWrapper = buildColumnSelector(); // Ensure it's created if shown
+            rightControlsGroup.appendChild(columnSelectorWrapper);
+            hasRightControls = true;
+        }
         
-        if (hasRightControls) {
+        if (hasRightControls) { // Only append the group if it has children
             controlsWrapper.appendChild(rightControlsGroup);
-            hasVisibleTopControls = true;
+            hasVisibleTopControls = true; // If right group has controls, then top controls are visible
         }
         
         if (hasVisibleTopControls) {

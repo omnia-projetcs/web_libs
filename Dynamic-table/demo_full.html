@@ -187,7 +187,8 @@
                 showSearchControl: true,
                 showResultsCount: true,
                 showPagination: true, 
-                showRowsPerPageSelector: true, 
+                showRowsPerPageSelector: true,
+                // showColumnVisibilitySelector: true, // Default, so omitted for this table
                 tableMaxHeight: '350px',
                 defaultSortColumn: 'name',
                 defaultSortDirection: 'asc'
@@ -222,6 +223,7 @@
                 showSearchControl: false,
                 showResultsCount: false,
                 showPagination: false,
+                showColumnVisibilitySelector: false, // Demonstrate hiding the selector
             });
         } else {
              document.getElementById('table-products-minimal').innerHTML = '<p>"productData" not found.</p>'; // Translated
@@ -245,6 +247,7 @@
                 defaultSortColumn: 'lastName',
                 showPagination: true,
                 showRowsPerPageSelector: false,
+                showColumnVisibilitySelector: true, // Demonstrate explicitly showing (though it's the default)
             });
         } else {
             document.getElementById('table-users-classic').innerHTML = '<p>"userData" not found.</p>'; // Translated
