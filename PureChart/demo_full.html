@@ -64,7 +64,21 @@
                             values: [120, 150, 180, 130],
                             backgroundColor: 'rgba(255, 99, 132, 0.5)',
                             borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1
+                            borderWidth: 1,
+                            averageLine: {
+                                display: true,
+                                color: 'rgba(200, 0, 0, 0.8)', // A distinct color
+                                lineWidth: 2,
+                                dashPattern: [4, 4],
+                                label: {
+                                    display: true,
+                                    color: 'rgb(150,0,0)',
+                                    font: 'bold 10px Arial',
+                                    position: 'above-center', // Different position for variety
+                                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                    formatter: (avg) => `Avg Sales A: ${avg.toFixed(1)}`
+                                }
+                            }
                         },
                         {
                             label: 'Product B Sales',
