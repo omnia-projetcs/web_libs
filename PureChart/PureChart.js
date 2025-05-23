@@ -31,6 +31,7 @@ class PureChart {
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d');
         this.interactiveElements = [];
+        this.interactiveLegendItems = []; // For legend interactivity
         this.activeTooltipData = null;
 
         const defaults = {
@@ -104,7 +105,42 @@ class PureChart {
             this.canvas.addEventListener('mouseout', this._onMouseOut.bind(this));
             this.canvas.addEventListener('mouseleave', this._onMouseOut.bind(this)); // Also hide on mouseleave
         }
+
+        // Initialize dataset visibility
+        if (this.config.data && this.config.data.datasets) {
+            this.config.data.datasets.forEach(dataset => {
+                dataset._hidden = false;
+            });
+        }
+        
+        this.canvas.addEventListener('click', this._onCanvasClick.bind(this));
+
         this._draw();
+    }
+
+    static _calculateSMA(dataValues, period) {
+        if (!dataValues || period <= 0 || dataValues.length === 0) { // Allow dataValues.length < period, will result in more padding
+            return []; 
+        }
+        if (dataValues.length < period) { // Not enough data for even one SMA value
+            return new Array(dataValues.length).fill(null); // Pad all if not enough data
+        }
+
+        const smaValues = [];
+        for (let i = 0; i <= dataValues.length - period; i++) {
+            let sum = 0;
+            let numbersInPeriod = 0;
+            for (let j = 0; j < period; j++) {
+                if (typeof dataValues[i + j] === 'number' && !isNaN(dataValues[i+j])) {
+                    sum += dataValues[i + j];
+                    numbersInPeriod++;
+                }
+            }
+            // Only calculate SMA if there were numbers in the period, otherwise push null
+            smaValues.push(numbersInPeriod > 0 ? sum / numbersInPeriod : null);
+        }
+        const padding = new Array(period - 1).fill(null);
+        return padding.concat(smaValues);
     }
 
     static _mergeDeep(target, source) {
@@ -300,6 +336,9 @@ class PureChart {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.textBaseline = 'middle'; // Consistent baseline
         this.interactiveElements = []; // Reset for new draw
+        
+        this._preprocessDatasetValues(); // Calculate SMA values etc.
+
         this.drawArea = this._getDrawingArea();
         if (this.drawArea.width <= 0 || this.drawArea.height <= 0) { // Check for drawable area
             console.warn("PureChart Warning: Drawing area too small.");
@@ -318,11 +357,19 @@ class PureChart {
         }
         if (this.config.options.title.display && this.config.options.title.text) this._drawTitle();
         if (this.config.type === 'percentageDistribution') this._drawPercentageBarChart();
-        else { // Bar or Line
+        else { // Bar, Line, or Mixed
             if (this.config.options.legend.display) this._drawLegend();
             this._drawAxesAndGrid();
-            if (this.config.type === 'bar') this._drawBarChart();
-            else if (this.config.type === 'line') this._drawLineChart();
+            
+            // Ensure Y axis is displayed and scale is valid before drawing annotations
+            if (this.config.options.yAxis.display && typeof this.minValue !== 'undefined' && typeof this.maxValue !== 'undefined' && 
+                this.drawArea.height > 0 && isFinite(this.yScale) && this.yScale > 0) {
+                 this._drawAnnotations(); 
+            }
+            
+            // Call both drawing functions. They will internally filter by type.
+            this._drawBarChart(); 
+            this._drawLineChart();
         }
     }
 
@@ -334,26 +381,116 @@ class PureChart {
 
     _drawLegend() {
         const { data, options } = this.config; const { legend } = options; if (!data.datasets || data.datasets.length === 0) return; this.ctx.save();
+        this.interactiveLegendItems = []; // Clear for redraw
         this.ctx.font = legend.font; this.ctx.fillStyle = legend.color; this.ctx.textAlign = 'left'; this.ctx.textBaseline = 'middle';
         const markerSize = legend.markerSize; const itemHeight = Math.max(markerSize, this.ctx.measureText('M').width*1.2); const itemSpacing = 5;
         let currentX, currentY; let titleActualHeight = options.padding.top;
         // Adjust Y start based on title presence for 'top' legend
         if (options.title.display && options.title.text) { const tempFont=this.ctx.font; this.ctx.font=options.title.font; titleActualHeight=(this.ctx.measureText('M').width*1.5)+options.title.padding+options.padding.top; this.ctx.font=tempFont; }
         if(legend.position==='top') currentY=titleActualHeight+legend.padding+(itemHeight/2); else currentY=this.canvas.height-options.padding.bottom-legend.padding-(itemHeight/2); // 'bottom' position
-        // Prepare legend items with their text widths
-        const legendItems = data.datasets.map((ds,index)=>({label:ds.label||`Dataset ${index+1}`,color:ds.borderColor||(Array.isArray(ds.backgroundColor)?ds.backgroundColor[0]:ds.backgroundColor)||'#ccc',textWidth:this.ctx.measureText(ds.label||`Dataset ${index+1}`).width})); // Translated "Dataset"
-        const totalLegendItemWidth=legendItems.reduce((sum,item)=>sum+markerSize+5+item.textWidth+15,0)-15; // Calculate total width for centering
-        currentX=Math.max(this.drawArea.x,this.drawArea.x+(this.drawArea.width-totalLegendItemWidth)/2); // Center legend items
-        const maxLegendX=this.drawArea.x+this.drawArea.width; // Right boundary for legend items
-        legendItems.forEach(item=>{ const itemSegmentWidth=markerSize+5+item.textWidth+15; if(currentX+itemSegmentWidth>maxLegendX && currentX>Math.max(this.drawArea.x,this.drawArea.x+(this.drawArea.width-totalLegendItemWidth)/2)){currentY+=itemHeight+itemSpacing;currentX=Math.max(this.drawArea.x,this.drawArea.x+(this.drawArea.width-totalLegendItemWidth)/2);} if(currentX<this.drawArea.x)currentX=this.drawArea.x; this.ctx.fillStyle=item.color; if(legend.markerStyle==='circle'){this.ctx.beginPath();this.ctx.arc(currentX+markerSize/2,currentY,markerSize/2,0,Math.PI*2);this.ctx.fill();} else{this.ctx.fillRect(currentX,currentY-markerSize/2,markerSize,markerSize);} currentX+=markerSize+5; this.ctx.fillStyle=legend.color; this.ctx.fillText(item.label,currentX,currentY); currentX+=item.textWidth+15; });
+        
+        const legendItemsData = data.datasets.map((ds,index)=>({
+            label: ds.label || `Dataset ${index+1}`, // Translated "Dataset"
+            color: ds.borderColor || (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor) || '#ccc',
+            textWidth: this.ctx.measureText(ds.label || `Dataset ${index+1}`).width, // Translated "Dataset"
+            dataset: ds,
+            datasetIndex: index
+        }));
+
+        const totalLegendItemWidth = legendItemsData.reduce((sum,item) => sum + markerSize + 5 + item.textWidth + 15, 0) - 15; // Calculate total width for centering
+        currentX = Math.max(this.drawArea.x, this.drawArea.x + (this.drawArea.width - totalLegendItemWidth) / 2); // Center legend items
+        const maxLegendX = this.drawArea.x + this.drawArea.width; // Right boundary for legend items
+
+        legendItemsData.forEach(item => {
+            const itemSegmentStartX = currentX;
+            const itemSegmentWidth = markerSize + 5 + item.textWidth + 15;
+            if (currentX + itemSegmentWidth > maxLegendX && currentX > Math.max(this.drawArea.x, this.drawArea.x + (this.drawArea.width - totalLegendItemWidth) / 2)) {
+                currentY += itemHeight + itemSpacing;
+                currentX = Math.max(this.drawArea.x, this.drawArea.x + (this.drawArea.width - totalLegendItemWidth) / 2);
+            }
+            if (currentX < this.drawArea.x) currentX = this.drawArea.x;
+
+            const markerX = currentX;
+            const textX = markerX + markerSize + 5;
+            
+            // Store bounds
+            const legendItemRect = {
+                x: markerX,
+                y: currentY - itemHeight / 2,
+                w: itemSegmentWidth,
+                h: itemHeight
+            };
+            this.interactiveLegendItems.push({ rect: legendItemRect, dataset: item.dataset, datasetIndex: item.datasetIndex });
+
+            this.ctx.fillStyle = item.color;
+            if (legend.markerStyle === 'circle') {
+                this.ctx.beginPath();
+                this.ctx.arc(markerX + markerSize / 2, currentY, markerSize / 2, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else {
+                this.ctx.fillRect(markerX, currentY - markerSize / 2, markerSize, markerSize);
+            }
+            
+            const originalFillStyle = this.ctx.fillStyle; // Save original fill style (it's legend.color)
+            if (item.dataset._hidden) {
+                this.ctx.fillStyle = '#aaa'; // Faded color for hidden items
+            } else {
+                this.ctx.fillStyle = legend.color; // Default text color (already set, but good for clarity)
+            }
+            this.ctx.fillText(item.label, textX, currentY);
+
+            if (item.dataset._hidden) {
+                const textWidth = item.textWidth; // Already calculated
+                this.ctx.beginPath();
+                this.ctx.moveTo(textX, currentY);
+                this.ctx.lineTo(textX + textWidth, currentY);
+                this.ctx.strokeStyle = '#aaa'; // Line-through color
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+            }
+            this.ctx.fillStyle = originalFillStyle; // Restore for next item or other drawing parts
+
+            currentX += itemSegmentWidth;
+        });
         this.ctx.restore();
+    }
+
+    _onCanvasClick(event) {
+        if (!this.interactiveLegendItems || this.interactiveLegendItems.length === 0) return;
+
+        const mousePos = this._getMousePos(event);
+        let legendItemClicked = false;
+
+        for (const item of this.interactiveLegendItems) {
+            if (mousePos.x >= item.rect.x && mousePos.x <= item.rect.x + item.rect.w &&
+                mousePos.y >= item.rect.y && mousePos.y <= item.rect.y + item.rect.h) {
+                
+                // Toggle visibility of the dataset
+                item.dataset._hidden = !item.dataset._hidden;
+                legendItemClicked = true;
+                break; // Handle only the first clicked item
+            }
+        }
+
+        if (legendItemClicked) {
+            this._draw(); // Redraw the chart to reflect changes
+            // event.stopPropagation(); // Optional: consider if other global click handlers exist
+        }
     }
 
     _calculateScale() {
         const { data, options } = this.config; let allValues = [];
         if (!data.datasets || data.datasets.length === 0) { console.warn("PureChart _calculateScale: No datasets."); this.isValid = false; return; }
-        data.datasets.forEach(dataset => { if (dataset.values && Array.isArray(dataset.values) && dataset.values.length > 0) { allValues = allValues.concat(dataset.values.filter(v => typeof v === 'number' && !isNaN(v))); } });
-        if (allValues.length === 0) { console.warn("PureChart _calculateScale: No valid numeric data. Using [0,1]."); allValues = [0, 1]; } // Fallback if no numbers
+        data.datasets.forEach(dataset => { 
+            if (dataset._hidden) return; // Skip hidden datasets
+            if (dataset.values && Array.isArray(dataset.values) && dataset.values.length > 0) { 
+                allValues = allValues.concat(dataset.values.filter(v => typeof v === 'number' && !isNaN(v))); 
+            } 
+        });
+        if (allValues.length === 0) { 
+            console.warn("PureChart _calculateScale: No valid numeric data (or all datasets hidden). Using [0,1]."); // Translated
+            allValues = [0, 1]; 
+        }
         this.minValue = options.yAxis.beginAtZero ? 0 : Math.min(...allValues); this.maxValue = Math.max(...allValues);
         // Adjust if beginAtZero is true
         if (options.yAxis.beginAtZero) { this.minValue = Math.min(0, this.minValue); this.maxValue = Math.max(0, this.maxValue); }
@@ -557,21 +694,41 @@ class PureChart {
     }
 
     _drawBarChart() {
-        const { data, options: chartOptions } = this.config;
+        const { data, options: chartOptions, type: globalType } = this.config;
         if (!data.labels || data.labels.length === 0 || !data.datasets || data.datasets.length === 0) {
-            console.warn("PureChart _drawBarChart: Missing labels or datasets."); return;
+            // console.warn("PureChart _drawBarChart: Missing labels or datasets."); // This can be noisy if only line charts are present
+            return;
         }
-        const numLabels = data.labels.length; const numDatasets = data.datasets.length;
+
+        const barDatasets = data.datasets.filter(ds => {
+            const datasetType = ds.type || globalType;
+            return !ds._hidden && datasetType === 'bar';
+        });
+
+        if (barDatasets.length === 0) {
+            return; // No visible bar datasets to draw
+        }
+
+        const numLabels = data.labels.length;
+        const numBarDatasets = barDatasets.length;
+        
         const groupTotalWidth = this.drawArea.width / numLabels; // Width per label group
         const actualGroupSpacing = groupTotalWidth * chartOptions.bar.groupSpacingFactor; // Space between groups
         const groupDrawableWidth = groupTotalWidth - actualGroupSpacing; // Actual width for bars in a group
-        if (groupDrawableWidth <= 0) { console.warn("PureChart: Not enough width for bar groups."); return; }
+        
+        if (groupDrawableWidth <= 0 && numBarDatasets > 0) {
+             console.warn("PureChart: Not enough width for bar groups."); return; 
+        }
 
         data.labels.forEach((labelX, i) => { // For each label on X-axis
             const groupCanvasXStart = this.drawArea.x + (i * groupTotalWidth) + (actualGroupSpacing / 2); // Start X for this group
-            data.datasets.forEach((dataset, j) => { // For each dataset
+            barDatasets.forEach((dataset, j) => { // For each VISIBLE BAR dataset
+                // 'j' is the index within barDatasets, used for positioning bars within the group.
+                const originalDatasetIndex = data.datasets.indexOf(dataset); // Get original index for tooltips etc.
+
                 const value = (dataset.values && dataset.values.length > i && typeof dataset.values[i] === 'number' && !isNaN(dataset.values[i])) ? dataset.values[i] : 0;
-                const rectInGroup = this._getBarRect(value, j, i, numDatasets, groupDrawableWidth); 
+                // Pass numBarDatasets to _getBarRect for correct width calculation within the group
+                const rectInGroup = this._getBarRect(value, j, i, numBarDatasets, groupDrawableWidth); 
                 if (rectInGroup.w <= 0) return; // Skip if bar has no width
                 const finalBarX = groupCanvasXStart + rectInGroup.x;
                 const barRect = { x: finalBarX, y: rectInGroup.y, w: rectInGroup.w, h: rectInGroup.h };
@@ -589,7 +746,7 @@ class PureChart {
                     this.ctx.fillRect(barRect.x, barRect.y, barRect.w, barRect.h);
                     if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') this.ctx.strokeRect(barRect.x, barRect.y, barRect.w, barRect.h);
                 }
-                this.interactiveElements.push({ type: 'bar', rect: barRect, xLabel: labelX, dataset: dataset, value: value, datasetIndex: j, pointIndex: i });
+                this.interactiveElements.push({ type: 'bar', rect: barRect, xLabel: labelX, dataset: dataset, value: value, datasetIndex: originalDatasetIndex, pointIndex: i });
             });
         });
     }
@@ -603,15 +760,26 @@ class PureChart {
     }
 
     _drawLineChart() {
-        const { data: d, options: o } = this.config; const lO = o.line;
-        d.datasets.forEach((ds, dsI) => { // For each dataset
+        const { data: d, options: o, type: globalType } = this.config; const lO = o.line;
+        if (!d.datasets || d.datasets.length === 0) {
+            // console.warn("PureChart _drawLineChart: Missing datasets."); // Can be noisy if only bar charts
+            return;
+        }
+
+        d.datasets.forEach((ds, originalDsIndex) => { // For each dataset, get original index
+            const datasetType = ds.type || globalType;
+            // Draw if it's a line OR an SMA (SMAs are drawn as lines)
+            if (ds._hidden || (datasetType !== 'line' && datasetType !== 'sma')) {
+                return; // Skip hidden datasets or non-line/non-SMA datasets
+            }
+            
             if (!ds.values || !Array.isArray(ds.values) || ds.values.length < 1) return; // Skip if no values
             this.ctx.save();
             // Map values to X/Y points
             const pts = ds.values.map((v, i) => {
                 const p = this._getPointPosition(v, i);
-                // Add point to interactive elements for tooltip
-                this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: dsI, pointIndex: i }); // Translated "Index"
+                // Add point to interactive elements for tooltip, using originalDsIndex
+                this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: originalDsIndex, pointIndex: i }); // Translated "Index"
                 return p;
             });
             if (pts.length === 0) { this.ctx.restore(); return; } // No points to draw
@@ -636,7 +804,21 @@ class PureChart {
                 this.ctx.beginPath(); this.ctx.moveTo(pts[0].x, pts[0].y);
                 if (userTension > 0 && pts.length > 1) { for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i === 0 ? 0 : i - 1]; const p1 = pts[i]; const p2 = pts[i + 1]; const p3 = pts[(i + 2 < pts.length) ? i + 2 : i + 1]; const { cp1, cp2 } = this._getControlPointsForSegment(p0, p1, p2, p3, bezierTensionFactor * userTension); this.ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y); } }
                 else if (pts.length > 1) { for (let i = 1; i < pts.length; i++) { this.ctx.lineTo(pts[i].x, pts[i].y); } } // Straight lines
-                this.ctx.strokeStyle = this._resolveColor(ds.borderColor, this.drawArea); this.ctx.lineWidth = effectiveLineWidth; this.ctx.stroke();
+                
+                this.ctx.strokeStyle = this._resolveColor(ds.borderColor, this.drawArea); 
+                this.ctx.lineWidth = effectiveLineWidth;
+
+                let lineDashSet = false;
+                if (ds.borderDash && Array.isArray(ds.borderDash) && ds.borderDash.length > 0) {
+                    this.ctx.setLineDash(ds.borderDash);
+                    lineDashSet = true;
+                }
+                
+                this.ctx.stroke();
+
+                if (lineDashSet) {
+                    this.ctx.setLineDash([]); // Reset to solid line
+                }
             }
             // Draw points on the line
             const pointRadiusToDraw = ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3);
@@ -742,5 +924,210 @@ class PureChart {
         if (this.tooltipElement && this.config.options.tooltip.enabled) { this.tooltipElement.style.visibility = 'hidden'; }
         this.activeTooltipData = null; // Clear active tooltip data
         if (this.canvas) { this.canvas.style.cursor = 'default'; } // Reset cursor
+    }
+
+    _drawAnnotations() {
+        const annotations = this.config.options.annotations;
+        if (!annotations || !Array.isArray(annotations) || annotations.length === 0 || 
+            !this.config.options.yAxis.display || !isFinite(this.yScale) || this.yScale <= 0) {
+            return;
+        }
+
+        this.ctx.save(); // Save context for all annotations
+
+        annotations.forEach(annotation => {
+            if (annotation.type !== 'line' || annotation.mode !== 'horizontal') {
+                return; // Skip non-horizontal line annotations
+            }
+
+            let y = null;
+            if (annotation.value !== undefined) {
+                y = this.drawArea.y + this.drawArea.height - ((annotation.value - (this.minValue || 0)) * this.yScale);
+            } else if (annotation.percentage !== undefined && typeof annotation.percentage === 'number') {
+                const yRange = (this.maxValue || 0) - (this.minValue || 0);
+                if (yRange === 0 && (this.minValue || 0) === 0) { // Handle case where min/max are both 0
+                     y = this.drawArea.y + this.drawArea.height; // Bottom of draw area
+                } else if (yRange === 0) { // Min/max are equal but not 0
+                     y = this.drawArea.y + this.drawArea.height / 2; // Middle of draw area if range is 0 but value is not
+                } else {
+                     y = this.drawArea.y + this.drawArea.height - (((annotation.percentage / 100) * yRange) * this.yScale);
+                }
+            }
+
+            if (y === null || isNaN(y) || !isFinite(y)) {
+                console.warn("PureChart Annotation: Could not determine Y position for annotation", annotation);
+                return;
+            }
+
+            y = Math.max(this.drawArea.y, Math.min(y, this.drawArea.y + this.drawArea.height)); // Clamp to draw area
+
+            // Draw the line
+            this.ctx.save();
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.drawArea.x, y);
+            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, y);
+            this.ctx.strokeStyle = annotation.borderColor || '#CCC';
+            this.ctx.lineWidth = annotation.borderWidth || 1;
+
+            let lineDashSet = false;
+            if (annotation.borderDash && Array.isArray(annotation.borderDash) && annotation.borderDash.length > 0) {
+                this.ctx.setLineDash(annotation.borderDash);
+                lineDashSet = true;
+            }
+            this.ctx.stroke();
+            if (lineDashSet) {
+                this.ctx.setLineDash([]);
+            }
+            this.ctx.restore();
+
+            // Draw the label
+            if (annotation.label && annotation.label.text) {
+                this.ctx.save();
+                const labelOptions = annotation.label;
+                const defaultFont = this.config.options.font || '10px Arial';
+                this.ctx.font = labelOptions.font || defaultFont;
+                const defaultColor = annotation.borderColor || '#333';
+                this.ctx.fillStyle = labelOptions.color || defaultColor;
+
+                let labelX, labelY;
+                let textAlign = 'right';
+                let textBaseline = 'bottom';
+                
+                const rawPadding = labelOptions.padding === undefined ? 2 : labelOptions.padding;
+                const padding = {
+                    x: typeof rawPadding === 'object' ? (rawPadding.x || 0) : rawPadding,
+                    y: typeof rawPadding === 'object' ? (rawPadding.y || 0) : rawPadding
+                };
+
+                const position = labelOptions.position || 'right';
+
+                switch (position) {
+                    case 'left':
+                        textAlign = 'left';
+                        textBaseline = 'bottom';
+                        labelX = this.drawArea.x + padding.x;
+                        labelY = y - padding.y;
+                        break;
+                    case 'top-left':
+                        textAlign = 'left';
+                        textBaseline = 'bottom'; // Text drawn above the line, baseline at bottom of text
+                        labelX = this.drawArea.x + padding.x;
+                        labelY = y - padding.y; 
+                        break;
+                    case 'bottom-left':
+                        textAlign = 'left';
+                        textBaseline = 'top'; // Text drawn below the line, baseline at top of text
+                        labelX = this.drawArea.x + padding.x;
+                        labelY = y + padding.y;
+                        break;
+                    case 'top-right':
+                        textAlign = 'right';
+                        textBaseline = 'bottom'; // Text drawn above the line
+                        labelX = this.drawArea.x + this.drawArea.width - padding.x;
+                        labelY = y - padding.y;
+                        break;
+                    case 'bottom-right':
+                        textAlign = 'right';
+                        textBaseline = 'top'; // Text drawn below the line
+                        labelX = this.drawArea.x + this.drawArea.width - padding.x;
+                        labelY = y + padding.y;
+                        break;
+                    case 'center': // Center of the line, text above
+                        textAlign = 'center';
+                        textBaseline = 'bottom';
+                        labelX = this.drawArea.x + this.drawArea.width / 2;
+                        labelY = y - padding.y;
+                        break;
+                    case 'right': // Default
+                    default:
+                        textAlign = 'right';
+                        textBaseline = 'bottom';
+                        labelX = this.drawArea.x + this.drawArea.width - padding.x;
+                        labelY = y - padding.y;
+                        break;
+                }
+                this.ctx.textAlign = textAlign;
+                this.ctx.textBaseline = textBaseline;
+
+                if (labelOptions.backgroundColor) {
+                    const textMetrics = this.ctx.measureText(labelOptions.text);
+                    // Approximate height based on font size, as actualBoundingBoxAscent/Descent can be unreliable
+                    const fontHeight = parseInt(this.ctx.font.match(/(\d+)px/)?.[1] || '10'); 
+                    
+                    const bgWidth = textMetrics.width + 2 * padding.x;
+                    const bgHeight = fontHeight + 2 * padding.y;
+                    
+                    let bgX = labelX;
+                    if (textAlign === 'right') bgX = labelX - textMetrics.width - padding.x;
+                    else if (textAlign === 'center') bgX = labelX - textMetrics.width/2 - padding.x;
+                    else bgX = labelX - padding.x; // left
+
+                    let bgY = labelY;
+                    if (textBaseline === 'bottom') bgY = labelY - fontHeight - padding.y;
+                    else if (textBaseline === 'middle') bgY = labelY - fontHeight/2 - padding.y;
+                    else bgY = labelY - padding.y; // top
+
+                    this.ctx.fillStyle = labelOptions.backgroundColor;
+                    this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+                    this.ctx.fillStyle = labelOptions.color || defaultColor; // Reset for text
+                }
+                this.ctx.fillText(labelOptions.text, labelX, labelY);
+                this.ctx.restore();
+            }
+        });
+        this.ctx.restore(); // Restore context for all annotations
+    }
+
+    _preprocessDatasetValues() {
+        if (!this.config.data || !this.config.data.datasets) return;
+        const datasets = this.config.data.datasets;
+        const numLabels = this.config.data.labels ? this.config.data.labels.length : 0;
+
+        datasets.forEach((ds, index) => {
+            if (ds.type === 'sma') {
+                let validSma = true;
+                let sourceDs = null;
+
+                if (typeof ds.sourceDatasetIndex !== 'number' || ds.sourceDatasetIndex < 0 || ds.sourceDatasetIndex >= datasets.length) {
+                    console.warn(`PureChart SMA Error: Dataset ${index} ('${ds.label}') has invalid sourceDatasetIndex ${ds.sourceDatasetIndex}.`);
+                    validSma = false;
+                } else {
+                    sourceDs = datasets[ds.sourceDatasetIndex];
+                    if (sourceDs.type === 'sma') {
+                        console.warn(`PureChart SMA Error: Dataset ${index} ('${ds.label}') sourceDatasetIndex ${ds.sourceDatasetIndex} ('${sourceDs.label}') is another SMA. Chaining SMAs is not supported.`);
+                        validSma = false;
+                        sourceDs = null; // Prevent trying to use it
+                    }
+                    if (ds.sourceDatasetIndex === index) {
+                        console.warn(`PureChart SMA Error: Dataset ${index} ('${ds.label}') sourceDatasetIndex cannot be itself.`);
+                        validSma = false;
+                        sourceDs = null;
+                    }
+                }
+
+                if (typeof ds.period !== 'number' || ds.period <= 0) {
+                    console.warn(`PureChart SMA Error: Dataset ${index} ('${ds.label}') has invalid period ${ds.period}.`);
+                    validSma = false;
+                }
+                
+                if (validSma && sourceDs) {
+                    if (sourceDs._hidden) { // If source dataset is hidden, SMA becomes an empty line
+                        ds.values = numLabels > 0 ? new Array(numLabels).fill(null) : [];
+                        // console.log(`PureChart SMA Info: Source dataset for '${ds.label}' is hidden. SMA will be empty.`);
+                    } else if (!sourceDs.values || sourceDs.values.length === 0) {
+                        console.warn(`PureChart SMA Error: Source dataset ${ds.sourceDatasetIndex} ('${sourceDs.label}') for SMA dataset ${index} ('${ds.label}') has no values.`);
+                        ds.values = numLabels > 0 ? new Array(numLabels).fill(null) : [];
+                    } else {
+                        ds.values = PureChart._calculateSMA(sourceDs.values, ds.period);
+                        if (ds.values.length === 0 && sourceDs.values.length > 0) { // Check if SMA calculation itself returned empty due to period > data length
+                             console.warn(`PureChart SMA Warning: Dataset ${index} ('${ds.label}') period ${ds.period} is greater than source data length ${sourceDs.values.length}. Resulting in empty SMA.`);
+                             // _calculateSMA already handles padding correctly if sourceDs.values.length < period
+                        }
+                    }
+                } else { // Validation failed or no sourceDs
+                    ds.values = numLabels > 0 ? new Array(numLabels).fill(null) : []; // Set to empty/null array to prevent drawing issues
+                }
+            }
+        });
     }
 }

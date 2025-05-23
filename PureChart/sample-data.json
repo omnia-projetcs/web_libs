@@ -1,100 +1,81 @@
 {
-  "barChartConfig": {
-    "type": "bar",
+  "mixedChartWithSmaAndAnnotation": {
+    "type": "bar", 
     "data": {
-      "labels": ["Jan", "Fév", "Mar", "Avr", "Mai"],
+      "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
       "datasets": [
         {
-          "label": "Ventes Produit A",
-          "values": [120, 150, 180, 130, 160],
+          "label": "Revenue (Bar)",
+          "type": "bar",
+          "values": [2500, 2700, 2600, 3000, 2800, 2900, 3100],
           "backgroundColor": "rgba(54, 162, 235, 0.7)",
-          "borderColor": "rgba(54, 162, 235, 1)", 
-          "borderWidth": 2
+          "borderColor": "rgba(54, 162, 235, 1)"
         },
         {
-          "label": "Ventes Produit B",
-          "values": [80, 100, 90, 110, 70],
-          "backgroundColor": "rgba(255, 99, 132, 0.7)"
+          "label": "Expenses (Line)",
+          "type": "line",
+          "values": [1500, 1600, 1550, 1800, 1700, 1750, 1850],
+          "borderColor": "rgba(255, 99, 132, 1)",
+          "borderDash": [5,5],
+          "fill": false,
+          "pointRadius": 3
+        },
+        {
+          "label": "SMA (Revenue, 3m)",
+          "type": "sma",
+          "sourceDatasetIndex": 0, 
+          "period": 3,
+          "borderColor": "rgba(75, 192, 192, 1)",
+          "lineWidth": 2,
+          "pointRadius": 0 
         }
       ]
     },
     "options": {
-      "title": { "text": "Ventes Mensuelles (Barres) - Depuis JSON" },
-      "yAxis": { "beginAtZero": true, "title": "Unités Vendues" },
-      "bar": {
-        "defaultBorderWidth": 1,
-        "borderDarkenPercent": 30
-      }
+      "title": { 
+        "display": true,
+        "text": "Financial Overview (Loaded from JSON)" 
+      },
+      "legend": { 
+        "display": true,
+        "position": "bottom"
+      },
+      "yAxis": {
+        "displayTitle": true,
+        "title": "Amount ($)"
+      },
+      "annotations": [
+        {
+          "type": "line",
+          "mode": "horizontal",
+          "value": 2800,
+          "borderColor": "rgba(255, 159, 64, 1)",
+          "borderWidth": 2,
+          "label": {
+            "text": "Revenue Target: $2800",
+            "position": "top-left",
+            "color": "rgba(255, 159, 64, 1)",
+            "font": "11px Arial",
+            "backgroundColor": "rgba(255,255,255,0.6)"
+          }
+        }
+      ]
     }
   },
-  "lineChartConfig": {
+  "anotherSimpleLineChart": {
     "type": "line",
     "data": {
-      "labels": ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5"],
-      "datasets": [
-        {
-          "label": "Trafic Utilisateurs",
-          "values": [500, 650, 580, 720, 690],
-          "borderColor": "#28a745",
-          "backgroundColor": "rgba(40, 167, 69, 0.1)",
-          "tension": 0.2,
-          "fill": true,
-          "pointRadius": 4,
-          "pointColor": "#28a745",
-          "pointBorderColor": "#FFFFFF",
-          "pointBorderWidth": 2
-        }
-      ]
+        "labels": ["Q1", "Q2", "Q3", "Q4"],
+        "datasets": [
+            {
+                "label": "Product B Sales",
+                "values": [20, 40, 30, 50],
+                "borderColor": "green"
+            }
+        ]
     },
     "options": {
-      "title": { "text": "Trafic Utilisateurs (Ligne) - Depuis JSON" },
-      "yAxis": { "beginAtZero": false, "title": "Visiteurs" },
-      "xAxis": { "title": "Semaines" }
-    }
-  },
-  "percentageChartNewStyle": {
-    "type": "percentageDistribution",
-    "data": {
-      "items": [
-        { "label": "Tâche Prioritaire 1", "value": 90 },
-        { "label": "Tâche Prioritaire 2", "value": 65 },
-        { "label": "Tâche Secondaire", "value": 40 }
-      ]
-    },
-    "options": {
-      "title": { "text": "Avancement des Tâches (Nouveau Style) - JSON" },
-      "percentageDistribution": {
-        "colors": ["#0d6efd", "#198754", "#ffc107"],
-        "borderWidth": 2,
-        "fillLightenPercent": 65, 
-        "barHeight": 30,
-        "barBorderRadius": 4,
-        "labelPosition": "left",
-        "maxLabelWidth": 200,
-        "valuePosition": "insideEnd",
-        "valueFont": "11px Arial Black",
-        "sort": "descending"
-      }
-    }
-  },
-  "percentageChartOldStyle": {
-    "type": "percentageDistribution",
-    "data": {
-      "items": [
-        { "label": "Budget Marketing", "value": 45000 },
-        { "label": "Budget R&D", "value": 70000 },
-        { "label": "Budget Opérations", "value": 30000 }
-      ]
-    },
-    "options": {
-      "title": { "text": "Répartition Budgétaire (Style Classique) - JSON" },
-      "percentageDistribution": {
-        "colors": ["#6f42c1", "#d63384", "#20c997"],
-        "borderWidth": 1,
-        "borderColor": "#444444", 
-        "barHeight": 25,
-        "barBorderRadius": 0
-      }
+        "title": {"text": "Product B Performance (JSON)"}
     }
   }
 }

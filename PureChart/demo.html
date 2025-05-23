@@ -2,64 +2,150 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PureChart Demo - JSON Loading</title>
+    <title>PureChart Demo - New Features</title>
     <link rel="stylesheet" href="PureChart.css">
 </head>
 <body>
-    <h1>PureChart Demonstration - Loading from JSON</h1>
+    <h1>PureChart Demonstration - New Features</h1>
 
     <div class="chart-container">
-        <h2>Bar Chart</h2>
-        <canvas id="barChartCanvas" width="700" height="350"></canvas>
+        <h2>Example 1: Mixed Types, Clickable Legend, Dashed Line</h2>
+        <canvas id="mixedChartCanvas" width="700" height="350"></canvas>
     </div>
 
     <div class="chart-container">
-        <h2>Line Chart</h2>
-        <canvas id="lineChartCanvas" width="700" height="350"></canvas>
-    </div>
-
-    <div class="chart-container">
-        <h2>Percentage Distribution (New "Gauge" Style)</h2>
-        <canvas id="percentageChartNewStyleCanvas" width="700" height="220"></canvas>
-    </div>
-
-    <div class="chart-container">
-        <h2>Percentage Distribution (Classic Style)</h2>
-        <canvas id="percentageChartOldStyleCanvas" width="700" height="220"></canvas>
+        <h2>Example 2: SMA and Annotation</h2>
+        <canvas id="smaAnnotationChartCanvas" width="700" height="350"></canvas>
     </div>
 
     <script src="PureChart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const jsonDataUrl = 'sample-data.json';
-
-            try {
-                const response = await fetch(jsonDataUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP error loading ${jsonDataUrl}: ${response.status}`);
+        document.addEventListener('DOMContentLoaded', () => {
+            // Example 1: Mixed Types, Clickable Legend, Dashed Line
+            const mixedChartConfig = {
+                type: 'bar', // Global default type
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [
+                        {
+                            label: 'Page Views',
+                            type: 'bar',
+                            values: [150, 220, 180, 250, 200, 230, 210],
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Unique Visitors',
+                            type: 'line',
+                            values: [80, 100, 90, 120, 110, 105, 95],
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Conversion Rate (%)',
+                            type: 'line',
+                            values: [3, 4, 3.5, 5, 4.5, 4.2, 3.8],
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderDash: [8, 4], // Dashed line
+                            pointRadius: 4,
+                            pointStyle: 'square',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    title: {
+                        display: true,
+                        text: 'Website Traffic Overview (Mixed Chart)'
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    yAxis: {
+                        displayTitle: true,
+                        title: 'Count / Percentage'
+                    }
                 }
-                const allChartConfigs = await response.json();
+            };
+            new PureChart('mixedChartCanvas', mixedChartConfig);
 
-                if (allChartConfigs.barChartConfig) {
-                    new PureChart('barChartCanvas', allChartConfigs.barChartConfig);
-                } else { console.warn("'barChartConfig' configuration not found in JSON."); }
-
-                if (allChartConfigs.lineChartConfig) {
-                    new PureChart('lineChartCanvas', allChartConfigs.lineChartConfig);
-                } else { console.warn("'lineChartConfig' configuration not found in JSON."); }
-                
-                if (allChartConfigs.percentageChartNewStyle) {
-                    new PureChart('percentageChartNewStyleCanvas', allChartConfigs.percentageChartNewStyle);
-                } else { console.warn("'percentageChartNewStyle' configuration not found in JSON."); }
-
-                if (allChartConfigs.percentageChartOldStyle) {
-                    new PureChart('percentageChartOldStyleCanvas', allChartConfigs.percentageChartOldStyle);
-                } else { console.warn("'percentageChartOldStyle' configuration not found in JSON."); }
-
-            } catch (error) {
-                console.error("Error loading or creating charts from JSON:", error);
-                document.body.insertAdjacentHTML('beforeend', `<p style="color:red; text-align:center;">Error loading chart data: ${error.message}</p>`);
-            }
+            // Example 2: SMA and Annotation
+            const smaAnnotationChartConfig = {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                    datasets: [
+                        {
+                            label: 'Stock Price',
+                            type: 'line',
+                            values: [100, 105, 98, 110, 115, 112, 120],
+                            borderColor: 'rgba(0, 0, 200, 1)',
+                            backgroundColor: 'rgba(0, 0, 200, 0.1)',
+                            fill: true,
+                            pointRadius: 3,
+                            tension: 0
+                        },
+                        {
+                            label: 'SMA (Stock Price, 3 Period)',
+                            type: 'sma', 
+                            sourceDatasetIndex: 0,
+                            period: 3,
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            lineWidth: 2,
+                            pointRadius: 0 // No points for SMA line
+                        }
+                    ]
+                },
+                options: {
+                    title: {
+                        display: true,
+                        text: 'Stock Price with SMA and Target Annotation'
+                    },
+                    legend: {
+                        display: true
+                    },
+                    yAxis: {
+                        title: 'Price ($)'
+                    },
+                    annotations: [
+                        {
+                            type: 'line',
+                            mode: 'horizontal',
+                            value: 115,
+                            borderColor: 'rgba(255, 0, 0, 0.7)',
+                            borderWidth: 2,
+                            borderDash: [6, 6],
+                            label: {
+                                text: 'Target Price: $115',
+                                position: 'top-right', // Test a different position
+                                color: 'rgba(255,0,0,0.9)',
+                                font: '12px Arial bold',
+                                backgroundColor: 'rgba(255,255,255,0.7)',
+                                padding: {x: 5, y:3}
+                            }
+                        },
+                        {
+                            type: 'line',
+                            mode: 'horizontal',
+                            percentage: 25, // 25th percentile of the current Y-axis range
+                            borderColor: 'rgba(0,128,0,0.7)',
+                            borderWidth: 1,
+                            label: {
+                                text: '25th Percentile',
+                                position: 'bottom-left',
+                                color: 'green',
+                                font: '10px Arial'
+                            }
+                        }
+                    ]
+                }
+            };
+            new PureChart('smaAnnotationChartCanvas', smaAnnotationChartConfig);
         });
     </script>
 </body>
