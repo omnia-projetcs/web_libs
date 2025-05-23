@@ -395,7 +395,7 @@ function createDynamicTable(config) {
                         if (canonicalCode) { 
                             const option = document.createElement('option');
                             option.value = canonicalCode; 
-                            option.innerHTML = `<span class="fi fi-${canonicalCode}"></span> ${canonicalCode.toUpperCase()}`;
+                            option.innerHTML = `<span class="fi fi-${canonicalCode}"></span>`; // Display only the flag icon
                             selectElement.appendChild(option);
                         }
                     });

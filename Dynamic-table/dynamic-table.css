@@ -332,14 +332,19 @@
 /* Attempt to style flag icons within select options */
 /* Note: Styling HTML within <option> tags has limited browser support. */
 /* This might not render as expected in all browsers. */
+/* Remove right margin from flag icons in filter options as text is no longer present */
 .dynamic-table-filter-control select option span.fi {
-    margin-right: 5px; 
-    /* Browsers might ignore display, width, height, etc. here */
+    margin-right: 0; 
+    /* display: inline-block; /* Already provided by general .fi rules or user-agent */
+    /* vertical-align: middle; /* May not have much effect on option styling */
 }
 
-/* Add a little padding to the left of options in flag filters if they contain a span.fi */
-/* This is a workaround if direct styling of the span is weak. */
-/* This selector is speculative and might need adjustment based on actual HTML in options. */
-.dynamic-table-filter-control select option:has(span.fi) {
-    padding-left: 5px; /* Adjust as needed */
+/* Specific styling for <option> elements that ONLY contain our flag icon span.
+   This relies on the structure <option><span class="fi fi-xx"></span></option>. */
+/* Attempt to center the span (inline-block) within the option */
+.dynamic-table-filter-control select option:has(> span.fi:only-child) {
+    text-align: center; 
+    /* padding-left: 5px; /* Remove previous padding */
+    /* Other experimental properties like min-height or padding can be added here if needed,
+       but text-align:center is the primary goal. */
 }
