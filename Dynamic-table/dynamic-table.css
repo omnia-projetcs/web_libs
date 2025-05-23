@@ -42,6 +42,22 @@
     border-bottom: 1px solid #e0e0e0; /* Visual separator */
 }
 
+/* Order for control elements */
+.dynamic-table-search-control {
+    order: 1;
+}
+.dynamic-table-filter-control {
+    order: 2;
+}
+.dynamic-table-results-info {
+    order: 3;
+}
+.dynamic-table-column-selector { /* Wrapper for the gear icon button and its dropdown */
+    order: 4;
+    /* margin-left: auto; is already applied from a previous step to push it right */
+}
+
+
 .dynamic-table-controls label {
     display: block;
     margin-bottom: 5px;
@@ -465,8 +481,9 @@
 /* === Column Visibility Selector Styles === */
 .dynamic-table-column-selector {
     position: relative; /* For positioning the dropdown */
-    margin-left: auto; /* Pushes the column selector to the far right */
+    margin-left: auto; /* Pushes the column selector to the far right, works with order */
     /* No specific min-width, it will be defined by its content (button) */
+    /* order: 4; is now defined above with other control elements */
 }
 
 .dt-column-selector-button {
