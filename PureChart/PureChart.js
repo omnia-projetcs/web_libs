@@ -232,12 +232,20 @@ class PureChart {
             }
             if (this.isValid) { // Only proceed if still valid
                 this.config.data.datasets.forEach((ds, index) => {
-                    if (!ds.values || !Array.isArray(ds.values)) {
-                        console.error(`PureChart Error (bar/line): Dataset ${index} missing 'values' array.`);
-                        this.isValid = false;
+                    const datasetEffectiveType = ds.type || this.config.type;
+
+                    // Validate 'values' array presence only if not an SMA type (which generates its own values)
+                    // and not a 'percentageDistribution' chart (which uses 'items')
+                    // Note: this.config.type !== 'percentageDistribution' is already handled by the outer if/else block structure.
+                    if (datasetEffectiveType !== 'sma') {
+                        if (!ds.values || !Array.isArray(ds.values)) {
+                            console.error(`PureChart Error (bar/line): Dataset ${index} ('${ds.label || 'Untitled'}') missing 'values' array.`);
+                            this.isValid = false;
+                        }
                     }
-                    // Default 'fill' for line charts if not specified
-                    if (this.config.type === 'line' && ds.fill === undefined) {
+                    
+                    // Default 'fill' for line charts and SMA (as they are drawn as lines) if not specified
+                    if ((datasetEffectiveType === 'line' || datasetEffectiveType === 'sma') && ds.fill === undefined) {
                         ds.fill = false; 
                     }
                 });
@@ -900,24 +908,58 @@ class PureChart {
         this._positionTooltip(tooltipData.anchorX, tooltipData.anchorY); 
     }
 
-    _positionTooltip(anchorPageX, anchorPageY) {
+    _positionTooltip(anchorPageX, anchorPageY) { // anchorPageX/Y are viewport-relative
         if (!this.tooltipElement || this.tooltipElement.style.visibility === 'hidden') return;
-        const tooltipRect = this.tooltipElement.getBoundingClientRect(); const tooltipWidth = tooltipRect.width; const tooltipHeight = tooltipRect.height; const offset = this.config.options.tooltip.offset || 10;
-        // Default position: centered above anchor
-        let left = anchorPageX - tooltipWidth / 2; let top = anchorPageY - tooltipHeight - offset;
-        // Window boundaries
-        const winScrollX = window.scrollX || window.pageXOffset; const winScrollY = window.scrollY || window.pageYOffset; const winWidth = window.innerWidth; const winHeight = window.innerHeight;
-        // Adjust if too high
-        if (top < winScrollY + 5) { top = anchorPageY + offset; }
-        // Adjust if too low (try above first, then clamp to bottom)
-        if (top + tooltipHeight > winScrollY + winHeight - 5) { let newTopAbove = anchorPageY - tooltipHeight - offset; if (newTopAbove >= winScrollY + 5) { top = newTopAbove; } else { top = winScrollY + winHeight - tooltipHeight - 5; if (top < winScrollY + 5) top = winScrollY + 5; } } // Clamp to prevent going off-screen again
-        // Adjust if too far left
-        if (left < winScrollX + 5) { left = winScrollX + 5; }
-        // Adjust if too far right
-        if (left + tooltipWidth > winScrollX + winWidth - 5) { left = winScrollX + winWidth - tooltipWidth - 5; }
-        // Final left clamp if adjustments made it too far left again
-        if (left < winScrollX + 5) left = winScrollX + 5;
-        this.tooltipElement.style.left = `${left}px`; this.tooltipElement.style.top = `${top}px`;
+        
+        const tooltipRect = this.tooltipElement.getBoundingClientRect(); 
+        const tooltipWidth = tooltipRect.width; 
+        const tooltipHeight = tooltipRect.height; 
+        const offset = this.config.options.tooltip.offset || 10;
+        
+        const winScrollX = window.scrollX || window.pageXOffset;
+        const winScrollY = window.scrollY || window.pageYOffset;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        // Initial calculation for document-relative position:
+        // Start with viewport-relative anchor, add scroll offset, then adjust for tooltip size.
+        let docLeft = anchorPageX + winScrollX - (tooltipWidth / 2);
+        let docTop = anchorPageY + winScrollY - tooltipHeight - offset; // Default: above anchor
+
+        // Check and adjust vertical position to stay within viewport
+        // Is the top of the tooltip going off the top of the viewport?
+        if ((docTop - winScrollY) < 5) { 
+            // Yes, try positioning below the anchor instead
+            docTop = anchorPageY + winScrollY + offset;
+        }
+        // Is the bottom of the tooltip going off the bottom of the viewport?
+        if ((docTop - winScrollY + tooltipHeight) > (viewportHeight - 5) ) {
+            // Yes, try to reposition above if it was initially below, or clamp
+            let tempTopAbove = anchorPageY + winScrollY - tooltipHeight - offset;
+            if ((tempTopAbove - winScrollY) >= 5) { // If placing above fits
+                docTop = tempTopAbove;
+            } else { // If placing above also doesn't fit, clamp to viewport bottom
+                docTop = winScrollY + viewportHeight - tooltipHeight - 5;
+                 // Final clamp to prevent going off top if viewport is too small for tooltip
+                if (docTop - winScrollY < 5) docTop = winScrollY + 5;
+            }
+        }
+        
+        // Check and adjust horizontal position to stay within viewport
+        // Is the left of the tooltip going off the left of the viewport?
+        if ((docLeft - winScrollX) < 5) {
+            docLeft = winScrollX + 5;
+        }
+        // Is the right of the tooltip going off the right of the viewport?
+        if ((docLeft - winScrollX + tooltipWidth) > (viewportWidth - 5)) {
+            docLeft = winScrollX + viewportWidth - tooltipWidth - 5;
+        }
+        // Final clamp for very wide tooltips
+        if ((docLeft - winScrollX) < 5) docLeft = winScrollX + 5;
+
+
+        this.tooltipElement.style.left = `${docLeft}px`;
+        this.tooltipElement.style.top = `${docTop}px`;
     }
 
     _onMouseOut() {
