@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démonstration Autonome Dynamic Table</title>
+    <link rel="stylesheet" href="dynamic-table.css"> 
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #1a253c;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        .table-demo-container {
+            margin-bottom: 40px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+        }
+        .table-demo-container h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        p.description {
+            font-size: 0.95em;
+            color: #6c757d;
+            margin-bottom:15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-container">
+        <h1>Démonstration Autonome de `dynamic-table.js` & `PureChart.js`</h1>
+
+        <div class="table-demo-container">
+            <h3>Tableau Complet (Marché Financier)</h3>
+            <p class="description">
+                Cet exemple utilise une fonction de rendu personnalisée pour la colonne "Indice" (liens), 
+                des graphiques en ligne, des pourcentages colorés et neutres, 
+                la pagination avec sélecteur de lignes/page, et un header de tableau fixe avec défilement vertical.
+            </p>
+            <div id="table-market-demo"></div>
+        </div>
+
+        <div class="table-demo-container">
+            <h3>Tableau Minimaliste (Produits)</h3>
+            <p class="description">
+                Tableau simple sans pagination, recherche, ni compteur de résultats.
+                Utilise `uniformChartHeight` pour des graphiques de même hauteur.
+            </p>
+            <div id="table-products-minimal"></div>
+        </div>
+         <div class="table-demo-container">
+            <h3>Tableau Classique (Utilisateurs)</h3>
+            <p class="description">
+                Exemple sans graphiques, montrant les filtres et le tri.
+            </p>
+            <div id="table-users-classic"></div>
+        </div>
+    </div>
+     
+    <script src="PureChart.js"></script> 
+    <script src="dynamic-table.js"></script> 
+
+    <script>
+    // Données JSON directement intégrées dans le HTML
+    const sampleData = {
+      "marketData": [
+        {
+          "symbol": "^FCHI", "name": "CAC 40", "ytd": 0.0815, "y1": 0.1230,
+          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [74, 75, 73, 76, 75, 77],"borderColor": "rgba(54,162,235,1)","backgroundColor": "rgba(54,162,235,0.1)","fill": true}]}
+        },
+        {
+          "symbol": "GC=F", "name": "Or (Futures)", "ytd": -0.0250, "y1": 0.2205,
+          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [20, 20.5, 19.8, 23, 23.5, 23.2],"borderColor": "rgba(255,206,86,1)","backgroundColor": "rgba(255,206,86,0.1)","fill": true}]}
+        },
+        {
+          "symbol": "^GSPC", "name": "S&P 500", "ytd": 0.1020, "y1": 0,
+          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [48, 49, 50, 51, 52, 52.5],"borderColor": "rgba(75,192,192,1)","backgroundColor": "rgba(75,192,192,0.1)","fill": true}]}
+        },
+         {
+          "symbol": "BTC-USD", "name": "Bitcoin USD", "ytd": 0.6530, "y1": 1.2570, 
+          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [40, 45, 60, 68, 65, 69],"borderColor": "rgba(255,159,64,1)","backgroundColor": "rgba(255,159,64,0.1)","fill": true}]}
+        }
+      ],
+      "productData": [
+        { "productName": "Ordinateur Portable Pro", "category": "Électronique", "price": 1299.99, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[5,8,6], "backgroundColor":"#36A2EB"}] } },
+        { "productName": "Casque Audio Sans Fil", "category": "Audio", "price": 199.00, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[9,6,7], "backgroundColor":"#FFCE56"}] } },
+        { "productName": "T-Shirt Coton Bio", "category": "Vêtements", "price": 29.95, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[7,7,9], "backgroundColor":"#4BC0C0"}] } }
+      ],
+      "userData": [
+        { "id": 1, "firstName": "Alice", "lastName": "Martin", "email": "alice.martin@example.com", "registrationDate": "2023-01-15" },
+        { "id": 2, "firstName": "Bob", "lastName": "Durand", "email": "bob.durand@example.com", "registrationDate": "2023-02-20" },
+        { "id": 3, "firstName": "Carla", "lastName": "Petit", "email": "carla.petit@example.com", "registrationDate": "2022-11-05" },
+        { "id": 4, "firstName": "David", "lastName": "Leroy", "email": "david.leroy@example.com", "registrationDate": "2023-05-10" },
+        { "id": 5, "firstName": "Eva", "lastName": "Moreau", "email": "eva.moreau@example.com", "registrationDate": "2022-07-19" }
+      ]
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Configuration pour le tableau "Marché Financier" ---
+        if (sampleData.marketData) {
+            createDynamicTable({
+                containerId: 'table-market-demo',
+                jsonData: sampleData.marketData, // Utilisation de jsonData
+                columns: [
+                    {
+                        key: 'name', 
+                        header: 'Indice',
+                        sortable: true, 
+                        render: (value, rowData, cell) => {
+                            const link = document.createElement('a');
+                            link.href = rowData.symbol ? `/light/shard/${rowData.symbol}/` : '#'; 
+                            link.target = '_blank';
+                            const strong = document.createElement('strong');
+                            strong.textContent = rowData.name || value || 'N/A'; 
+                            link.appendChild(strong);
+                            cell.appendChild(link);
+                        }
+                    },
+                    { 
+                        header: 'Graphique 1 an',
+                        renderAs: 'chart',
+                        chartConfig: {
+                            type: 'line',
+                            dataKey: 'graph', 
+                            width: 180,
+                            options: {
+                                title: { display: false }, legend: { display: false },
+                                yAxis: { display: false, beginAtZero: false }, xAxis: { display: false },
+                                line: { tension: 0.4, pointRadius: 0, lineWidth: 2}, 
+                                tooltip: { enabled: true }, 
+                                padding: { top: 5, right: 2, bottom: 2, left: 2 }, 
+                            }
+                        }
+                    },
+                    { 
+                        key: 'ytd', 
+                        header: 'YTD', 
+                        sortable: true, 
+                        format: 'percent:2' // Avec coloration
+                    },
+                    { 
+                        key: 'y1', 
+                        header: '1 An', 
+                        sortable: true, 
+                        format: 'percent_neutral:2' // Sans coloration, 0 = vide
+                    },                
+                ],
+                uniformChartHeight: 45,
+                rowsPerPage: 5,
+                rowsPerPageOptions: [3, 5, 10, 'Tout'],
+                showSearchControl: true,
+                showResultsCount: true,
+                showPagination: true, 
+                showRowsPerPageSelector: true, 
+                tableMaxHeight: '350px',
+                defaultSortColumn: 'name',
+                defaultSortDirection: 'asc'
+            });
+        } else {
+            document.getElementById('table-market-demo').innerHTML = '<p>Données "marketData" non trouvées.</p>';
+        }
+
+
+        // --- Configuration pour le tableau "Produits Minimaliste" ---
+        if (sampleData.productData) {
+            createDynamicTable({
+                containerId: 'table-products-minimal',
+                jsonData: sampleData.productData,
+                columns: [
+                    { key: 'productName', header: 'Produit', sortable: true },
+                    { key: 'category', header: 'Catégorie' },
+                    { 
+                        header: 'Popularité',
+                        renderAs: 'chart',
+                        chartConfig: {
+                            type: 'bar',
+                            dataKey: 'popularityChart',
+                            width: 120,
+                            options: { padding: {top:2, right:2,bottom:2,left:2}, legend: {display:false}, xAxis:{display:false}, yAxis:{display:false}}
+                        }
+                    },
+                    { key: 'price', header: 'Prix', format: 'currency:EUR' }
+                ],
+                uniformChartHeight: 50,
+                showSearchControl: false,
+                showResultsCount: false,
+                showPagination: false,
+            });
+        } else {
+             document.getElementById('table-products-minimal').innerHTML = '<p>Données "productData" non trouvées.</p>';
+        }
+
+
+        // --- Configuration pour le tableau "Utilisateurs Classique" ---
+        if (sampleData.userData) {
+            createDynamicTable({
+                containerId: 'table-users-classic',
+                jsonData: sampleData.userData,
+                columns: [
+                    { key: 'id', header: 'ID', sortable: true },
+                    { key: 'firstName', header: 'Prénom', sortable: true, filterable: true },
+                    { key: 'lastName', header: 'Nom', sortable: true, filterable: true },
+                    { key: 'email', header: 'Email' },
+                    { key: 'registrationDate', header: 'Inscription', format: 'date:YYYY/MM/DD', sortable: true }
+                ],
+                rowsPerPage: 5,
+                defaultSortColumn: 'lastName',
+                showPagination: true,
+                showRowsPerPageSelector: false,
+            });
+        } else {
+            document.getElementById('table-users-classic').innerHTML = '<p>Données "userData" non trouvées.</p>';
+        }
+    });
+</script>
+
+</body>
+</html>

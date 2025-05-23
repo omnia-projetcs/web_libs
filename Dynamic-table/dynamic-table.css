@@ -1,0 +1,320 @@
+/**
+ File dynamic-table.css
+ Description Light and fast html table
+ Author Nicolas HANTEVILLE
+ Version: 0.11
+ 
+ Copyright 2025 Nicolas HANTEVILLE
+ link: https://github.com/omnia-projetcs/web_libs
+ 
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ 
+ http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+/* Conteneur global généré par le script */
+.dynamic-table-wrapper {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    /* Styles de conteneur supprimés ou commentés pour une intégration transparente : */
+    /* background-color: #fff; */
+    /* padding: 20px 30px; */
+    /* border-radius: 8px; */
+    /* box-shadow: 0 2px 10px rgba(0,0,0,0.05); */
+    /* margin-bottom: 20px; */ /* Marge gérée par le conteneur parent HTML si besoin */
+}
+
+/* --- Contrôles du Tableau (partie supérieure) --- */
+.dynamic-table-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end; 
+    gap: 15px;
+    margin-bottom: 20px; /* Marge interne entre les contrôles et le tableau */
+    padding-bottom: 20px; /* Espace avant la bordure */
+    border-bottom: 1px solid #e0e0e0; /* Séparateur visuel */
+}
+
+.dynamic-table-controls label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: 500;
+}
+
+.dynamic-table-controls input[type="search"] {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    min-width: 200px; 
+    box-sizing: border-box;
+}
+.dynamic-table-controls input[type="search"]:focus {
+     outline: none;
+     border-color: #3498db;
+     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.dynamic-table-results-info {
+    font-size: 0.9rem;
+    color: #555;
+    text-align: right;
+    margin-left: auto; /* Pousse le compteur de résultats à droite */
+    padding-bottom: 8px; /* Aligner avec bas des inputs si align-items: flex-end est sur le parent */
+}
+.dynamic-table-results-info strong {
+    font-weight: bold;
+}
+
+/* Style commun pour TOUS les select de la librairie */
+.dt-common-select {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem; 
+    box-sizing: border-box;
+    background-color: #fff; 
+    /* Apparence native du navigateur pour la flèche, ou stylisation custom si souhaité */
+}
+
+.dt-common-select:focus {
+     outline: none;
+     border-color: #3498db; 
+     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2); 
+}
+
+/* Styles spécifiques pour les selects dans la barre de contrôle supérieure (filtres) */
+.dynamic-table-filter-control .dt-common-select {
+    min-width: 200px; 
+}
+
+
+/* --- Tableau --- */
+.dynamic-table-scroll-wrapper {
+    overflow-x: auto; /* Permet le scroll horizontal sur petits écrans */
+    /* overflow-y est géré par JS si tableMaxHeight est défini.
+       Les styles pour le header sticky s'appliqueront si overflow-y est 'auto' ou 'scroll'. */
+}
+
+.dynamic-table {
+    width: 100%;
+    border-collapse: collapse;
+    /* Le margin-bottom du tableau lui-même est retiré, 
+       l'espacement après le tableau sera géré par .dynamic-table-pagination s'il existe,
+       ou par le conteneur parent s'il n'y a pas de pagination. */
+}
+
+/* Styles pour le header fixe (sticky) */
+.dynamic-table thead th {
+    background-color: #ecf0f1; /* Couleur de fond indispensable pour le sticky */
+    color: #2c3e50;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #bdc3c7;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1; /* Un z-index même de 1 est souvent suffisant si aucun autre z-index n'interfère */
+}
+
+/* Optionnel: ajouter une ombre subtile sous le header fixe pour mieux le démarquer quand le contenu défile */
+.dynamic-table-scroll-wrapper[style*="overflow-y: auto"] thead th,
+.dynamic-table-scroll-wrapper[style*="overflow-y: scroll"] thead th {
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.12);
+}
+
+
+.dynamic-table thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.dynamic-table thead th .sort-arrow {
+    font-size: 0.8em;
+    margin-left: 6px;
+    opacity: 0.7;
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+}
+.dynamic-table thead th .sort-arrow.asc::after { content: '▲'; }
+.dynamic-table thead th .sort-arrow.desc::after { content: '▼'; }
+.dynamic-table thead th.sortable:hover {
+    background-color: #dde4e6;
+}
+
+.dynamic-table tbody td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    color: #555;
+    /* vertical-align: middle; */ /* Peut être surchargé par dt-chart-cell */
+}
+
+/* Style pour les cellules contenant des graphiques pour l'alignement vertical */
+.dynamic-table tbody td.dt-chart-cell {
+    display: flex;
+    align-items: center;    /* Centre verticalement le canvas */
+    justify-content: center; /* Centre horizontalement le canvas (optionnel, peut être 'flex-start' ou 'flex-end') */
+    padding: 2px 5px; /* Padding réduit pour les cellules graphiques pour maximiser l'espace du graphique */
+    min-height: 50px; /* Hauteur minimale pour aider à l'alignement si uniformChartHeight est petit */
+                      /* Ajustez cette valeur en fonction de uniformChartHeight */
+}
+.dynamic-table tbody td.dt-chart-cell canvas {
+    max-width: 100%; /* S'assurer que le canvas ne dépasse pas la cellule */
+    /* max-height est implicitement géré par la hauteur du canvas définie en JS */
+}
+
+
+/* Classes pour la coloration des valeurs de pourcentage */
+.dynamic-table tbody td.dt-value-positive {
+    color: #28a745; /* Vert */
+    font-weight: bold; /* Optionnel: rendre plus visible */
+}
+.dynamic-table tbody td.dt-value-negative {
+    color: #dc3545; /* Rouge */
+    font-weight: bold; /* Optionnel */
+}
+
+
+.dynamic-table tbody tr:nth-child(even) {
+    background-color: #f9fafa;
+}
+/* La couleur de fond de la ligne paire peut interférer avec la couleur du texte dt-value.
+   Si c'est le cas, vous pourriez avoir besoin de rendre le fond des cellules dt-value transparent.
+   Ex: .dynamic-table tbody tr:nth-child(even) td.dt-value-positive,
+       .dynamic-table tbody tr:nth-child(even) td.dt-value-negative {
+           background-color: transparent !important;
+       }
+*/
+
+
+.dynamic-table tbody tr:hover {
+    background-color: #f0f5f8;
+}
+
+.dynamic-table .message-row td {
+    text-align: center;
+    padding: 30px;
+    font-style: italic;
+    color: #777;
+    background-color: #fff !important; 
+}
+
+/* --- Pagination --- */
+.dynamic-table-pagination {
+    display: flex;
+    justify-content: space-between; /* Aligne le sélecteur à gauche et les boutons/info à droite */
+    align-items: center;
+    gap: 10px; /* Espace entre les groupes d'éléments (gauche et droite) */
+    margin-top: 20px; /* Marge entre le tableau (ou son wrapper de scroll) et la pagination */
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0; /* Séparateur visuel */
+}
+
+/* Conteneur pour le sélecteur de lignes/page (partie gauche de la pagination) */
+.dynamic-table-pagination-left {
+    display: flex;
+    align-items: center;
+}
+
+/* Conteneur pour les boutons Précédent, Page X/Y, Suivant (partie droite/centre de la pagination) */
+.dynamic-table-main-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Espace entre les boutons et l'info de page */
+    /* margin-left: auto; */ /* Décommenter si vous voulez pousser ce groupe complètement à droite,
+                                mais space-between sur le parent devrait suffire. */
+}
+
+
+.dynamic-table-rows-per-page-control {
+    display: flex;
+    align-items: center;
+    gap: 5px; 
+}
+
+.dynamic-table-rows-per-page-control label {
+    margin-bottom: 0; 
+    margin-right: 5px; 
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: normal; 
+}
+
+.dynamic-table-rows-per-page-control .dt-common-select { /* Style spécifique pour le select DANS la pagination */
+    min-width: auto; 
+    width: auto; /* Permet au select de prendre la largeur de son contenu */
+    padding: 6px 8px; 
+    font-size: 0.9rem; 
+}
+
+.dynamic-table-pagination button {
+    padding: 8px 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #3498db;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dynamic-table-pagination button:hover:not(:disabled) {
+    background-color: #3498db;
+    color: #fff;
+    border-color: #3498db;
+}
+
+.dynamic-table-pagination button:disabled {
+    color: #aaa;
+    cursor: not-allowed;
+    background-color: #f0f0f0;
+    border-color: #ddd;
+}
+
+.dynamic-table-pagination span { /* Page info */
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0 5px; /* Réduit la marge si besoin */
+    white-space: nowrap;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .dynamic-table-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .dynamic-table-controls input[type="search"],
+    .dynamic-table-controls .dt-common-select { /* Cible la classe commune pour les filtres */
+        min-width: 0;
+        width: 100%;
+    }
+    .dynamic-table-results-info {
+        text-align: center;
+        margin-top: 10px;
+        margin-left: 0;
+    }
+
+    .dynamic-table-pagination {
+        flex-direction: column; /* Empile les éléments de pagination sur mobile */
+        align-items: center; /* Centre les éléments empilés */
+    }
+    .dynamic-table-pagination-left,
+    .dynamic-table-main-pagination-controls {
+        margin-bottom: 10px; /* Espace entre les sections si empilées */
+    }
+    .dynamic-table-main-pagination-controls {
+         justify-content: center; /* Centre les boutons Précédent/Suivant et l'info page */
+    }
+}

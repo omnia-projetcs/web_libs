@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>PureChart Demo - Chargement JSON</title>
+    <link rel="stylesheet" href="PureChart.css">
+</head>
+<body>
+    <h1>Démonstration PureChart - Chargement depuis JSON</h1>
+
+    <div class="chart-container">
+        <h2>Graphique à Barres</h2>
+        <canvas id="barChartCanvas" width="700" height="350"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Graphique Linéaire</h2>
+        <canvas id="lineChartCanvas" width="700" height="350"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Distribution en Pourcentage (Nouveau Style "Jauge")</h2>
+        <canvas id="percentageChartNewStyleCanvas" width="700" height="220"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Distribution en Pourcentage (Style Classique)</h2>
+        <canvas id="percentageChartOldStyleCanvas" width="700" height="220"></canvas>
+    </div>
+
+    <script src="PureChart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const jsonDataUrl = 'sample-data.json';
+
+            try {
+                const response = await fetch(jsonDataUrl);
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP lors du chargement de ${jsonDataUrl}: ${response.status}`);
+                }
+                const allChartConfigs = await response.json();
+
+                if (allChartConfigs.barChartConfig) {
+                    new PureChart('barChartCanvas', allChartConfigs.barChartConfig);
+                } else { console.warn("Configuration 'barChartConfig' non trouvée dans JSON."); }
+
+                if (allChartConfigs.lineChartConfig) {
+                    new PureChart('lineChartCanvas', allChartConfigs.lineChartConfig);
+                } else { console.warn("Configuration 'lineChartConfig' non trouvée dans JSON."); }
+                
+                if (allChartConfigs.percentageChartNewStyle) {
+                    new PureChart('percentageChartNewStyleCanvas', allChartConfigs.percentageChartNewStyle);
+                } else { console.warn("Configuration 'percentageChartNewStyle' non trouvée dans JSON."); }
+
+                if (allChartConfigs.percentageChartOldStyle) {
+                    new PureChart('percentageChartOldStyleCanvas', allChartConfigs.percentageChartOldStyle);
+                } else { console.warn("Configuration 'percentageChartOldStyle' non trouvée dans JSON."); }
+
+            } catch (error) {
+                console.error("Erreur lors du chargement ou de la création des graphiques depuis JSON:", error);
+                document.body.insertAdjacentHTML('beforeend', `<p style="color:red; text-align:center;">Erreur de chargement des données graphiques: ${error.message}</p>`);
+            }
+        });
+    </script>
+</body>
+</html>

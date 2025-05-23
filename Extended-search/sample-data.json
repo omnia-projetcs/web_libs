@@ -1,0 +1,80 @@
+[
+  {
+    "quoteType": "ETF",
+    "results": [
+      {
+        "text": "Direxion Daily MSFT Bear 1X Sha",
+        "link": "/light/shard/MSFD/",
+        "country": "États-Unis",
+        "flag": "fi-us",
+        "sector": "Finance à Levier",
+        "isin": "US1231231231",
+        "price": 25.50
+      },
+      {
+        "text": "Lyxor CAC 40 UCITS ETF",
+        "link": "/light/shard/CAC/",
+        "country": "France",
+        "flag": "fi-fr",
+        "sector": "Indice Actions",
+        "isin": "FR0007052782",
+        "price": 75.12
+      }
+    ]
+  },
+  {
+    "quoteType": "EQUITY",
+    "results": [
+      {
+        "text": "Microsoft Corporation",
+        "link": "/light/shard/MSFT/",
+        "country": "États-Unis",
+        "flag": "fi-us",
+        "sector": "Technologie de l'Information",
+        "isin": "US5949181045",
+        "price": 430.20
+      },
+      {
+        "text": "LVMH Moët Hennessy Louis Vuitton",
+        "link": "/light/shard/MC/",
+        "country": "France",
+        "flag": "fi-fr",
+        "sector": "Luxe et Biens de Consommation",
+        "isin": "FR0000121014",
+        "price": 850.75
+      },
+      {
+        "text": "Apple Inc.",
+        "link": "/light/shard/AAPL/",
+        "country": "États-Unis",
+        "flag": "fi-us",
+        "sector": "Technologie de l'Information",
+        "isin": "US0378331005",
+        "price": 170.30
+      }
+    ]
+  },
+  {
+    "quoteType": "INDEX",
+    "results": [
+      {
+        "text": "CAC 40",
+        "link": "/light/shard/PX1/",
+        "country": "France",
+        "flag": "fi-fr",
+        "sector": "Indice Principal",
+        "isin": null,
+        "price": 8150.00
+      },
+      {
+        "text": "S&P 500",
+        "link": "/light/shard/SPX/",
+        "country": "États-Unis",
+        "flag": "fi-us",
+        "sector": "Indice Large Cap",
+        "isin": null,
+        "price": 5200.45
+      }
+    ]
+  }
+]

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démo Champ de Recherche (Serveur)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.1/css/flag-icons.min.css" integrity="sha512-cbSgqHHDWDxV1b1BGBX1jXvFThAPAgx5zvsX0ntx/PZrS+L992kIQEM7QZ1GzH35K3iJjY1Zf9TMoR_hEPHqg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="extended-search.css">
+</head>
+<body>
+    <h1>Recherche Avancée (via Serveur)</h1>
+    <p>Tapez au moins 3 caractères pour rechercher. Les données viennent d'un serveur (simulé/à configurer dans script.js).</p>
+
+    <div class="search-container">
+        <input type="text" id="advanced-search-input" placeholder="Rechercher (min 3 caractères)...">
+        <div id="search-suggestions" class="suggestions-box">
+            </div>
+    </div>
+
+    <script src="extended-search.js"></script>
+</body>
+</html>

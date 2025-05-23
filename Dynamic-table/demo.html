@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démonstration Dynamic Table (Externe)</title>
+    <link rel="stylesheet" href="dynamic-table.css"> 
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #1a253c;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+         h1 { text-align: center; margin-bottom: 30px;}
+        .table-demo-container { margin-bottom: 40px; }
+        p.description { font-size: 0.95em; color: #6c757d; margin-bottom:15px;}
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <h1>Tableau Dynamique - Données Externes</h1>
+        <div class="table-demo-container">
+            <h2>Tableau Principal</h2>
+            <p class="description">Ce tableau charge ses données depuis <code>sample-data.json</code> et utilise <code>jsonPath</code>.</p>
+            <div id="main-dynamic-table"></div>
+        </div>
+    </div>
+     
+    <script src="PureChart.js"></script> 
+    <script src="dynamic-table.js"></script> 
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        createDynamicTable({
+            containerId: 'main-dynamic-table',
+            jsonPath: 'sample-data.json', // Chargement depuis le fichier JSON externe
+            // Note: dynamic-table.js (v11) s'attend à ce que sample-data.json soit un tableau.
+            // Si sample-data.json est un objet avec des clés (comme marketData, etc.), 
+            // vous devriez le fetcher ici et passer la section appropriée via `jsonData`.
+            // Pour cette démo, on va supposer que sample-data.json est directement un tableau d'objets 'marketData' pour simplifier.
+            // Pour un cas réel avec le sample_data.json fourni, il faudrait faire un fetch et extraire la section.
+            // Exemple (non exécuté ici, mais pour illustrer):
+            // fetch('sample-data.json').then(r => r.json()).then(data => {
+            //     createDynamicTable({ containerId: 'main-dynamic-table', jsonData: data.marketData, columns: [...] /* le reste de la config */ });
+            // });
+            // Pour cette démo, sample_data.json devrait contenir directement le tableau [marketData items]
+            columns: [
+                {
+                    key: 'name', 
+                    header: 'Indice',
+                    sortable: true, 
+                    render: (value, rowData, cell) => {
+                        const link = document.createElement('a');
+                        link.href = rowData.symbol ? `/light/shard/${rowData.symbol}/` : '#'; 
+                        link.target = '_blank';
+                        const strong = document.createElement('strong');
+                        strong.textContent = rowData.name || value || 'N/A'; 
+                        link.appendChild(strong);
+                        cell.appendChild(link);
+                    }
+                },
+                { 
+                    header: 'Graphique 1 an',
+                    renderAs: 'chart',
+                    chartConfig: {
+                        type: 'line',
+                        dataKey: 'graph', 
+                        width: 180,
+                        options: {
+                            title: { display: false }, legend: { display: false },
+                            yAxis: { display: false, beginAtZero: false }, xAxis: { display: false },
+                            line: { tension: 0.4, pointRadius: 0, lineWidth: 2}, 
+                            tooltip: { enabled: true }, 
+                            padding: { top: 5, right: 2, bottom: 2, left: 2 }, 
+                        }
+                    }
+                },
+                { key: 'ytd', header: 'YTD', sortable: true, format: 'percent:2' },
+                { key: 'y1', header: '1 An', sortable: true, format: 'percent_neutral:2' },                
+            ],
+            uniformChartHeight: 45,
+            rowsPerPage: 5,
+            rowsPerPageOptions: [3, 5, 10, 20, 'Tout'],
+            showSearchControl: true,
+            showResultsCount: true,
+            showPagination: true, 
+            showRowsPerPageSelector: true, 
+            tableMaxHeight: '400px',
+            defaultSortColumn: 'name',
+            defaultSortDirection: 'asc'
+        });
+    });
+</script>
+</body>
+</html>

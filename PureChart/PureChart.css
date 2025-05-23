@@ -1,0 +1,64 @@
+/**
+ File PureChart.css
+ Description Light and fast chart without any other libs
+ Author Nicolas HANTEVILLE
+ Version: 0.9.4
+ 
+ Copyright 2025 Nicolas HANTEVILLE
+ link: https://github.com/omnia-projetcs/web_libs
+ 
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ 
+ http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+ 
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f8f9fa; /* Couleur de fond légèrement différente */
+    color: #212529;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1, h2 {
+    color: #343a40;
+    text-align: center;
+    margin-bottom: 0.5em;
+}
+h1 {
+    margin-bottom: 1em;
+}
+
+.chart-container {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.075);
+    padding: 25px; /* Un peu plus de padding interne */
+    margin: 25px auto; 
+    width: 90%;
+    max-width: 750px; 
+}
+
+canvas {
+    display: block; 
+    margin: 0 auto; 
+    max-width: 100%; /* Assurer la responsivité de base */
+    height: auto;    /* Maintenir le ratio d'aspect */
+}
+
+p.info {
+    text-align: center;
+    margin-top: 30px;
+    color: #555;
+}

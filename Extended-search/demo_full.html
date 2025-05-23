@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démo Champ de Recherche (Autonome)</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.0.2/css/flag-icons.min.css" integrity="sha512-bZBu2H0+FGFz/stDN/L0k8J0G8qVsAL0ht1qg5kTwtAheiXwiRKyCq1frwfbSFSJN3jooR5kauE0YjtPzhZtJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+	<style>
+        /* CONTENU COMPLET DE extended-search.css COLLÉ ICI */
+        body {font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;padding: 20px;background-color: #f4f7f6;line-height: 1.6;color: #333;}
+        h1 {color: #1f2937;margin-bottom: 10px;}
+        p {color: #555;margin-bottom: 20px;}
+        .search-container {position: relative;display: inline-block;width: 500px;}
+        #advanced-search-input {padding: 12px 15px;font-size: 17px;width: 100%;border: 1px solid #d1d5db;border-radius: 6px;box-sizing: border-box;transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;}
+        #advanced-search-input:focus {outline: none;border-color: #3b82f6;box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);}
+        .suggestions-box {position: absolute;top: calc(100% + 5px);left: 0;right: 0;border-radius: 6px;background-color: #ffffff;z-index: 10;max-height: 300px;overflow-y: auto;box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);display: none;box-sizing: border-box;padding: 8px 0;}
+        .suggestions-box::-webkit-scrollbar {width: 8px;}
+        .suggestions-box::-webkit-scrollbar-track {background: #f1f1f1;border-radius: 10px;}
+        .suggestions-box::-webkit-scrollbar-thumb {background: #888;border-radius: 10px;}
+        .suggestions-box::-webkit-scrollbar-thumb:hover {background: #555;}
+        .suggestions-box .suggestion-group {margin-bottom: 10px;}
+        .suggestions-box .suggestion-group:last-child {margin-bottom: 0;}
+        .suggestions-box strong {display: block;padding: 8px 15px;margin-bottom: 0;font-size: 1em;font-weight: 600;color: #1f2937;}
+        .suggestions-box a {display: block;padding: 8px 15px;text-decoration: none;color: #333;transition: background-color 0.2s ease;}
+        .suggestions-box a:hover {background-color: #eef2ff;text-decoration: none;}
+        .suggestion-main-line {display: flex;justify-content: space-between;align-items: flex-start;width: 100%;}
+        .suggestion-left-column {display: flex;flex-direction: column;flex-grow: 1;flex-shrink: 1;overflow: hidden;margin-right: 10px;}
+        .suggestion-left-column .name-line {display: flex;align-items: center;margin-bottom: 3px;}
+        .suggestions-box span.fi {margin-right: 10px;vertical-align: middle;flex-shrink: 0;}
+        .suggestions-box span.main-text {font-size: 1em;color: #1f2937;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;flex-grow: 1;}
+        .suggestions-box .info-text {font-size: 0.85em;color: #6b7280;padding-left: 0;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}
+        .suggestion-right-column {display: flex;flex-direction: column;align-items: flex-end;flex-shrink: 0;padding-left: 10px;font-size: 0.85em;color: #555;}
+        .suggestion-right-column div {white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}
+        .suggestion-right-column .price-detail {}
+        .suggestions-box.visible {display: block;}
+        .suggestions-box .loading-message, .suggestions-box .error-message, .suggestions-box .info-message {padding: 10px 15px;font-style: italic;color: #555;text-align: left;}
+        .suggestions-box .error-message {color: #c0392b;}
+        .suggestions-box .info-message {color: #34495e;}
+    </style>
+</head>
+<body>
+    <h1>Recherche Avancée (Démo Autonome)</h1>
+    <p>Tapez au moins 3 caractères pour rechercher (MSFT, Microsoft, CAC, Lyxor). Les données sont locales à cette page.</p>
+
+    <div class="search-container">
+        <input type="text" id="advanced-search-input" placeholder="Rechercher (min 3 caractères)...">
+        <div id="search-suggestions" class="suggestions-box">
+            </div>
+    </div>
+
+    <script>
+        // CONTENU DE extended-search.js MODIFIÉ POUR DONNÉES LOCALES
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('advanced-search-input');
+            const suggestionsBox = document.getElementById('search-suggestions');
+
+            const localMockData = [
+              {
+                "quoteType": "ETF",
+                "results": [
+                  {"text": "Direxion Daily MSFT Bear 1X Sha","link": "/light/shard/MSFD/","country": "États-Unis","flag": "fi-us","sector": "Finance à Levier","isin": "US1231231231","price": 25.50},
+                  {"text": "Lyxor CAC 40 UCITS ETF","link": "/light/shard/CAC/","country": "France","flag": "fi-fr","sector": "Indice Actions","isin": "FR0007052782","price": 75.12}
+                ]
+              },
+              {
+                "quoteType": "EQUITY",
+                "results": [
+                  {"text": "Microsoft Corporation","link": "/light/shard/MSFT/","country": "États-Unis","flag": "fi-us","sector": "Technologie de l'Information","isin": "US5949181045","price": 430.20},
+                  {"text": "LVMH Moët Hennessy Louis Vuitton","link": "/light/shard/MC/","country": "France","flag": "fi-fr","sector": "Luxe et Biens de Consommation","isin": "FR0000121014","price": 850.75},
+                  {"text": "Apple Inc.","link": "/light/shard/AAPL/","country": "États-Unis","flag": "fi-us","sector": "Technologie de l'Information","isin": "US0378331005","price": 170.30}
+                ]
+              },
+              {
+                "quoteType": "INDEX",
+                "results": [
+                    {"text": "CAC 40", "link":"/light/shard/PX1/", "country":"France", "flag":"fi-fr", "sector":"Indice Principal", "isin": null, "price": 8150.00},
+                    {"text": "S&P 500", "link":"/light/shard/SPX/", "country":"États-Unis", "flag":"fi-us", "sector":"Indice Large Cap", "isin": null, "price": 5200.45}
+                ]
+              }
+            ];
+
+            let debounceTimer;
+
+            const debounce = (func, delay) => {
+                return function(...args) {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => func.apply(this, args), delay);
+                };
+            };
+
+            function handleSuggestionItemClick(symbol, name, price) {
+                console.log("Suggestion cliquée !");
+                console.log("  Symbole:", symbol);
+                console.log("  Nom    :", name);
+                console.log("  Prix   :", price, "(type:", typeof price, ")");
+                // Exemple: searchInput.value = name;
+                hideSuggestions();
+            }
+
+            const displaySuggestions = (data) => {
+                suggestionsBox.innerHTML = '';
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    suggestionsBox.classList.remove('visible');
+                    return;
+                }
+                let hasContentToDisplay = false;
+                data.forEach(group => {
+                    if (group.quoteType && Array.isArray(group.results) && group.results.length > 0) {
+                        hasContentToDisplay = true;
+                        const groupDiv = document.createElement('div');
+                        groupDiv.classList.add('suggestion-group');
+                        const categoryTitle = document.createElement('strong');
+                        categoryTitle.textContent = group.quoteType;
+                        groupDiv.appendChild(categoryTitle);
+                        group.results.forEach(item => {
+                            if (item.text && item.link) {
+                                const itemLink = document.createElement('a');
+                                itemLink.href = item.link;
+                                let symbol = '';
+                                if (item.link) {
+                                    const parts = item.link.split('/').filter(part => part.trim() !== '');
+                                    if (parts.length > 0) {symbol = parts[parts.length - 1].toUpperCase();}
+                                }
+                                if (symbol) {itemLink.dataset.symbol = symbol;}
+                                itemLink.dataset.name = item.text;
+                                if (item.price !== undefined && item.price !== null) {itemLink.dataset.price = item.price;}
+                                
+                                const suggestionMainLine = document.createElement('div');
+                                suggestionMainLine.classList.add('suggestion-main-line');
+                                const leftColumn = document.createElement('div');
+                                leftColumn.classList.add('suggestion-left-column');
+                                const nameLineDiv = document.createElement('div');
+                                nameLineDiv.classList.add('name-line');
+                                if (item.flag && typeof item.flag === 'string') {
+                                    const flagSpan = document.createElement('span');
+                                    flagSpan.className = `fi ${item.flag}`;
+                                    nameLineDiv.appendChild(flagSpan);
+                                }
+                                const mainTextSpan = document.createElement('span');
+                                mainTextSpan.classList.add('main-text');
+                                mainTextSpan.textContent = item.text;
+                                nameLineDiv.appendChild(mainTextSpan);
+                                leftColumn.appendChild(nameLineDiv);
+                                if (item.sector && typeof item.sector === 'string' && item.sector.trim() !== '') {
+                                    const sectorDiv = document.createElement('div');
+                                    sectorDiv.classList.add('info-text');
+                                    sectorDiv.textContent = item.sector;
+                                    leftColumn.appendChild(sectorDiv);
+                                }
+                                suggestionMainLine.appendChild(leftColumn);
+
+                                if (symbol || (item.price !== undefined && item.price !== null)) {
+                                    const rightColumn = document.createElement('div');
+                                    rightColumn.classList.add('suggestion-right-column');
+                                    if (symbol) {
+                                        let symbolIsinText = symbol;
+                                        if (item.isin && typeof item.isin === 'string' && item.isin.trim() !== '') {
+                                            symbolIsinText = `${symbol} | ${item.isin}`;
+                                        }
+                                        const symbolIsinDiv = document.createElement('div');
+                                        symbolIsinDiv.textContent = symbolIsinText;
+                                        rightColumn.appendChild(symbolIsinDiv);
+                                    }
+                                    if (item.price !== undefined && item.price !== null) {
+                                        const priceDiv = document.createElement('div');
+                                        let priceText = item.price;
+                                        if (typeof item.price === 'number') {
+                                            priceText = item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                        }
+                                        priceDiv.textContent = `${priceText} €`;
+                                        priceDiv.classList.add('price-detail');
+                                        rightColumn.appendChild(priceDiv);
+                                    }
+                                    suggestionMainLine.appendChild(rightColumn);
+                                }
+                                itemLink.appendChild(suggestionMainLine);
+                                groupDiv.appendChild(itemLink);
+                            }
+                        });
+                        if (groupDiv.children.length > 1) {suggestionsBox.appendChild(groupDiv);}
+                    }
+                });
+                if (hasContentToDisplay && suggestionsBox.children.length > 0) {
+                    suggestionsBox.classList.add('visible');
+                } else {
+                    suggestionsBox.innerHTML = '<p class="info-message">Aucun résultat trouvé.</p>';
+                    suggestionsBox.classList.add('visible');
+                }
+            };
+
+            const hideSuggestions = () => {
+                suggestionsBox.classList.remove('visible');
+            };
+
+            const clearSuggestionsOrMessage = () => {
+                suggestionsBox.innerHTML = '';
+                suggestionsBox.classList.remove('visible');
+            };
+
+            const symbolFromLink = (link) => { // Helper pour la recherche locale
+                if (link) {
+                    const parts = link.split('/').filter(part => part.trim() !== '');
+                    if (parts.length > 0) { return parts[parts.length - 1].toUpperCase(); }
+                }
+                return '';
+            };
+
+            const getLocalSuggestions = (query) => {
+                const lowerQuery = query.toLowerCase().trim();
+                if (lowerQuery.length < 3) { return []; }
+                if (!localMockData || localMockData.length === 0) { return []; }
+
+                const filteredData = localMockData.map(group => {
+                    const filteredResults = group.results.filter(item =>
+                        (item.text && item.text.toLowerCase().includes(lowerQuery)) ||
+                        (item.sector && item.sector.toLowerCase().includes(lowerQuery)) ||
+                        (symbolFromLink(item.link).toLowerCase().includes(lowerQuery)) ||
+                        (item.isin && item.isin.toLowerCase().includes(lowerQuery))
+                    );
+                    return { ...group, results: filteredResults };
+                }).filter(group => group.results.length > 0 || (group.quoteType && group.quoteType.toLowerCase().includes(lowerQuery)));
+                return filteredData;
+            };
+
+            searchInput.addEventListener('input', debounce((e) => {
+                const query = e.target.value.trim();
+                if (query.length >= 3) {
+                    const suggestions = getLocalSuggestions(query);
+                    displaySuggestions(suggestions);
+                } else {
+                    clearSuggestionsOrMessage();
+                }
+            }, 300)); // Debounce plus court pour la recherche locale
+
+            suggestionsBox.addEventListener('click', function(event) {
+                let targetElement = event.target;
+                while (targetElement && targetElement !== this && targetElement.tagName !== 'A') {
+                    targetElement = targetElement.parentNode;
+                }
+                if (targetElement && targetElement.tagName === 'A' && targetElement.dataset.symbol) {
+                    event.preventDefault();
+                    const symbol = targetElement.dataset.symbol;
+                    const name = targetElement.dataset.name || '';
+                    const price = targetElement.dataset.price;
+                    handleSuggestionItemClick(symbol, name, price);
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                const searchContainer = document.querySelector('.search-container');
+                if (searchContainer && !searchContainer.contains(e.target) && e.target !== searchInput) {
+                    hideSuggestions();
+                }
+            });
+
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideSuggestions();
+                }
+            });
+
+            searchInput.addEventListener('focus', () => {
+                const query = searchInput.value.trim();
+                if (query.length >= 3) {
+                     const hasMessage = suggestionsBox.querySelector('.info-message') || suggestionsBox.querySelector('.error-message') || suggestionsBox.querySelector('.loading-message');
+                    if (suggestionsBox.children.length > 0 && !suggestionsBox.classList.contains('visible') && !hasMessage && suggestionsBox.querySelector('.suggestion-group')) {
+                        suggestionsBox.classList.add('visible');
+                    }
+                } else {
+                    hideSuggestions();
+                }
+            });
+            console.log("Advanced search script (local demo) initialized.");
+        });
+    </script>
+</body>
+</html>

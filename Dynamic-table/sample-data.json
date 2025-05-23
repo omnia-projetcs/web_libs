@@ -1,0 +1,80 @@
+{
+  "marketData": [
+    {
+      "symbol": "^FCHI",
+      "name": "CAC 40",
+      "ytd": 0.0815,
+      "y1": 0.1230,
+      "graph": {
+        "labels": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+        "datasets": [{
+          "label": "Valeur",
+          "values": [7400, 7550, 7300, 7600, 7500, 7700],
+          "borderColor": "rgba(54, 162, 235, 1)",
+          "backgroundColor": "rgba(54, 162, 235, 0.1)",
+          "fill": true
+        }]
+      }
+    },
+    {
+      "symbol": "GC=F",
+      "name": "Or (Futures)",
+      "ytd": -0.0250,
+      "y1": 0.2205,
+      "graph": {
+        "labels": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+        "datasets": [{
+          "label": "Valeur",
+          "values": [2000, 2050, 1980, 2300, 2350, 2320],
+          "borderColor": "rgba(255, 206, 86, 1)",
+          "backgroundColor": "rgba(255, 206, 86, 0.1)",
+          "fill": true
+        }]
+      }
+    },
+    {
+      "symbol": "^GSPC",
+      "name": "S&P 500",
+      "ytd": 0.1020,
+      "y1": 0, 
+      "graph": {
+        "labels": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+        "datasets": [{
+          "label": "Valeur",
+          "values": [4800, 4900, 5000, 5100, 5200, 5250],
+          "borderColor": "rgba(75, 192, 192, 1)",
+          "backgroundColor": "rgba(75, 192, 192, 0.1)",
+          "fill": true
+        }]
+      }
+    },
+     {
+      "symbol": "BTC-USD",
+      "name": "Bitcoin USD",
+      "ytd": 0.6530,
+      "y1": 1.2570, 
+      "graph": {
+        "labels": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+        "datasets": [{
+          "label": "Valeur",
+          "values": [40000, 45000, 60000, 68000, 65000, 69000],
+          "borderColor": "rgba(255, 159, 64, 1)",
+          "backgroundColor": "rgba(255, 159, 64, 0.1)",
+          "fill": true
+        }]
+      }
+    }
+  ],
+  "productData": [
+    { "productName": "Ordinateur Portable Pro", "category": "Électronique", "price": 1299.99, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[5,8,6], "backgroundColor":"#36A2EB"}] } },
+    { "productName": "Casque Audio Sans Fil", "category": "Audio", "price": 199.00, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[9,6,7], "backgroundColor":"#FFCE56"}] } },
+    { "productName": "T-Shirt Coton Bio", "category": "Vêtements", "price": 29.95, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[7,7,9], "backgroundColor":"#4BC0C0"}] } }
+  ],
+  "userData": [
+    { "id": 1, "firstName": "Alice", "lastName": "Martin", "email": "alice.martin@example.com", "registrationDate": "2023-01-15" },
+    { "id": 2, "firstName": "Bob", "lastName": "Durand", "email": "bob.durand@example.com", "registrationDate": "2023-02-20" },
+    { "id": 3, "firstName": "Carla", "lastName": "Petit", "email": "carla.petit@example.com", "registrationDate": "2022-11-05" },
+    { "id": 4, "firstName": "David", "lastName": "Leroy", "email": "david.leroy@example.com", "registrationDate": "2023-05-10" },
+    { "id": 5, "firstName": "Eva", "lastName": "Moreau", "email": "eva.moreau@example.com", "registrationDate": "2022-07-19" }
+  ]
+}

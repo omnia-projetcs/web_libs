@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>PureChart Demo - Autonome</title>
+    <link rel="stylesheet" href="PureChart.css">
+</head>
+<body>
+    <h1>Démonstration PureChart - Autonome (Configurations en JS)</h1>
+
+    <div class="chart-container">
+        <h2>Graphique à Barres (Autonome)</h2>
+        <canvas id="barChartCanvasAutonome" width="700" height="350"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Graphique Linéaire (Autonome)</h2>
+        <canvas id="lineChartCanvasAutonome" width="700" height="350"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Distribution en Pourcentage (Nouveau Style "Jauge" - Autonome)</h2>
+        <canvas id="percentageChartNewStyleAutonome" width="700" height="200"></canvas>
+    </div>
+    
+    <div class="chart-container">
+        <h2>Distribution en Pourcentage (Style Classique - Autonome)</h2>
+        <canvas id="percentageChartOldStyleAutonome" width="700" height="200"></canvas>
+    </div>
+
+    <script src="PureChart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Config pour Graphique à Barres
+            const barChartConfig = {
+                type: "bar",
+                data: {
+                    labels: ["Pommes", "Oranges", "Bananes", "Poires", "Raisins"],
+                    datasets: [{
+                        label: "Stock Fruiterie Alpha",
+                        values: [30, 45, 22, 35, 50],
+                        backgroundColor: "rgba(75, 192, 192, 0.7)",
+                        // borderColor: "rgba(75, 192, 192, 1)", // Laisse la bordure auto-foncée
+                        // borderWidth: 2
+                    }, {
+                        label: "Stock Fruiterie Beta",
+                        values: [25, 30, 40, 20, 45],
+                        backgroundColor: "rgba(255, 159, 64, 0.7)",
+                        borderColor: "darkorange", // Bordure spécifique
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    title: { text: "Stock de Fruits (Autonome)" },
+                    yAxis: { beginAtZero: true, title: "Quantité en Kg" },
+                    bar: { defaultBorderWidth: 2, borderDarkenPercent: 25 }
+                }
+            };
+            new PureChart('barChartCanvasAutonome', barChartConfig);
+
+            // Config pour Graphique Linéaire
+            const lineChartConfig = {
+                type: "line",
+                data: {
+                    labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+                    datasets: [{
+                        label: "Température Moyenne (°C)",
+                        values: [5, 7, 12, 18, 22, 25],
+                        borderColor: "rgb(255, 99, 132)",
+                        backgroundColor: "rgba(255, 99, 132, 0.15)",
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 5,
+                        pointStyle: 'circle',
+                        pointColor: "rgb(255, 99, 132)",
+                        pointBorderColor: "#fff",
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    title: { text: "Températures Moyennes (Autonome)" },
+                    yAxis: { title: "°C" },
+                    xAxis: { title: "Mois", gridLines: true }
+                }
+            };
+            new PureChart('lineChartCanvasAutonome', lineChartConfig);
+            
+            // Config pour Percentage Distribution (Nouveau Style "Jauge")
+            const percentageChartNewStyleConfig = {
+                type: "percentageDistribution",
+                data: {
+                    items: [
+                        { "label": "Satisfaction Produit", "value": 92 },
+                        { "label": "Qualité Service Client", "value": 85 },
+                        { "label": "Rapidité de Traitement", "value": 70 }
+                    ]
+                },
+                options: {
+                    title: { text: "Indicateurs Clés de Performance (Nouveau Style)" },
+                    percentageDistribution: {
+                        colors: ["#56ab2f", "#a8e063", "#2193b0"], // Couleurs de base pour les contours
+                        borderWidth: 3,
+                        fillLightenPercent: 70, // Fort éclaircissement
+                        barHeight: 30,
+                        barBorderRadius: { tl: 6, tr: 6, br: 6, bl: 6 },
+                        labelPosition: 'left',
+                        maxLabelWidth: 220,
+                        valuePosition: 'insideEnd',
+                        valueFont: "12px Arial Black",
+                        valueColor: (params) => (params.item.percentage > 50 ? '#111' : '#f0f0f0'), // Couleur de texte dynamique
+                        sort: 'ascending'
+                    }
+                }
+            };
+            new PureChart('percentageChartNewStyleAutonome', percentageChartNewStyleConfig);
+
+            // Config pour Percentage Distribution (Style Classique)
+            const percentageChartOldStyleConfig = {
+                type: "percentageDistribution",
+                data: {
+                    items: [
+                        { "label": "Part de Marché A", "value": 45 },
+                        { "label": "Part de Marché B", "value": 35 },
+                        { "label": "Part de Marché C (Autres)", "value": 20 }
+                    ]
+                },
+                options: {
+                    title: { text: "Parts de Marché (Style Classique)" },
+                    percentageDistribution: {
+                        colors: ["#1abc9c", "#3498db", "#9b59b6"],
+                        borderWidth: 1,
+                        // borderColor: undefined, // Laisse la bordure auto-foncée
+                        borderDarkenPercent: 30,
+                        // fillLightenPercent: 0, // ou undefined pour désactiver le nouveau style
+                        barHeight: 25,
+                        barBorderRadius: 2,
+                        valuePosition: 'right'
+                    }
+                }
+            };
+            new PureChart('percentageChartOldStyleAutonome', percentageChartOldStyleConfig);
+        });
+    </script>
+</body>
+</html>
