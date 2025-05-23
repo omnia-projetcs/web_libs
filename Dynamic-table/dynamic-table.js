@@ -274,7 +274,7 @@ function createDynamicTable(config) {
 
                     const triggerValue = document.createElement('span');
                     triggerValue.className = 'dt-custom-select-value';
-                    triggerValue.textContent = `All ${col.header}`; // Default text
+                    triggerValue.textContent = 'All'; // Changed: Default text for trigger
                     trigger.appendChild(triggerValue);
 
                     const arrow = document.createElement('span');
@@ -549,10 +549,10 @@ function createDynamicTable(config) {
         // "All" Option
         const allOptionDiv = document.createElement('div');
         allOptionDiv.className = 'dt-custom-option';
-        allOptionDiv.textContent = `All ${headerText}`;
+        allOptionDiv.textContent = 'All'; // Changed: Text for "All" option in dropdown
         allOptionDiv.dataset.value = "";
         allOptionDiv.addEventListener('click', () => {
-            triggerValueElement.textContent = `All ${headerText}`; // Reset display to text
+            triggerValueElement.textContent = 'All'; // Changed: Text for trigger when "All" is selected
             filterSelects[filterKey].value = "";
             optionsContainer.style.display = 'none';
             optionsContainer.closest('.dt-custom-select').classList.remove('open');
@@ -709,65 +709,74 @@ function createDynamicTable(config) {
         const pageData = displayData.slice(startIndex, endIndex);
 
         pageData.forEach((item, itemIndex) => {
-            const row = tbody.insertRow();
-            columnVisibilityStates.forEach((colState, colIndexOriginal) => {
-                if (!colState.visible) return; // Skip hidden columns
+            const row = tbody.insertRow(); // Create the row
 
-                // Find the original column config using key; crucial if columnVisibilityStates could be reordered
-                // For now, assume columnVisibilityStates maintains order relative to original `columns`
-                const col = columns.find(c => c.key === colState.key);
-                if (!col) return; // Should not happen if keys are consistent
+            // `columns` is the original full configuration array
+            // `columnVisibilityStates` is the array like [{ key, header, visible }, ...]
+            
+            columnVisibilityStates.forEach((visState, colIndexOriginal) => { // colIndexOriginal to keep canvasId unique as before
+                if (visState.visible) {
+                    const colConfig = columns.find(c => c.key === visState.key);
+                    
+                    if (!colConfig) {
+                        // This should not happen if keys are consistent
+                        console.warn(`[DynamicTable] Column config not found for key: ${visState.key}`);
+                        return; // Skip this cell
+                    }
 
-                const cell = row.insertCell();
-                cell.innerHTML = ''; // Clear previous content
+                    // Diagnostic logs removed from here
 
-                const value = item[col.key];
+                    const cell = row.insertCell();
+                    cell.innerHTML = ''; // Clear previous content
+                    
+                    const value = item[colConfig.key];
 
-                if (typeof col.render === 'function') {
-                    col.render(value, item, cell);
-                } else if (col.renderAs === 'chart' && col.chartConfig) {
-                    cell.classList.add('dt-chart-cell');
-                    const canvasId = `${containerId}-chart-${startIndex + itemIndex}-${colIndexOriginal}`; // Use original index for unique ID
-                    const canvas = document.createElement('canvas');
-                    canvas.id = canvasId;
-                    canvas.width = col.chartConfig.width || 150;
-                    canvas.height = uniformChartHeight || col.chartConfig.height || 75; 
-                    cell.appendChild(canvas);
-                    const chartData = item[col.chartConfig.dataKey];
-                    if (chartData && typeof PureChart !== 'undefined') {
-                        try {
-                            const chartInstance = new PureChart(canvasId, { type: col.chartConfig.type, data: chartData, options: col.chartConfig.options || {} });
-                            // Assuming PureChart constructor throws on error or returns an instance.
-                            // The 'isValid' property is not standard in PureChart.js, so we'll store if an instance is created.
-                            if (chartInstance) { 
-                               activeChartInstances.push(chartInstance);
+                    if (typeof colConfig.render === 'function') {
+                        colConfig.render(value, item, cell);
+                    } else if (colConfig.renderAs === 'chart' && colConfig.chartConfig) {
+                        cell.classList.add('dt-chart-cell');
+                        const canvasId = `${containerId}-chart-${startIndex + itemIndex}-${colIndexOriginal}`; // Use original index for unique ID
+                        const canvas = document.createElement('canvas');
+                        canvas.id = canvasId;
+                        canvas.width = colConfig.chartConfig.width || 150;
+                        canvas.height = uniformChartHeight || colConfig.chartConfig.height || 75; 
+                        cell.appendChild(canvas);
+                        const chartData = item[colConfig.chartConfig.dataKey];
+                        if (chartData && typeof PureChart !== 'undefined') {
+                            try {
+                                const chartInstance = new PureChart(canvasId, { type: colConfig.chartConfig.type, data: chartData, options: colConfig.chartConfig.options || {} });
+                                if (chartInstance) { 
+                                   activeChartInstances.push(chartInstance);
+                                }
+                            } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = 'Chart Err.'; }
+                        } else if (typeof PureChart === 'undefined') {
+                            console.warn(`[DynamicTable] PureChart is not defined for column ${colConfig.header}. Ensure PureChart.js is loaded.`);
+                            cell.textContent = 'PureChart?';
+                        } else {
+                            console.warn(`[DynamicTable] Data for chart not found via dataKey '${colConfig.chartConfig.dataKey}' for column ${colConfig.header}.`);
+                            cell.textContent = 'Data?';
+                        }
+                    } else {
+                        const formattedValue = formatValue(value, colConfig.format);
+                        if (typeof colConfig.format === 'string' && colConfig.format.startsWith('percent_neutral') && typeof value === 'number' && value === 0) {
+                            cell.innerHTML = '';
+                        } else if (colConfig.format === 'flag') {
+                            cell.innerHTML = formattedValue;
+                        } else {
+                            cell.textContent = formattedValue;
+                        }
+
+                        if (typeof colConfig.format === 'string' && colConfig.format.startsWith('percent') && !colConfig.format.includes('_neutral') && typeof value === 'number') {
+                            cell.classList.remove('dt-value-positive', 'dt-value-negative');
+                            if (value > 0) {
+                                cell.classList.add('dt-value-positive');
+                            } else if (value <= 0) {
+                                cell.classList.add('dt-value-negative');
                             }
-                        } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = 'Chart Err.'; }
-                    } else if (typeof PureChart === 'undefined') {
-                        console.warn(`[DynamicTable] PureChart is not defined for column ${col.header}. Ensure PureChart.js is loaded.`);
-                        cell.textContent = 'PureChart?';
-                    } else {
-                        console.warn(`[DynamicTable] Data for chart not found via dataKey '${col.chartConfig.dataKey}' for column ${col.header}.`);
-                        cell.textContent = 'Data?';
-                    }
-                } else {
-                    const formattedValue = formatValue(value, col.format);
-                    if (typeof col.format === 'string' && col.format.startsWith('percent_neutral') && typeof value === 'number' && value === 0) {
-                        cell.innerHTML = '';
-                    } else if (col.format === 'flag') {
-                        cell.innerHTML = formattedValue;
-                    } else {
-                        cell.textContent = formattedValue;
-                    }
-
-                    if (typeof col.format === 'string' && col.format.startsWith('percent') && !col.format.includes('_neutral') && typeof value === 'number') {
-                        cell.classList.remove('dt-value-positive', 'dt-value-negative');
-                        if (value > 0) {
-                            cell.classList.add('dt-value-positive');
-                        } else if (value <= 0) {
-                            cell.classList.add('dt-value-negative');
                         }
                     }
+                } else {
+                    // Diagnostic logs removed from here
                 }
             });
         });

@@ -131,15 +131,15 @@
                 jsonData: sampleData.marketData, // Using jsonData
                 columns: [
                     {
-                        key: 'countryCode', // Must match the key added to marketData
+                        key: 'countryCode', 
                         header: 'Flag',
                         format: 'flag',
                         filterable: true,
                         sortable: true
                     },
                     {
-                        key: 'name', 
-                        header: 'Index', // Translated from 'Indice'
+                        key: 'name', // Ensured key exists
+                        header: 'Index', 
                         sortable: true, 
                         render: (value, rowData, cell) => {
                             const link = document.createElement('a');
@@ -152,7 +152,8 @@
                         }
                     },
                     { 
-                        header: '1 Year Chart', // Translated from 'Graphique 1 an'
+                        key: 'oneYearChart', // Added key
+                        header: '1 Year Chart', 
                         renderAs: 'chart',
                         chartConfig: {
                             type: 'line',
@@ -202,10 +203,11 @@
                 containerId: 'table-products-minimal',
                 jsonData: sampleData.productData,
                 columns: [
-                    { key: 'productName', header: 'Product', sortable: true }, // Translated
-                    { key: 'category', header: 'Category' }, // Translated
+                    { key: 'productName', header: 'Product', sortable: true }, 
+                    { key: 'category', header: 'Category' }, // No key, but not sortable/filterable and no complex render. Adding one for consistency.
                     { 
-                        header: 'Popularity', // Translated
+                        key: 'popularityChartDisplay', // Added key
+                        header: 'Popularity', 
                         renderAs: 'chart',
                         chartConfig: {
                             type: 'bar',
@@ -214,7 +216,7 @@
                             options: { padding: {top:2, right:2,bottom:2,left:2}, legend: {display:false}, xAxis:{display:false}, yAxis:{display:false}}
                         }
                     },
-                    { key: 'price', header: 'Price', format: 'currency:EUR' } // Translated
+                    { key: 'price', header: 'Price', format: 'currency:EUR' } 
                 ],
                 uniformChartHeight: 50,
                 showSearchControl: false,
