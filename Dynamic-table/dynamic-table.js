@@ -146,20 +146,64 @@ function createDynamicTable(config) {
                 const filterDiv = document.createElement('div');
                 filterDiv.className = 'dynamic-table-filter-control';
                 const filterLabel = document.createElement('label');
-                filterLabel.htmlFor = `${containerId}-filter-${col.key}`;
-                filterLabel.textContent = `Filter by ${col.header}:`; // Translated
-                const select = document.createElement('select');
-                select.id = `${containerId}-filter-${col.key}`;
-                select.dataset.filterKey = col.key;
-                select.classList.add('dt-common-select');
-                const defaultOption = document.createElement('option');
-                defaultOption.value = '';
-                defaultOption.textContent = `All ${col.header}`; // Translated
-                select.appendChild(defaultOption);
+                // ID will be set on the main select or custom select wrapper
+                filterLabel.htmlFor = `${containerId}-filter-${col.key}`; 
+                filterLabel.textContent = `Filter by ${col.header}:`;
                 filterDiv.appendChild(filterLabel);
-                filterDiv.appendChild(select);
+
+                if (col.format === 'flag') {
+                    filterDiv.classList.add('custom-flag-filter');
+
+                    const customSelect = document.createElement('div');
+                    customSelect.id = `${containerId}-filter-${col.key}`; // ID for the label
+                    customSelect.className = 'dt-custom-select';
+                    customSelect.dataset.filterKey = col.key;
+
+                    const trigger = document.createElement('div');
+                    trigger.className = 'dt-custom-select-trigger';
+
+                    const triggerValue = document.createElement('span');
+                    triggerValue.className = 'dt-custom-select-value';
+                    triggerValue.textContent = `All ${col.header}`; // Default text
+                    trigger.appendChild(triggerValue);
+
+                    const arrow = document.createElement('span');
+                    arrow.className = 'dt-custom-arrow';
+                    arrow.innerHTML = '&#9660;'; // Down arrow, could be '▼'
+                    trigger.appendChild(arrow);
+                    
+                    customSelect.appendChild(trigger);
+
+                    const optionsContainer = document.createElement('div');
+                    optionsContainer.className = 'dt-custom-options';
+                    optionsContainer.style.display = 'none'; // Initially hidden
+                    customSelect.appendChild(optionsContainer);
+
+                    filterDiv.appendChild(customSelect);
+                    filterSelects[col.key] = {
+                        custom: true,
+                        mainElement: customSelect,
+                        triggerValueElement: triggerValue,
+                        optionsContainer: optionsContainer,
+                        value: '' // Initialize value for the custom select
+                    };
+
+                } else {
+                    const select = document.createElement('select');
+                    select.id = `${containerId}-filter-${col.key}`; // ID for the label
+                    select.dataset.filterKey = col.key;
+                    select.classList.add('dt-common-select');
+                    
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = `All ${col.header}`;
+                    select.appendChild(defaultOption);
+                    
+                    filterDiv.appendChild(select);
+                    filterSelects[col.key] = { custom: false, element: select };
+                }
+                
                 controlsWrapper.appendChild(filterDiv);
-                filterSelects[col.key] = select;
                 hasVisibleTopControls = true;
             }
         });
@@ -272,6 +316,16 @@ function createDynamicTable(config) {
         return code;
     }
 
+    function countryCodeToUnicodeFlag(countryCode) {
+        if (!countryCode || countryCode.length !== 2) {
+            return ''; // Or return countryCode itself as fallback
+        }
+        const codePoints = countryCode.toUpperCase().split('').map(char => 
+            0x1F1E6 + (char.charCodeAt(0) - 'A'.charCodeAt(0))
+        );
+        return String.fromCodePoint(...codePoints);
+    }
+
     function formatValue(value, formatType) {
         if (value === null || typeof value === 'undefined') return '';
         
@@ -380,26 +434,62 @@ function createDynamicTable(config) {
         }
     }
 
-    function populateFilterOptions() {
-        Object.entries(filterSelects).forEach(([key, selectElement]) => {
-            // Find the column configuration for the current key
-            const columnConfig = columns.find(col => col.key === key);
+    function populateCustomFlagOptions(filterKey, optionsContainer, triggerValueElement, canonicalValues, headerText) {
+        optionsContainer.innerHTML = ''; // Clear existing options
 
-            if (selectElement) {
-                // Keep the first option (e.g., "All X")
-                while (selectElement.options.length > 1) selectElement.remove(1);
-                
-                if (columnConfig && columnConfig.format === 'flag') {
-                    const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
-                    canonicalValues.forEach(canonicalCode => {
-                        if (canonicalCode) { 
-                            const option = document.createElement('option');
-                            option.value = canonicalCode; 
-                            option.innerHTML = `<span class="fi fi-${canonicalCode}"></span>`; // Display only the flag icon
-                            selectElement.appendChild(option);
-                        }
-                    });
-                } else {
+        // "All" Option
+        const allOptionDiv = document.createElement('div');
+        allOptionDiv.className = 'dt-custom-option';
+        allOptionDiv.textContent = `All ${headerText}`;
+        allOptionDiv.dataset.value = "";
+        allOptionDiv.addEventListener('click', () => {
+            triggerValueElement.textContent = `All ${headerText}`; // Reset display to text
+            filterSelects[filterKey].value = "";
+            optionsContainer.style.display = 'none';
+            optionsContainer.closest('.dt-custom-select').classList.remove('open');
+            processDataInternal();
+        });
+        optionsContainer.appendChild(allOptionDiv);
+
+        // Flag Options
+        canonicalValues.forEach(canonicalCode => {
+            const flagOptionDiv = document.createElement('div');
+            flagOptionDiv.className = 'dt-custom-option';
+            flagOptionDiv.dataset.value = canonicalCode;
+            // Unicode flags are now used for display in cells/options, but for the trigger, we might want the flag icon via CSS
+            // For consistency with cell rendering (which uses span.fi), we can use it here too if CSS is set up.
+            // Or, use Unicode flag directly if preferred for trigger as well.
+            // The subtask description for buildTableShell implies triggerValueElement is a span to hold text or HTML.
+            // Let's assume the trigger should display the flag icon using the span.fi method for visual consistency with table cells.
+            flagOptionDiv.innerHTML = `<span class="fi fi-${canonicalCode}"></span>`;
+
+
+            flagOptionDiv.addEventListener('click', () => {
+                triggerValueElement.innerHTML = `<span class="fi fi-${canonicalCode}"></span>`; // Display flag icon
+                filterSelects[filterKey].value = canonicalCode;
+                optionsContainer.style.display = 'none';
+                optionsContainer.closest('.dt-custom-select').classList.remove('open');
+                processDataInternal();
+            });
+            optionsContainer.appendChild(flagOptionDiv);
+        });
+    }
+
+    function populateFilterOptions() {
+        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
+            const columnDef = columns.find(c => c.key === key);
+            const header = columnDef ? columnDef.header : '';
+
+            if (filterConfig.custom) {
+                const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
+                populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
+            } else {
+                // Standard select element
+                const selectElement = filterConfig.element;
+                if (selectElement) {
+                    // Keep the first option ("All X")
+                    while (selectElement.options.length > 1) selectElement.remove(1);
+                    
                     const uniqueValues = [...new Set(originalData.map(item => item[key]))].sort();
                     uniqueValues.forEach(val => {
                         if (val !== null && typeof val !== 'undefined') {
@@ -417,8 +507,17 @@ function createDynamicTable(config) {
     function processDataInternal() {
         const globalSearchTerm = (globalSearchInput && showSearchControl) ? globalSearchInput.value.trim().toLowerCase() : "";
         const activeFilters = {};
-        Object.entries(filterSelects).forEach(([key, select]) => {
-            if (select && select.value) activeFilters[key] = select.value;
+        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
+            if (filterConfig.custom) {
+                if (filterConfig.value) { // Check if a value is selected
+                    activeFilters[key] = filterConfig.value;
+                }
+            } else {
+                // Standard select
+                if (filterConfig.element && filterConfig.element.value) {
+                    activeFilters[key] = filterConfig.element.value;
+                }
+            }
         });
 
         let filteredData = originalData.filter(item => {
@@ -597,9 +696,48 @@ function createDynamicTable(config) {
     function attachEventListeners() {
         if (globalSearchInput) globalSearchInput.addEventListener('input', processDataInternal);
 
-        Object.values(filterSelects).forEach(select => {
-             if(select) select.addEventListener('change', processDataInternal);
+        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
+            if (filterConfig.custom) {
+                const mainElement = filterConfig.mainElement;
+                const trigger = mainElement.querySelector('.dt-custom-select-trigger');
+                const optionsContainer = filterConfig.optionsContainer;
+
+                if (trigger) {
+                    trigger.addEventListener('click', (event) => {
+                        event.stopPropagation(); // Prevent click from immediately closing due to document listener
+                        const isOpen = mainElement.classList.contains('open');
+                        // Close all other custom dropdowns
+                        Object.values(filterSelects).forEach(fc => {
+                            if (fc.custom && fc.mainElement !== mainElement) {
+                                fc.mainElement.classList.remove('open');
+                                fc.optionsContainer.style.display = 'none';
+                            }
+                        });
+                        // Toggle current dropdown
+                        mainElement.classList.toggle('open', !isOpen);
+                        optionsContainer.style.display = isOpen ? 'none' : 'block';
+                    });
+                }
+            } else {
+                // Standard select
+                if (filterConfig.element) {
+                    filterConfig.element.addEventListener('change', processDataInternal);
+                }
+            }
         });
+
+        // Global click listener to close custom dropdowns
+        document.addEventListener('click', (event) => {
+            Object.values(filterSelects).forEach(filterConfig => {
+                if (filterConfig.custom && filterConfig.mainElement.classList.contains('open')) {
+                    if (!filterConfig.mainElement.contains(event.target)) {
+                        filterConfig.mainElement.classList.remove('open');
+                        filterConfig.optionsContainer.style.display = 'none';
+                    }
+                }
+            });
+        });
+
 
         if (rowsPerPageSelectElement) {
             rowsPerPageSelectElement.addEventListener('change', function() {
