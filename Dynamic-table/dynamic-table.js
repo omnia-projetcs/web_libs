@@ -311,6 +311,13 @@ function createDynamicTable(config) {
                 const date = new Date(value);
                 return !isNaN(date.getTime()) ? date.toLocaleDateString('en-US') : value; // Changed to en-US locale
             }
+            if (formatType === 'flag') {
+                if (typeof value === 'string' && value.trim() !== '') {
+                    const countryCode = value.trim().toLowerCase();
+                    return `<span class="fi fi-${countryCode}"></span>`;
+                }
+                return ''; // Return empty for non-string or empty string values
+            }
         }
         return value;
     }
@@ -358,14 +365,26 @@ function createDynamicTable(config) {
 
     function populateFilterOptions() {
         Object.entries(filterSelects).forEach(([key, selectElement]) => {
-            if(selectElement) {
+            // Find the column configuration for the current key
+            const columnConfig = columns.find(col => col.key === key);
+
+            if (selectElement) {
                 // Keep the first option (e.g., "All X")
                 while (selectElement.options.length > 1) selectElement.remove(1);
+                
                 const uniqueValues = [...new Set(originalData.map(item => item[key]))].sort();
+                
                 uniqueValues.forEach(val => {
-                    if (val !== null && typeof val !== 'undefined') { // Ensure value is not null or undefined
+                    if (val !== null && typeof val !== 'undefined') {
                         const option = document.createElement('option');
-                        option.value = val; option.textContent = val;
+                        option.value = val;
+                        
+                        if (columnConfig && columnConfig.format === 'flag') {
+                            const countryCodeStr = String(val);
+                            option.innerHTML = `<span class="fi fi-${countryCodeStr.toLowerCase()}"></span> ${countryCodeStr.toUpperCase()}`;
+                        } else {
+                            option.textContent = val;
+                        }
                         selectElement.appendChild(option);
                     }
                 });
@@ -471,10 +490,13 @@ function createDynamicTable(config) {
                     }
                 } else {
                     // Handle specific case for percent_neutral and 0 value
+                    const formattedValue = formatValue(value, col.format);
                     if (typeof col.format === 'string' && col.format.startsWith('percent_neutral') && typeof value === 'number' && value === 0) {
-                        cell.textContent = '';
+                        cell.innerHTML = ''; // Or cell.textContent, as it's empty
+                    } else if (col.format === 'flag') {
+                        cell.innerHTML = formattedValue;
                     } else {
-                        cell.textContent = formatValue(value, col.format);
+                        cell.textContent = formattedValue;
                     }
 
                     // Apply positive/negative classes for non-neutral percentages

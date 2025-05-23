@@ -3,6 +3,7 @@
     {
       "symbol": "^FCHI",
       "name": "CAC 40",
+      "countryCode": "FR",
       "ytd": 0.0815,
       "y1": 0.1230,
       "graph": {
@@ -19,6 +20,7 @@
     {
       "symbol": "GC=F",
       "name": "Or (Futures)",
+      "countryCode": "US",
       "ytd": -0.0250,
       "y1": 0.2205,
       "graph": {
@@ -35,8 +37,9 @@
     {
       "symbol": "^GSPC",
       "name": "S&P 500",
+      "countryCode": "US",
       "ytd": 0.1020,
-      "y1": 0, 
+      "y1": 0,
       "graph": {
         "labels": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
         "datasets": [{
@@ -51,8 +54,9 @@
      {
       "symbol": "BTC-USD",
       "name": "Bitcoin USD",
+      "countryCode": "GB",
       "ytd": 0.6530,
-      "y1": 1.2570, 
+      "y1": 1.2570,
       "graph": {
         "labels": ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
         "datasets": [{

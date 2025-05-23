@@ -318,3 +318,28 @@
          justify-content: center; /* Center Previous/Next buttons and page info */
     }
 }
+
+/* === Flag Icon Styles === */
+
+/* Default styling for flag icons provided by flag-icon-css */
+/* This ensures alignment and spacing for flags within table cells */
+.dynamic-table tbody td span.fi {
+    margin-right: 8px;
+    display: inline-block; /* Or 'inline-flex' for better alignment with text */
+    vertical-align: middle; /* Align icon with text */
+}
+
+/* Attempt to style flag icons within select options */
+/* Note: Styling HTML within <option> tags has limited browser support. */
+/* This might not render as expected in all browsers. */
+.dynamic-table-filter-control select option span.fi {
+    margin-right: 5px; 
+    /* Browsers might ignore display, width, height, etc. here */
+}
+
+/* Add a little padding to the left of options in flag filters if they contain a span.fi */
+/* This is a workaround if direct styling of the span is weak. */
+/* This selector is speculative and might need adjustment based on actual HTML in options. */
+.dynamic-table-filter-control select option:has(span.fi) {
+    padding-left: 5px; /* Adjust as needed */
+}
