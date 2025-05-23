@@ -248,8 +248,8 @@ function createDynamicTable(config) {
         
         // Add Column Selector to controls
         columnSelectorWrapper = buildColumnSelector(); // buildColumnSelector is now defined
-        controlsWrapper.appendChild(columnSelectorWrapper);
-        hasVisibleTopControls = true; // Assuming we always show it if columns exist
+        // controlsWrapper.appendChild(columnSelectorWrapper); // Will be added to rightControlsGroup
+        // hasVisibleTopControls = true; // Will be set if rightControlsGroup is added or other controls
 
         columns.forEach(col => {
             if (col.filterable && col.key) {
@@ -318,15 +318,29 @@ function createDynamicTable(config) {
             }
         });
         
+        // Create a group for right-aligned controls
+        const rightControlsGroup = document.createElement('div');
+        rightControlsGroup.className = 'dynamic-table-right-controls-group';
+        let hasRightControls = false;
+
         if (showResultsCount) {
              const resultsDiv = document.createElement('div');
              resultsDiv.className = 'dynamic-table-results-info';
              resultsCountSpan = document.createElement('strong');
              resultsCountSpan.textContent = '0';
              resultsDiv.appendChild(resultsCountSpan);
-             resultsDiv.appendChild(document.createTextNode(' result(s)')); // Translated
-             controlsWrapper.appendChild(resultsDiv);
-             hasVisibleTopControls = true;
+             resultsDiv.appendChild(document.createTextNode(' result(s)'));
+             rightControlsGroup.appendChild(resultsDiv); // Append to group
+             hasRightControls = true;
+        }
+
+        // Always add column selector to the right group
+        rightControlsGroup.appendChild(columnSelectorWrapper);
+        hasRightControls = true;
+        
+        if (hasRightControls) {
+            controlsWrapper.appendChild(rightControlsGroup);
+            hasVisibleTopControls = true;
         }
         
         if (hasVisibleTopControls) {
