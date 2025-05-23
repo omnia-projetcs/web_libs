@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Démonstration Autonome Dynamic Table</title>
+    <title>Dynamic Table Standalone Demo</title>
     <link rel="stylesheet" href="dynamic-table.css"> 
     <style>
         body {
@@ -55,30 +55,30 @@
 <body>
 
     <div class="page-container">
-        <h1>Démonstration Autonome de `dynamic-table.js` & `PureChart.js`</h1>
+        <h1>Standalone Demo of `dynamic-table.js` & `PureChart.js`</h1>
 
         <div class="table-demo-container">
-            <h3>Tableau Complet (Marché Financier)</h3>
+            <h3>Full Table (Financial Market)</h3>
             <p class="description">
-                Cet exemple utilise une fonction de rendu personnalisée pour la colonne "Indice" (liens), 
-                des graphiques en ligne, des pourcentages colorés et neutres, 
-                la pagination avec sélecteur de lignes/page, et un header de tableau fixe avec défilement vertical.
+                This example uses a custom rendering function for the "Index" column (links), 
+                inline charts, colored and neutral percentages, 
+                pagination with rows/page selector, and a fixed table header with vertical scrolling.
             </p>
             <div id="table-market-demo"></div>
         </div>
 
         <div class="table-demo-container">
-            <h3>Tableau Minimaliste (Produits)</h3>
+            <h3>Minimalist Table (Products)</h3>
             <p class="description">
-                Tableau simple sans pagination, recherche, ni compteur de résultats.
-                Utilise `uniformChartHeight` pour des graphiques de même hauteur.
+                Simple table without pagination, search, or results counter.
+                Uses `uniformChartHeight` for charts of the same height.
             </p>
             <div id="table-products-minimal"></div>
         </div>
          <div class="table-demo-container">
-            <h3>Tableau Classique (Utilisateurs)</h3>
+            <h3>Classic Table (Users)</h3>
             <p class="description">
-                Exemple sans graphiques, montrant les filtres et le tri.
+                Example without charts, showing filters and sorting.
             </p>
             <div id="table-users-classic"></div>
         </div>
@@ -88,7 +88,7 @@
     <script src="dynamic-table.js"></script> 
 
     <script>
-    // Données JSON directement intégrées dans le HTML
+    // JSON data directly embedded in the HTML
     const sampleData = {
       "marketData": [
         {
@@ -96,7 +96,7 @@
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [74, 75, 73, 76, 75, 77],"borderColor": "rgba(54,162,235,1)","backgroundColor": "rgba(54,162,235,0.1)","fill": true}]}
         },
         {
-          "symbol": "GC=F", "name": "Or (Futures)", "ytd": -0.0250, "y1": 0.2205,
+          "symbol": "GC=F", "name": "Gold (Futures)", "ytd": -0.0250, "y1": 0.2205, // Name translated
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [20, 20.5, 19.8, 23, 23.5, 23.2],"borderColor": "rgba(255,206,86,1)","backgroundColor": "rgba(255,206,86,0.1)","fill": true}]}
         },
         {
@@ -109,9 +109,9 @@
         }
       ],
       "productData": [
-        { "productName": "Ordinateur Portable Pro", "category": "Électronique", "price": 1299.99, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[5,8,6], "backgroundColor":"#36A2EB"}] } },
-        { "productName": "Casque Audio Sans Fil", "category": "Audio", "price": 199.00, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[9,6,7], "backgroundColor":"#FFCE56"}] } },
-        { "productName": "T-Shirt Coton Bio", "category": "Vêtements", "price": 29.95, "popularityChart": { "labels": ["S1","S2","S3"], "datasets":[{"values":[7,7,9], "backgroundColor":"#4BC0C0"}] } }
+        { "productName": "Laptop Pro", "category": "Electronics", "price": 1299.99, "popularityChart": { "labels": ["W1","W2","W3"], "datasets":[{"values":[5,8,6], "backgroundColor":"#36A2EB"}] } }, // productName, category translated, labels S->W
+        { "productName": "Wireless Headphones", "category": "Audio", "price": 199.00, "popularityChart": { "labels": ["W1","W2","W3"], "datasets":[{"values":[9,6,7], "backgroundColor":"#FFCE56"}] } }, // productName translated
+        { "productName": "Organic Cotton T-Shirt", "category": "Apparel", "price": 29.95, "popularityChart": { "labels": ["W1","W2","W3"], "datasets":[{"values":[7,7,9], "backgroundColor":"#4BC0C0"}] } } // productName, category translated
       ],
       "userData": [
         { "id": 1, "firstName": "Alice", "lastName": "Martin", "email": "alice.martin@example.com", "registrationDate": "2023-01-15" },
@@ -123,15 +123,15 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        // --- Configuration pour le tableau "Marché Financier" ---
+        // --- Configuration for the "Financial Market" table ---
         if (sampleData.marketData) {
             createDynamicTable({
                 containerId: 'table-market-demo',
-                jsonData: sampleData.marketData, // Utilisation de jsonData
+                jsonData: sampleData.marketData, // Using jsonData
                 columns: [
                     {
                         key: 'name', 
-                        header: 'Indice',
+                        header: 'Index', // Translated from 'Indice'
                         sortable: true, 
                         render: (value, rowData, cell) => {
                             const link = document.createElement('a');
@@ -144,7 +144,7 @@
                         }
                     },
                     { 
-                        header: 'Graphique 1 an',
+                        header: '1 Year Chart', // Translated from 'Graphique 1 an'
                         renderAs: 'chart',
                         chartConfig: {
                             type: 'line',
@@ -163,18 +163,18 @@
                         key: 'ytd', 
                         header: 'YTD', 
                         sortable: true, 
-                        format: 'percent:2' // Avec coloration
+                        format: 'percent:2' // With coloring
                     },
                     { 
                         key: 'y1', 
-                        header: '1 An', 
+                        header: '1 Year', // Translated from '1 An'
                         sortable: true, 
-                        format: 'percent_neutral:2' // Sans coloration, 0 = vide
+                        format: 'percent_neutral:2' // Without coloring, 0 = empty
                     },                
                 ],
                 uniformChartHeight: 45,
                 rowsPerPage: 5,
-                rowsPerPageOptions: [3, 5, 10, 'Tout'],
+                rowsPerPageOptions: [3, 5, 10, 'All'], // Translated 'Tout' to 'All'
                 showSearchControl: true,
                 showResultsCount: true,
                 showPagination: true, 
@@ -184,20 +184,20 @@
                 defaultSortDirection: 'asc'
             });
         } else {
-            document.getElementById('table-market-demo').innerHTML = '<p>Données "marketData" non trouvées.</p>';
+            document.getElementById('table-market-demo').innerHTML = '<p>"marketData" not found.</p>'; // Translated
         }
 
 
-        // --- Configuration pour le tableau "Produits Minimaliste" ---
+        // --- Configuration for the "Minimalist Products" table ---
         if (sampleData.productData) {
             createDynamicTable({
                 containerId: 'table-products-minimal',
                 jsonData: sampleData.productData,
                 columns: [
-                    { key: 'productName', header: 'Produit', sortable: true },
-                    { key: 'category', header: 'Catégorie' },
+                    { key: 'productName', header: 'Product', sortable: true }, // Translated
+                    { key: 'category', header: 'Category' }, // Translated
                     { 
-                        header: 'Popularité',
+                        header: 'Popularity', // Translated
                         renderAs: 'chart',
                         chartConfig: {
                             type: 'bar',
@@ -206,7 +206,7 @@
                             options: { padding: {top:2, right:2,bottom:2,left:2}, legend: {display:false}, xAxis:{display:false}, yAxis:{display:false}}
                         }
                     },
-                    { key: 'price', header: 'Prix', format: 'currency:EUR' }
+                    { key: 'price', header: 'Price', format: 'currency:EUR' } // Translated
                 ],
                 uniformChartHeight: 50,
                 showSearchControl: false,
@@ -214,21 +214,21 @@
                 showPagination: false,
             });
         } else {
-             document.getElementById('table-products-minimal').innerHTML = '<p>Données "productData" non trouvées.</p>';
+             document.getElementById('table-products-minimal').innerHTML = '<p>"productData" not found.</p>'; // Translated
         }
 
 
-        // --- Configuration pour le tableau "Utilisateurs Classique" ---
+        // --- Configuration for the "Classic Users" table ---
         if (sampleData.userData) {
             createDynamicTable({
                 containerId: 'table-users-classic',
                 jsonData: sampleData.userData,
                 columns: [
                     { key: 'id', header: 'ID', sortable: true },
-                    { key: 'firstName', header: 'Prénom', sortable: true, filterable: true },
-                    { key: 'lastName', header: 'Nom', sortable: true, filterable: true },
+                    { key: 'firstName', header: 'First Name', sortable: true, filterable: true }, // Translated
+                    { key: 'lastName', header: 'Last Name', sortable: true, filterable: true }, // Translated
                     { key: 'email', header: 'Email' },
-                    { key: 'registrationDate', header: 'Inscription', format: 'date:YYYY/MM/DD', sortable: true }
+                    { key: 'registrationDate', header: 'Registration', format: 'date:YYYY/MM/DD', sortable: true } // Translated
                 ],
                 rowsPerPage: 5,
                 defaultSortColumn: 'lastName',
@@ -236,7 +236,7 @@
                 showRowsPerPageSelector: false,
             });
         } else {
-            document.getElementById('table-users-classic').innerHTML = '<p>Données "userData" non trouvées.</p>';
+            document.getElementById('table-users-classic').innerHTML = '<p>"userData" not found.</p>'; // Translated
         }
     });
 </script>

@@ -77,7 +77,7 @@ The `createDynamicTable` function accepts a configuration object with the follow
 * **`showResultsCount`** (Boolean, optional, default: `true`): If `false`, the results count display will not be shown.
 * **`showPagination`** (Boolean, optional, default: `true`): If `false`, pagination controls will not be displayed, and all (filtered) data will be shown.
 * **`showRowsPerPageSelector`** (Boolean, optional, default: `true`): If `true` and `showPagination` is also `true`, displays a dropdown to select the number of rows per page.
-* **`rowsPerPageOptions`** (Array of Numbers/String, optional, default: `[10, 25, 50, 100, 'Tout']`): Options for the rows per page selector. The string `'Tout'` (or 'All', case-insensitive) will display all items.
+* **`rowsPerPageOptions`** (Array of Numbers/String, optional, default: `[10, 25, 50, 100, 'All']`): Options for the rows per page selector. The string `'All'` (case-insensitive) will display all items.
 * **`tableMaxHeight`** (String, optional, default: `null`): CSS max-height for the table scroll wrapper (e.g., `'400px'`, `'60vh'`). Enables vertical scrolling and sticky header if set.
 
 ## 6. Expected JSON Data Structure
@@ -139,7 +139,7 @@ createDynamicTable({
     ],
     uniformChartHeight: 60, // All charts will be 60px high
     rowsPerPage: 5,
-    rowsPerPageOptions: [5, 10, 20, 'Tout'],
+    rowsPerPageOptions: [5, 10, 20, 'All'], // 'Tout' changed to 'All'
     defaultSortColumn: 'productName',
     tableMaxHeight: '400px' // Enable scrolling with sticky header
 });

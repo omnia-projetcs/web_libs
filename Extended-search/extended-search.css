@@ -76,7 +76,7 @@ p {
     padding: 8px 0;
 }
 
-/* Scrollbar stylisée (optionnel) */
+/* Styled scrollbar (optional) */
 .suggestions-box::-webkit-scrollbar {
     width: 8px;
 }
@@ -100,10 +100,10 @@ p {
     margin-bottom: 0;
 }
 
-.suggestions-box strong { /* Titres de catégorie (ex: quoteType) */
+.suggestions-box strong { /* Category titles (e.g., quoteType) */
     display: block;
     padding: 8px 15px;
-    margin-bottom: 0; /* Rapproché des résultats */
+    margin-bottom: 0; /* Closer to results */
     font-size: 1em;
     font-weight: 600;
     color: #1f2937;
@@ -144,7 +144,7 @@ p {
     margin-bottom: 3px;
 }
 
-.suggestions-box span.fi {
+.suggestions-box span.fi { /* Flag icon */
     margin-right: 10px;
     vertical-align: middle;
     flex-shrink: 0;
@@ -159,14 +159,14 @@ p {
     flex-grow: 1;
 }
 
-.suggestions-box .info-text { /* Pour Sector dans la colonne de gauche */
+.suggestions-box .info-text { /* For Sector in the left column */
     font-size: 0.85em;
     color: #6b7280;
-    padding-left: 0;
+    padding-left: 0; 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* Pour aligner avec main-text si drapeau présent (nécessite JS ou :has() avec précaution) */
+    /* To align with main-text if a flag is present (requires JS or :has() carefully) */
     /* .suggestion-left-column:has(.name-line .fi) .info-text { padding-left: 30px; } */
 }
 
@@ -187,7 +187,7 @@ p {
 }
 
 .suggestion-right-column .price-detail {
-    /* Style optionnel pour le prix */
+    /* Optional style for the price */
 }
 
 .suggestions-box.visible {

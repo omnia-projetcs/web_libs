@@ -33,7 +33,7 @@ This is the primary version intended for integration with a backend.
 **a. Dependencies:**
    - The component uses `flag-icons` for displaying country flags. The CDN link is included in `demo.html`:
      ```html
-     <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.1/css/flag-icons.min.css](https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.1/css/flag-icons.min.css)" ... />
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.1/css/flag-icons.min.css" ... />
      ```
    - Ensure you have `extended-search.css` and `extended-search.js` in the same directory as `demo.html`, or update the paths in `demo.html` accordingly.
 
@@ -44,7 +44,7 @@ This is the primary version intended for integration with a backend.
      const SERVER_SEARCH_ENDPOINT = 'YOUR_SERVER_ENDPOINT_HERE/search';
      ```
    - **You MUST replace `'YOUR_SERVER_ENDPOINT_HERE/search'` with the actual URL of your server-side search API.**
-   - The script will send a GET request to this endpoint with the search query appended as a parameter named `term` (e.g., `YOUR_SERVER_ENDPOINT_HERE/search?term=QUERY`). If your server expects a different parameter name (e.g., `q`), modify the `Workspace` URL in the `WorkspaceSuggestionsFromServer` function within `extended-search.js`.
+   - The script will send a GET request to this endpoint with the search query appended as a parameter named `term` (e.g., `YOUR_SERVER_ENDPOINT_HERE/search?term=QUERY`). If your server expects a different parameter name (e.g., `q`), modify the `fetchURL` in the `fetchSuggestionsFromServer` function within `extended-search.js`.
 
 **c. Expected Server JSON Response Format:**
    - Your server should respond with a JSON array of objects. Each object represents a suggestion group. Refer to `sample-data.json` for the detailed structure.
@@ -82,7 +82,7 @@ This version is for quick preview and testing of the UI and client-side interact
 -   **Initialization (`DOMContentLoaded`):** Sets up event listeners and necessary variables.
 -   **Debouncing (`debounce`):** User input is debounced (default 500ms for server search, 300ms for local demo) to limit the frequency of search requests while typing.
 -   **Search Trigger:** A search is initiated only when the input field contains at least 3 characters.
--   **`WorkspaceSuggestionsFromServer(query)` (in server version):**
+-   **`fetchSuggestionsFromServer(query)` (in server version):**
     -   Constructs the request URL with the query.
     -   Fetches data from `SERVER_SEARCH_ENDPOINT`.
     -   Handles JSON parsing.
@@ -127,7 +127,7 @@ The `extended-search.css` file provides the complete styling for:
 
 1.  **Server Endpoint (for `extended-search.js` / `demo.html`):**
     -   Modify `SERVER_SEARCH_ENDPOINT` in `extended-search.js` to point to your API.
-    -   Adjust the query parameter name in `WorkspaceSuggestionsFromServer` if your server expects something other than `term`.
+    -   Adjust the query parameter name in `fetchSuggestionsFromServer` if your server expects something other than `term`.
 
 2.  **Click Action (`handleSuggestionItemClick`):**
     -   Edit the `handleSuggestionItemClick(symbol, name, price)` function in `extended-search.js` (and the embedded version in `demo_full.html`) to define what happens when a user clicks a suggestion.

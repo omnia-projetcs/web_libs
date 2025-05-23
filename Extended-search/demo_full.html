@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Démo Champ de Recherche (Autonome)</title>
+    <title>Search Field Demo (Standalone)</title>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.0.2/css/flag-icons.min.css" integrity="sha512-bZBu2H0+FGFz/stDN/L0k8J0G8qVsAL0ht1qg5kTwtAheiXwiRKyCq1frwfbSFSJN3jooR5kauE0YjtPzhZtJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 	<style>
-        /* CONTENU COMPLET DE extended-search.css COLLÉ ICI */
+        /* FULL CONTENT OF extended-search.css PASTED HERE */
         body {font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;padding: 20px;background-color: #f4f7f6;line-height: 1.6;color: #333;}
         h1 {color: #1f2937;margin-bottom: 10px;}
         p {color: #555;margin-bottom: 20px;}
@@ -39,42 +39,43 @@
     </style>
 </head>
 <body>
-    <h1>Recherche Avancée (Démo Autonome)</h1>
-    <p>Tapez au moins 3 caractères pour rechercher (MSFT, Microsoft, CAC, Lyxor). Les données sont locales à cette page.</p>
+    <h1>Advanced Search (Standalone Demo)</h1>
+    <p>Type at least 3 characters to search (e.g., MSFT, Microsoft, CAC, Lyxor). Data is local to this page.</p>
 
     <div class="search-container">
-        <input type="text" id="advanced-search-input" placeholder="Rechercher (min 3 caractères)...">
+        <input type="text" id="advanced-search-input" placeholder="Search (min 3 characters)...">
         <div id="search-suggestions" class="suggestions-box">
-            </div>
+            <!-- Suggestions will be populated here -->
+        </div>
     </div>
 
     <script>
-        // CONTENU DE extended-search.js MODIFIÉ POUR DONNÉES LOCALES
+        // CONTENT OF extended-search.js MODIFIED FOR LOCAL DATA
         document.addEventListener('DOMContentLoaded', () => {
             const searchInput = document.getElementById('advanced-search-input');
             const suggestionsBox = document.getElementById('search-suggestions');
 
-            const localMockData = [
+            const localMockData = [ // Data translated
               {
                 "quoteType": "ETF",
                 "results": [
-                  {"text": "Direxion Daily MSFT Bear 1X Sha","link": "/light/shard/MSFD/","country": "États-Unis","flag": "fi-us","sector": "Finance à Levier","isin": "US1231231231","price": 25.50},
-                  {"text": "Lyxor CAC 40 UCITS ETF","link": "/light/shard/CAC/","country": "France","flag": "fi-fr","sector": "Indice Actions","isin": "FR0007052782","price": 75.12}
+                  {"text": "Direxion Daily MSFT Bear 1X Shares","link": "/light/shard/MSFD/","country": "United States","flag": "fi-us","sector": "Leveraged Finance","isin": "US1231231231","price": 25.50},
+                  {"text": "Lyxor CAC 40 UCITS ETF","link": "/light/shard/CAC/","country": "France","flag": "fi-fr","sector": "Equity Index","isin": "FR0007052782","price": 75.12}
                 ]
               },
               {
                 "quoteType": "EQUITY",
                 "results": [
-                  {"text": "Microsoft Corporation","link": "/light/shard/MSFT/","country": "États-Unis","flag": "fi-us","sector": "Technologie de l'Information","isin": "US5949181045","price": 430.20},
-                  {"text": "LVMH Moët Hennessy Louis Vuitton","link": "/light/shard/MC/","country": "France","flag": "fi-fr","sector": "Luxe et Biens de Consommation","isin": "FR0000121014","price": 850.75},
-                  {"text": "Apple Inc.","link": "/light/shard/AAPL/","country": "États-Unis","flag": "fi-us","sector": "Technologie de l'Information","isin": "US0378331005","price": 170.30}
+                  {"text": "Microsoft Corporation","link": "/light/shard/MSFT/","country": "United States","flag": "fi-us","sector": "Information Technology","isin": "US5949181045","price": 430.20},
+                  {"text": "LVMH Moët Hennessy Louis Vuitton","link": "/light/shard/MC/","country": "France","flag": "fi-fr","sector": "Luxury & Consumer Goods","isin": "FR0000121014","price": 850.75},
+                  {"text": "Apple Inc.","link": "/light/shard/AAPL/","country": "United States","flag": "fi-us","sector": "Information Technology","isin": "US0378331005","price": 170.30}
                 ]
               },
               {
                 "quoteType": "INDEX",
                 "results": [
-                    {"text": "CAC 40", "link":"/light/shard/PX1/", "country":"France", "flag":"fi-fr", "sector":"Indice Principal", "isin": null, "price": 8150.00},
-                    {"text": "S&P 500", "link":"/light/shard/SPX/", "country":"États-Unis", "flag":"fi-us", "sector":"Indice Large Cap", "isin": null, "price": 5200.45}
+                    {"text": "CAC 40", "link":"/light/shard/PX1/", "country":"France", "flag":"fi-fr", "sector":"Main Index", "isin": null, "price": 8150.00},
+                    {"text": "S&P 500", "link":"/light/shard/SPX/", "country":"United States", "flag":"fi-us", "sector":"Large Cap Index", "isin": null, "price": 5200.45}
                 ]
               }
             ];
@@ -89,11 +90,11 @@
             };
 
             function handleSuggestionItemClick(symbol, name, price) {
-                console.log("Suggestion cliquée !");
-                console.log("  Symbole:", symbol);
-                console.log("  Nom    :", name);
-                console.log("  Prix   :", price, "(type:", typeof price, ")");
-                // Exemple: searchInput.value = name;
+                console.log("Suggestion clicked!"); // Translated
+                console.log("  Symbol:", symbol); // Translated
+                console.log("  Name  :", name); // Translated
+                console.log("  Price :", price, "(type:", typeof price, ")"); // Translated
+                // Example: searchInput.value = name;
                 hideSuggestions();
             }
 
@@ -167,7 +168,7 @@
                                         if (typeof item.price === 'number') {
                                             priceText = item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                         }
-                                        priceDiv.textContent = `${priceText} €`;
+                                        priceDiv.textContent = `${priceText} €`; // Assuming Euro symbol is desired, adjust if needed
                                         priceDiv.classList.add('price-detail');
                                         rightColumn.appendChild(priceDiv);
                                     }
@@ -183,7 +184,7 @@
                 if (hasContentToDisplay && suggestionsBox.children.length > 0) {
                     suggestionsBox.classList.add('visible');
                 } else {
-                    suggestionsBox.innerHTML = '<p class="info-message">Aucun résultat trouvé.</p>';
+                    suggestionsBox.innerHTML = '<p class="info-message">No results found.</p>'; // Translated
                     suggestionsBox.classList.add('visible');
                 }
             };
@@ -197,7 +198,7 @@
                 suggestionsBox.classList.remove('visible');
             };
 
-            const symbolFromLink = (link) => { // Helper pour la recherche locale
+            const symbolFromLink = (link) => { // Helper for local search
                 if (link) {
                     const parts = link.split('/').filter(part => part.trim() !== '');
                     if (parts.length > 0) { return parts[parts.length - 1].toUpperCase(); }
@@ -230,7 +231,7 @@
                 } else {
                     clearSuggestionsOrMessage();
                 }
-            }, 300)); // Debounce plus court pour la recherche locale
+            }, 300)); // Shorter debounce for local search
 
             suggestionsBox.addEventListener('click', function(event) {
                 let targetElement = event.target;
@@ -270,7 +271,7 @@
                     hideSuggestions();
                 }
             });
-            console.log("Advanced search script (local demo) initialized.");
+            console.log("Advanced search script (local demo) initialized."); // Translated
         });
     </script>
 </body>
