@@ -169,12 +169,19 @@
 
 /* Style for cells containing charts for vertical alignment */
 .dynamic-table tbody td.dt-chart-cell {
-    display: flex;
-    align-items: center;    /* Vertically centers the canvas */
-    justify-content: center; /* Horizontally centers the canvas (optional, can be 'flex-start' or 'flex-end') */
-    padding: 2px 5px; /* Reduced padding for chart cells to maximize chart space */
-    /* min-height: 50px; /* REMOVED to allow more natural row height adjustment */ */
+    padding: 2px 5px; /* Keep padding */
+    /* display: flex; align-items: center; justify-content: center; -- REMOVED to allow standard cell height behavior */
+    vertical-align: middle; /* Good default for table cell content */
 }
+
+.dt-chart-canvas-wrapper {
+    display: flex;
+    align-items: center;    /* Vertically center the canvas */
+    justify-content: center; /* Horizontally center the canvas */
+    width: 100%;
+    height: 100%; /* Takes full height of the cell, critical for centering in a stretched cell */
+}
+
 .dynamic-table tbody td.dt-chart-cell canvas {
     max-width: 100%; /* Ensure the canvas does not exceed the cell */
     /* max-height is implicitly managed by the canvas height defined in JS */

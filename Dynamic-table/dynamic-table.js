@@ -756,12 +756,19 @@ function createDynamicTable(config) {
                         colConfig.render(value, item, cell);
                     } else if (colConfig.renderAs === 'chart' && colConfig.chartConfig) {
                         cell.classList.add('dt-chart-cell');
+                        
+                        // Create inner wrapper for canvas
+                        const canvasWrapper = document.createElement('div');
+                        canvasWrapper.className = 'dt-chart-canvas-wrapper';
+                        cell.appendChild(canvasWrapper);
+
                         const canvasId = `${containerId}-chart-${startIndex + itemIndex}-${colIndexOriginal}`; // Use original index for unique ID
                         const canvas = document.createElement('canvas');
                         canvas.id = canvasId;
                         canvas.width = colConfig.chartConfig.width || 150;
                         canvas.height = uniformChartHeight || colConfig.chartConfig.height || 75; 
-                        cell.appendChild(canvas);
+                        canvasWrapper.appendChild(canvas); // Append canvas to wrapper
+                        
                         const chartData = item[colConfig.chartConfig.dataKey];
                         if (chartData && typeof PureChart !== 'undefined') {
                             try {

@@ -48,6 +48,10 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // Example configuration for dynamic-table:
+        // To hide the column visibility selector button (gear icon), add to the config below:
+        // showColumnVisibilitySelector: false, 
+        // (By default, it's true, so the selector will be shown if this line is omitted)
         createDynamicTable({
             containerId: 'main-dynamic-table',
             jsonPath: 'sample-data.json', // Loading from the external JSON file
@@ -63,15 +67,15 @@
             // For this demo, sample_data.json should directly contain the [marketData items] array
             columns: [
                 {
-                    key: 'countryCode',
+                    key: 'countryCode', // Ensure keys are present for columns involved in sorting/filtering/visibility state
                     header: 'Flag',
                     format: 'flag',
                     filterable: true,
                     sortable: true
                 },
                 {
-                    key: 'name', 
-                    header: 'Index', // Translated from 'Indice'
+                    key: 'name', // Ensured key exists
+                    header: 'Index', 
                     sortable: true, 
                     render: (value, rowData, cell) => {
                         const link = document.createElement('a');
@@ -84,7 +88,8 @@
                     }
                 },
                 { 
-                    header: '1 Year Chart', // Translated from 'Graphique 1 an'
+                    key: 'oneYearChart', // Added key
+                    header: '1 Year Chart', 
                     renderAs: 'chart',
                     chartConfig: {
                         type: 'line',
@@ -100,9 +105,10 @@
                     }
                 },
                 { key: 'ytd', header: 'YTD', sortable: true, format: 'percent:2' },
-                { key: 'y1', header: '1 Year', sortable: true, format: 'percent_neutral:2' }, // Translated from '1 An'              
+                { key: 'y1', header: '1 Year', sortable: true, format: 'percent_neutral:2' },              
             ],
             uniformChartHeight: 45,
+            // showColumnVisibilitySelector: true, // Default is true, so selector will be shown
             rowsPerPage: 5,
             rowsPerPageOptions: [3, 5, 10, 20, 'All'], // Translated 'Tout' to 'All'
             showSearchControl: true,
