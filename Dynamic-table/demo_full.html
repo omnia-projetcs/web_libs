@@ -93,19 +93,19 @@
     const sampleData = {
       "marketData": [
         {
-          "symbol": "^FCHI", "name": "CAC 40", "ytd": 0.0815, "y1": 0.1230,
+          "symbol": "^FCHI", "name": "CAC 40", "countryCode": "fr", "ytd": 0.0815, "y1": 0.1230,
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [74, 75, 73, 76, 75, 77],"borderColor": "rgba(54,162,235,1)","backgroundColor": "rgba(54,162,235,0.1)","fill": true}]}
         },
         {
-          "symbol": "GC=F", "name": "Gold (Futures)", "ytd": -0.0250, "y1": 0.2205, // Name translated
+          "symbol": "GC=F", "name": "Gold (Futures)", "countryCode": "fi-US", "ytd": -0.0250, "y1": 0.2205, // Name translated
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [20, 20.5, 19.8, 23, 23.5, 23.2],"borderColor": "rgba(255,206,86,1)","backgroundColor": "rgba(255,206,86,0.1)","fill": true}]}
         },
         {
-          "symbol": "^GSPC", "name": "S&P 500", "ytd": 0.1020, "y1": 0,
+          "symbol": "^GSPC", "name": "S&P 500", "countryCode": "US", "ytd": 0.1020, "y1": 0,
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [48, 49, 50, 51, 52, 52.5],"borderColor": "rgba(75,192,192,1)","backgroundColor": "rgba(75,192,192,0.1)","fill": true}]}
         },
          {
-          "symbol": "BTC-USD", "name": "Bitcoin USD", "ytd": 0.6530, "y1": 1.2570, 
+          "symbol": "BTC-USD", "name": "Bitcoin USD", "countryCode": "de", "ytd": 0.6530, "y1": 1.2570, 
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [40, 45, 60, 68, 65, 69],"borderColor": "rgba(255,159,64,1)","backgroundColor": "rgba(255,159,64,0.1)","fill": true}]}
         }
       ],
@@ -130,6 +130,13 @@
                 containerId: 'table-market-demo',
                 jsonData: sampleData.marketData, // Using jsonData
                 columns: [
+                    {
+                        key: 'countryCode', // Must match the key added to marketData
+                        header: 'Flag',
+                        format: 'flag',
+                        filterable: true,
+                        sortable: true
+                    },
                     {
                         key: 'name', 
                         header: 'Index', // Translated from 'Indice'
