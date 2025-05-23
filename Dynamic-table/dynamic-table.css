@@ -329,22 +329,104 @@
     vertical-align: middle; /* Align icon with text */
 }
 
-/* Attempt to style flag icons within select options */
-/* Note: Styling HTML within <option> tags has limited browser support. */
-/* This might not render as expected in all browsers. */
-/* Remove right margin from flag icons in filter options as text is no longer present */
-.dynamic-table-filter-control select option span.fi {
-    margin-right: 0; 
-    /* display: inline-block; /* Already provided by general .fi rules or user-agent */
-    /* vertical-align: middle; /* May not have much effect on option styling */
+/* Styling for <option> elements with Unicode flags can be done directly on the option,
+   or might rely on browser default rendering for text within options.
+   If specific alignment or font for Unicode flags in options is needed,
+   it could be added here, targeting:
+   .dynamic-table-filter-control select option { ... }
+   However, for now, we rely on default browser handling for text in options. */
+
+/* === Custom Dropdown Styles for Flag Filters === */
+
+.dt-custom-select {
+    position: relative; /* For positioning the options list */
+    min-width: 200px; /* Same as other filter controls */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 1rem;
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none; /* Prevent text selection */
 }
 
-/* Specific styling for <option> elements that ONLY contain our flag icon span.
-   This relies on the structure <option><span class="fi fi-xx"></span></option>. */
-/* Attempt to center the span (inline-block) within the option */
-.dynamic-table-filter-control select option:has(> span.fi:only-child) {
-    text-align: center; 
-    /* padding-left: 5px; /* Remove previous padding */
-    /* Other experimental properties like min-height or padding can be added here if needed,
-       but text-align:center is the primary goal. */
+.dt-custom-select:focus { /* For accessibility, though direct focus might be on a child */
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.dt-custom-select-trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px; /* Same as .dt-common-select inputs */
+}
+
+.dt-custom-select-value {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1; /* Allow value to take available space */
+}
+
+/* Styling for the flag icon itself if it's placed directly in dt-custom-select-value */
+.dt-custom-select-value span.fi {
+    margin-right: 0; /* No text next to it in the display area */
+    vertical-align: middle; /* Align if there was text or for consistency */
+}
+
+
+.dt-custom-arrow {
+    margin-left: 10px;
+    font-size: 0.8em;
+}
+
+.dt-custom-options {
+    position: absolute;
+    top: 100%; /* Position below the trigger */
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-top: none; /* Avoid double border with select box */
+    border-radius: 0 0 4px 4px;
+    max-height: 200px; /* Prevent overly long lists */
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it's above other content */
+    box-sizing: border-box;
+}
+
+/* Individual option styling */
+.dt-custom-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex; /* To help center content if needed */
+    justify-content: center; /* Center flag icon */
+    align-items: center; /* Center flag icon */
+    min-height: 2em; /* Ensure a decent clickable height */
+}
+
+.dt-custom-option:hover {
+    background-color: #f0f5f8; /* Similar to table row hover */
+}
+
+.dt-custom-option.selected { /* If we add a class for the selected one */
+    background-color: #e0eaf1;
+    font-weight: bold;
+}
+
+/* Styling for flag icons within custom options */
+.dt-custom-option span.fi {
+    /* flag-icon-css provides base size. Adjust if needed: */
+    /* font-size: 1.2em; */ 
+    /* margin: 0; /* Already centered by flex on parent */
+}
+
+/* Hide the options list by default (JS will toggle display: block/flex) */
+.dt-custom-options {
+    display: none;
+}
+.dt-custom-select.open .dt-custom-options { /* Class 'open' will be toggled by JS */
+    display: block;
 }
