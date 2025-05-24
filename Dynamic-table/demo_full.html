@@ -128,6 +128,7 @@
         if (sampleData.marketData) {
             createDynamicTable({
                 containerId: 'table-market-demo',
+                X_CSRFToken: 'dummyCSRFTokenForDemo',
                 jsonData: sampleData.marketData, // Using jsonData
                 columns: [
                     {
@@ -202,6 +203,7 @@
         if (sampleData.productData) {
             createDynamicTable({
                 containerId: 'table-products-minimal',
+                X_CSRFToken: 'dummyCSRFTokenForDemo',
                 jsonData: sampleData.productData,
                 columns: [
                     { key: 'productName', header: 'Product', sortable: true }, 
@@ -234,6 +236,7 @@
         if (sampleData.userData) {
             createDynamicTable({
                 containerId: 'table-users-classic',
+                X_CSRFToken: 'dummyCSRFTokenForDemo',
                 jsonData: sampleData.userData,
                 columns: [
                     { key: 'id', header: 'ID', sortable: true },
