@@ -245,21 +245,19 @@ You can load chart configurations from an external JSON file. The JSON structure
 **All new features and options described above (dataset `type`, `borderDash`, `sourceDatasetIndex`, `period`, `options.annotations`, and dataset `averageLine`) can be included in the JSON configuration.**
 
 The `fromJSON` method signature is:
-`PureChart.fromJSON(elementId, jsonUrl, overrideOptions = {}, csrfToken = null)`
 
+`PureChart.fromJSON(elementId, jsonUrl, overrideOptions = {})`
 *   `elementId` (String): The ID of the canvas element.
 *   `jsonUrl` (String): The URL to fetch the JSON configuration from.
 *   `overrideOptions` (Object, optional): An object that will be deeply merged with the fetched JSON configuration. Defaults to an empty object.
-*   `csrfToken` (String, optional): An optional CSRF token. If provided, its value will be sent as an `X-CSRFToken` header in the HTTP GET request for the `jsonUrl`. This is useful for fetching configurations from server endpoints that require CSRF protection. Defaults to `null`.
-
 ```javascript
 // Example call in README
-PureChart.fromJSON('myCanvasID', 'path/to/data.json', {}, 'YOUR_CSRF_TOKEN_HERE')
+PureChart.fromJSON('myCanvasID', 'path/to/data.json')
     .then(chart => {
-        if (chart && chart.isValid) console.log("Chart loaded from JSON with CSRF token!");
+        if (chart && chart.isValid) console.log("Chart loaded from JSON!");
     })
     .catch(error => {
-        console.error("Failed to load chart with CSRF token:", error);
+        console.error("Failed to load chart:", error);
     });
 ```
 Refer to `sample-data.json` in the demo package for a comprehensive example of a JSON configuration file using these new features.
