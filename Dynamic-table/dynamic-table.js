@@ -53,7 +53,6 @@
 function createDynamicTable(config) {
     const {
         containerId,
-        X_CSRFToken,
         jsonPath, 
         jsonData, 
         columns = [],
