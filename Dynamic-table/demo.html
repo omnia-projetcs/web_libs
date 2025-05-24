@@ -54,6 +54,7 @@
         // (By default, it's true, so the selector will be shown if this line is omitted)
         createDynamicTable({
             containerId: 'main-dynamic-table',
+            X_CSRFToken: 'dummyCSRFTokenForDemo',
             jsonPath: 'sample-data.json', // Loading from the external JSON file
             // Note: dynamic-table.js (v11) expects sample-data.json to be an array.
             // If sample-data.json is an object with keys (like marketData, etc.), 
