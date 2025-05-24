@@ -245,12 +245,11 @@ You can load chart configurations from an external JSON file. The JSON structure
 **All new features and options described above (dataset `type`, `borderDash`, `sourceDatasetIndex`, `period`, `options.annotations`, and dataset `averageLine`) can be included in the JSON configuration.**
 
 The `fromJSON` method signature is:
-`PureChart.fromJSON(elementId, jsonUrl, overrideOptions = {})`
 
+`PureChart.fromJSON(elementId, jsonUrl, overrideOptions = {})`
 *   `elementId` (String): The ID of the canvas element.
 *   `jsonUrl` (String): The URL to fetch the JSON configuration from.
 *   `overrideOptions` (Object, optional): An object that will be deeply merged with the fetched JSON configuration. Defaults to an empty object.
-
 ```javascript
 // Example call in README
 PureChart.fromJSON('myCanvasID', 'path/to/data.json')

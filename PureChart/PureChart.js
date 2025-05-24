@@ -209,9 +209,15 @@ class PureChart {
         return output;
     }
 
-    static async fromJSON(elementId, jsonUrl, overrideOptions = {}) {
+    static async fromJSON(elementId, jsonUrl, overrideOptions = {}, csrfToken = null) {
         try {
-            const response = await fetch(jsonUrl);
+            const fetchOptions = {};
+            if (csrfToken) {
+                fetchOptions.headers = {
+                    'X-CSRFToken': csrfToken
+                };
+            }
+            const response = await fetch(jsonUrl, fetchOptions);
             if (!response.ok) {
                 console.error(`PureChart Fetch Error: Status ${response.status} for URL ${jsonUrl}`);
                 throw new Error(`PureChart Error: Failed to fetch JSON from ${jsonUrl}. Status: ${response.status}`);

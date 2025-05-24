@@ -49,6 +49,12 @@
         <canvas id="percentageChartOldStyleAutonome" width="700" height="200"></canvas>
     </div>
 
+    <div class="chart-container">
+        <h2>Chart 4: Loaded via PureChart.fromJSON()</h2>
+        <p>This chart demonstrates loading data using the <code>PureChart.fromJSON()</code> static method, including the conceptual CSRF token parameter.</p>
+        <canvas id="fromJsonDemoCanvas" width="700" height="350"></canvas>
+    </div>
+
     <script src="PureChart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -229,6 +235,35 @@
                 console.error("Error loading chart from JSON for demo_full.html (Chart 3):", e);
                 document.getElementById('jsonLoadedChartCanvas').outerHTML = `<p style="color:red;">Could not load chart from JSON (Chart 3): ${e.message}</p>`;
             }
+
+            // Chart 4: Example of PureChart.fromJSON()
+            PureChart.fromJSON('fromJsonDemoCanvas', 'single_chart_example.json', {}, null /* csrfToken if needed */)
+                .then(chart => {
+                    if (chart && chart.isValid) {
+                        console.log("Chart 'fromJsonDemoCanvas' loaded successfully via PureChart.fromJSON().");
+                    } else {
+                        // This path (chart is null or !chart.isValid) might occur if fromJSON itself handles an error internally
+                        // and returns null or an invalidated chart instance, instead of throwing.
+                        console.error("Failed to load or chart is invalid from 'single_chart_example.json' via PureChart.fromJSON().");
+                        const canvas = document.getElementById('fromJsonDemoCanvas');
+                        if (canvas && canvas.getContext) { // Display error on canvas
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.font = '12px Arial'; ctx.fillStyle = 'orange'; ctx.textAlign = 'center';
+                            ctx.fillText('Chart loaded but invalid.', canvas.width / 2, canvas.height / 2);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error("Error loading chart 'fromJsonDemoCanvas' via PureChart.fromJSON():", error);
+                    const canvas = document.getElementById('fromJsonDemoCanvas');
+                    if (canvas && canvas.getContext) { // Display error on canvas
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.font = '12px Arial'; ctx.fillStyle = 'red'; ctx.textAlign = 'center';
+                        ctx.fillText(`Error fromJSON: ${String(error.message).substring(0,100)}`, canvas.width / 2, canvas.height / 2);
+                    }
+                });
             
 
             // Config for Bar Chart (Original Demo)
