@@ -1,0 +1,14 @@
+{
+    "type": "bar",
+    "data": {
+        "labels": ["A", "B", "C"],
+        "datasets": [{
+            "label": "Sample Data",
+            "values": [10, 20, 15],
+            "backgroundColor": "rgba(0, 150, 200, 0.6)"
+        }]
+    },
+    "options": {
+        "title": { "text": "Loaded via fromJSON" }
+    }
+}
