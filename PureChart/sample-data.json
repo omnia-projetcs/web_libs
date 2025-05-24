@@ -9,7 +9,20 @@
           "type": "bar",
           "values": [2500, 2700, 2600, 3000, 2800, 2900, 3100],
           "backgroundColor": "rgba(54, 162, 235, 0.7)",
-          "borderColor": "rgba(54, 162, 235, 1)"
+          "borderColor": "rgba(54, 162, 235, 1)",
+          "averageLine": {
+            "display": true,
+            "color": "#FF8C00",
+            "lineWidth": 2,
+            "dashPattern": [4, 4],
+            "label": {
+                "display": true,
+                "font": "10px Arial bold",
+                "color": "#A0522D",
+                "position": "below-right",
+                "backgroundColor": "rgba(255, 255, 255, 0.7)"
+            }
+          }
         },
         {
           "label": "Expenses (Line)",

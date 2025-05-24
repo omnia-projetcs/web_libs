@@ -33,7 +33,21 @@
                             values: [150, 220, 180, 250, 200, 230, 210],
                             backgroundColor: 'rgba(54, 162, 235, 0.6)',
                             borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
+                            borderWidth: 1,
+                            averageLine: {
+                                display: true,
+                                color: 'rgba(0,0,0,0.7)',
+                                lineWidth: 2,
+                                dashPattern: [6, 3],
+                                label: {
+                                    display: true,
+                                    color: 'black',
+                                    font: 'bold 11px Arial',
+                                    position: 'above-left', // Test a different position
+                                    backgroundColor: 'rgba(255,255,255,0.8)',
+                                    formatter: (avg) => `Avg Views: ${avg.toFixed(0)}`
+                                }
+                            }
                         },
                         {
                             label: 'Unique Visitors',

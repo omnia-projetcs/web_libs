@@ -172,15 +172,93 @@ options: {
 }
 ```
 
+**NEW: Average Line Per Dataset:**
+This feature allows you to draw a horizontal line representing the calculated average of a specific dataset's values. A label displaying the average value can also be shown. This is useful for quickly visualizing how dataset values compare to their mean.
+
+The `averageLine` configuration object can be added directly to any dataset object within the `data.datasets` array, for datasets of `type: 'bar'` or `type: 'line'`. It is not applicable to `percentageDistribution` or `sma` type datasets.
+
+**Configuration Options for `averageLine` (within a dataset object):**
+
+*   `display` (Boolean): Set to `true` to show the average line for this dataset.
+    *   Default: `false`.
+*   `color` (String): Color of the average line.
+    *   Default: `'#888'`.
+*   `lineWidth` (Number): Width of the average line.
+    *   Default: `1`.
+*   `dashPattern` (Array of Numbers): Dash pattern for the line (e.g., `[3, 3]` for dotted, `[]` or `null` for solid).
+    *   Default: `[3, 3]`.
+*   `label` (Object): Configuration for the label displayed near the average line.
+    *   `display` (Boolean): Set to `true` to show the average value label.
+        *   Default: `true`.
+    *   `font` (String): Font for the label.
+        *   Default: `'10px Arial'`.
+    *   `color` (String): Color of the label text.
+        *   Default: `'#555'`.
+    *   `position` (String): Position of the label relative to the line.
+        *   Supported values: `'above-right'`, `'above-left'`, `'below-right'`, `'below-left'`.
+        *   Default: `'above-right'`.
+    *   `padding` (Number): Padding around the label text, especially if `backgroundColor` is used.
+        *   Default: `2`.
+    *   `backgroundColor` (String): Background color for the label, making it more readable over chart elements.
+        *   Default: `'rgba(255, 255, 255, 0.7)'`.
+    *   `formatter` (Function): A function that takes the calculated average value as an argument and returns the string to be displayed.
+        *   Default: `(value) => \`Avg: \${value !== null && value !== undefined ? value.toFixed(2) : 'N/A'}\``.
+
+**Example:**
+
+```javascript
+data: {
+    labels: ['Jan', 'Feb', 'Mar'],
+    datasets: [{
+        label: 'Sales Data',
+        values: [100, 150, 125],
+        type: 'line', // or 'bar'
+        averageLine: {
+            display: true,
+            color: 'blue',
+            lineWidth: 2,
+            dashPattern: [5, 5], // Dashed line
+            label: {
+                display: true,
+                color: 'darkblue',
+                font: 'bold 12px Arial',
+                position: 'above-left', // Display label on the left side, above the line
+                backgroundColor: 'rgba(200, 200, 255, 0.8)',
+                formatter: (avg) => `Average Sale: ${avg.toFixed(1)}`
+            }
+        }
+    }, {
+        label: 'Expenses Data',
+        values: [70, 80, 75],
+        type: 'bar',
+        averageLine: { // Another average line, using more defaults
+            display: true,
+            color: 'red' // Only customize color, other options use defaults
+        }
+    }]
+}
+```
+
 ## Loading Configuration from JSON (`PureChart.fromJSON()`)
 
 You can load chart configurations from an external JSON file. The JSON structure should mirror the JavaScript configuration object.
-**All new features and options described above (dataset `type`, `borderDash`, `sourceDatasetIndex`, `period`, and `options.annotations`) can be included in the JSON configuration.**
+**All new features and options described above (dataset `type`, `borderDash`, `sourceDatasetIndex`, `period`, `options.annotations`, and dataset `averageLine`) can be included in the JSON configuration.**
+
+The `fromJSON` method signature is:
+`PureChart.fromJSON(elementId, jsonUrl, overrideOptions = {})`
+
+*   `elementId` (String): The ID of the canvas element.
+*   `jsonUrl` (String): The URL to fetch the JSON configuration from.
+*   `overrideOptions` (Object, optional): An object that will be deeply merged with the fetched JSON configuration. Defaults to an empty object.
 
 ```javascript
+// Example call in README
 PureChart.fromJSON('myCanvasID', 'path/to/data.json')
     .then(chart => {
         if (chart && chart.isValid) console.log("Chart loaded from JSON!");
+    })
+    .catch(error => {
+        console.error("Failed to load chart:", error);
     });
 ```
 Refer to `sample-data.json` in the demo package for a comprehensive example of a JSON configuration file using these new features.
