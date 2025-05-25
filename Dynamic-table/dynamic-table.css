@@ -287,6 +287,39 @@
 }
 /* --- End Header Multi-select Filter --- */
 
+
+/* --- Global Multi-select Filter (within .dynamic-table-filter-control) --- */
+.dynamic-table-filter-control .dt-global-multiselect {
+    min-width: 200px; /* Match other global selects/custom selects */
+    /* Uses .dt-custom-select for base structure, trigger, value, arrow, options */
+}
+
+/* Ensure item styling is applied if not covered by generic .dt-custom-options items */
+/* These are identical to .dt-multiselect-item from header, so could be combined if desired */
+.dt-global-multiselect .dt-custom-options .dt-multiselect-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    user-select: none;
+}
+.dt-global-multiselect .dt-custom-options .dt-multiselect-item:hover {
+    background-color: #f0f5f8;
+}
+.dt-global-multiselect .dt-custom-options .dt-multiselect-item input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+.dt-global-multiselect .dt-custom-options .dt-multiselect-item label {
+    font-weight: normal;
+    color: #333;
+    cursor: pointer;
+    margin-bottom: 0; 
+    flex-grow: 1;
+}
+/* --- End Global Multi-select Filter --- */
+
+
 .dynamic-table thead th:first-child {
     border-top-left-radius: var(--border-radius); /* Or a specific pixel value like 4px */
 }
