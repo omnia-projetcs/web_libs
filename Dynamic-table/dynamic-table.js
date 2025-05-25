@@ -799,24 +799,35 @@ function createDynamicTable(config) {
                         if (multiSelectContainer) {
                             const dropdownDiv = multiSelectContainer.querySelector('.dt-multiselect-dropdown');
                             if (dropdownDiv) {
-                                dropdownDiv.innerHTML = ''; // Clear existing items
+                                // dropdownDiv.innerHTML = ''; // Clear existing items
+
+                                // **** START MODIFICATION ****
+                                // Temporarily set simple text content to test if dropdownDiv can display anything.
+                                dropdownDiv.innerHTML = 'SIMPLEST DIAGNOSTIC TEXT';
+                                // Apply some direct styling to this text if possible, though it's part of innerHTML
+                                dropdownDiv.style.textAlign = 'center';
+                                dropdownDiv.style.paddingTop = '20px'; // Ensure it's not hidden by lack of padding
+                                dropdownDiv.style.color = 'purple'; // Make text color distinct
+                                dropdownDiv.style.fontWeight = 'bold';
+
+                                // Comment out the original item population loop for now:
+                                /*
                                 const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
                                     .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
-                                    .sort((a, b) => {
+                                    .sort((a, b) => { 
                                         if (typeof a === 'number' && typeof b === 'number') return a - b;
                                         return String(a).localeCompare(String(b));
                                     });
 
                                 uniqueValues.forEach(value => {
                                     const checkboxId = `dt-ms-${containerId}-${colConfig.key}-${String(value).replace(/\s+/g, '-')}`;
-                                    
                                     const itemDiv = document.createElement('div');
                                     itemDiv.className = 'dt-multiselect-item';
 
                                     const checkbox = document.createElement('input');
                                     checkbox.type = 'checkbox';
                                     checkbox.id = checkboxId;
-                                    checkbox.value = value;
+                                    checkbox.value = String(value);
                                     checkbox.dataset.columnKey = colConfig.key;
 
                                     const label = document.createElement('label');
@@ -824,35 +835,23 @@ function createDynamicTable(config) {
                                     if (colConfig.format === 'flag') {
                                         label.innerHTML = `<span class="fi fi-${getCanonicalCountryCode(String(value))}"></span> ${String(value)}`;
                                     } else {
-                                        label.textContent = value; 
+                                        label.textContent = String(value);
                                     }
 
                                     itemDiv.appendChild(checkbox);
                                     itemDiv.appendChild(label);
-                                    dropdownDiv.appendChild(itemDiv);
+                                    dropdownDiv.appendChild(itemDiv); 
 
                                     checkbox.addEventListener('change', () => {
-                                        updateMultiSelectValueDisplay(multiSelectContainer); // Header version call
+                                        updateMultiSelectValueDisplay(multiSelectContainer);
                                         processDataInternal();
                                     });
                                 });
-
-                                // **** START NEW DIAGNOSTIC CODE ****
-                                const testItem = document.createElement('div');
-                                testItem.className = 'dt-multiselect-item'; // Ensure it picks up general item diagnostic styles
-                                testItem.textContent = 'HARDCODED TEST ITEM';
-                                // Add specific inline styles to make this one very obvious and override other diagnostics
-                                testItem.style.color = 'black !important';
-                                testItem.style.backgroundColor = 'orange !important';
-                                testItem.style.border = '3px solid darkred !important';
-                                testItem.style.padding = '5px !important';
-                                testItem.style.fontWeight = 'bold !important';
-                                testItem.style.display = 'block !important'; // Ensure it's block, even if .dt-multiselect-item is flex
-                                dropdownDiv.appendChild(testItem);
-                                // **** END NEW DIAGNOSTIC CODE ****
+                                */
+                                // **** END MODIFICATION ****
 
                                 // After populating, update display in case of pre-selected values (future enhancement)
-                                updateMultiSelectValueDisplay(multiSelectContainer);
+                                updateMultiSelectValueDisplay(multiSelectContainer); // This will still try to set "All" on the trigger
                             }
                         }
                     }
