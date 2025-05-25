@@ -773,40 +773,42 @@ function createDynamicTable(config) {
         }
     }
 
-    function updateMultiSelectValueDisplay(multiSelectContainerElement, headerForDefaultAllText = null) {
-        const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
-        // Query for value span, accommodating both header and global multi-select structures
+    function updateMultiSelectValueDisplay(multiSelectContainerElement, currentSelectedValuesArray, headerForDefaultAllText = null) {
         const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value') ||
                           multiSelectContainerElement.querySelector('.dt-custom-select-value');
         if (!valueSpan) return;
 
-        // Determine default text for "All" based on whether it's a header or global filter
-        // For header filters, multiSelectContainerElement is the .dt-header-multiselect
-        // For global, it's .dt-global-multiselect
-        // The `headerForDefaultAllText` parameter is now primarily for global filters.
-        // For header filters, the 'All' text doesn't include the column header.
         const isHeaderFilter = multiSelectContainerElement.classList.contains('dt-header-multiselect');
-        const allText = isHeaderFilter ? 'All' : (headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All');
+        let allText;
+        if (isHeaderFilter) {
+            allText = 'All';
+        } else { // Global filter
+            allText = headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All';
+        }
 
-
-        if (currentSelectedValuesArray) { // New logic using passed array (primarily for header multiselects)
-            if (currentSelectedValuesArray.length === 0) {
-                valueSpan.textContent = allText;
-            } else if (currentSelectedValuesArray.length <= 2) {
+        if (Array.isArray(currentSelectedValuesArray) && currentSelectedValuesArray.length > 0) {
+            if (currentSelectedValuesArray.length <= 2) { // Assuming 2 is the threshold for listing names
                 valueSpan.textContent = currentSelectedValuesArray.join(', ');
             } else {
                 valueSpan.textContent = `${currentSelectedValuesArray.length} selected`;
             }
-        } else { // Fallback / Original logic (for global multiselects or if array not passed)
-            const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
-            if (checkedCheckboxes.length === 0) {
-                valueSpan.textContent = allText;
-            } else if (checkedCheckboxes.length <= 2) {
-                let selectedTexts = [];
-                checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value));
-                valueSpan.textContent = selectedTexts.join(', ');
-            } else {
-                valueSpan.textContent = `${checkedCheckboxes.length} selected`;
+        } else {
+            if (Array.isArray(currentSelectedValuesArray) && currentSelectedValuesArray.length === 0) { // Explicitly empty array
+                 valueSpan.textContent = allText;
+            } else if (!isHeaderFilter && (currentSelectedValuesArray === null || currentSelectedValuesArray === undefined)) {
+                // Fallback for global filters if array not passed: query checkboxes from multiSelectContainerElement
+                const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+                if (checkedCheckboxes.length === 0) {
+                    valueSpan.textContent = allText;
+                } else if (checkedCheckboxes.length <= 2) {
+                    let selectedTexts = [];
+                    checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value)); // Or label text if preferred
+                    valueSpan.textContent = selectedTexts.join(', ');
+                } else {
+                    valueSpan.textContent = `${checkedCheckboxes.length} selected`;
+                }
+            } else { // Default for other cases (e.g. header filter initial call where currentSelectedValuesArray is null or empty array passed for header)
+                 valueSpan.textContent = allText;
             }
         }
     }
@@ -854,12 +856,12 @@ function createDynamicTable(config) {
                             checkedCBs.forEach(cb => selectedValues.push(cb.value));
                             filterSelects[key].value = selectedValues; // Update array of selected values
                             
-                            updateMultiSelectValueDisplay(filterConfig.mainElement, header); 
+                            updateMultiSelectValueDisplay(filterConfig.mainElement, filterSelects[key].value, header);
                             processDataInternal();
                         });
                     });
                     // After populating, update display in case of pre-selected values (none for now)
-                    updateMultiSelectValueDisplay(filterConfig.mainElement, header);
+                    updateMultiSelectValueDisplay(filterConfig.mainElement, null, header);
                 }
 
             } else if (filterConfig.custom) { // Handles other custom types (e.g., flags)
@@ -953,20 +955,18 @@ function createDynamicTable(config) {
                                                 }
                                             });
                                             currentMultiSelectContainer.selectedFilterValues = selectedValues;
-                                            updateMultiSelectValueDisplay(currentMultiSelectContainer, selectedValues); // Pass selectedValues
+                                            updateMultiSelectValueDisplay(currentMultiSelectContainer, selectedValues, null); // Pass selectedValues & null for headerForDefaultAllText
                                         } else {
                                             // Fallback if originalParent isn't set (should not happen for moved dropdowns)
-                                            // This path might be taken if called on a non-moved dropdown, though header ones are always moved now.
-                                            updateMultiSelectValueDisplay(multiSelectContainer);
+                                            updateMultiSelectValueDisplay(multiSelectContainer, null, null); // Fallback call
                                         }
                                         processDataInternal();
                                     });
                                 });
                                 // After populating, initialize display and selectedFilterValues
-                                // Pass an empty array for selectedValues initially, or derive from default checked states if any (none currently)
                                 if (multiSelectContainer) {
                                      multiSelectContainer.selectedFilterValues = []; // Initialize empty
-                                     updateMultiSelectValueDisplay(multiSelectContainer, []);
+                                     updateMultiSelectValueDisplay(multiSelectContainer, null, null); // Initial call for header
                                 }
                             }
                         }
