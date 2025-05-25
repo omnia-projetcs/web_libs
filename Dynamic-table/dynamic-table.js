@@ -821,7 +821,11 @@ function createDynamicTable(config) {
 
                                     const label = document.createElement('label');
                                     label.htmlFor = checkboxId;
-                                    label.textContent = value; 
+                                    if (colConfig.format === 'flag') {
+                                        label.innerHTML = `<span class="fi fi-${getCanonicalCountryCode(String(value))}"></span> ${String(value)}`;
+                                    } else {
+                                        label.textContent = value; 
+                                    }
 
                                     itemDiv.appendChild(checkbox);
                                     itemDiv.appendChild(label);
