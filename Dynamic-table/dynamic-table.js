@@ -35,6 +35,7 @@
  *     - `'regex'`: Displays a text input. Filters using a simplified, case-insensitive wildcard syntax: `*` for multi-character, `?` for single-character. This is converted internally to a regular expression.
  *     - `'select'`: Displays a dropdown select list with unique values from the column.
  *     - `'multiselect'`: Displays a dropdown list with checkboxes, allowing selection of multiple values. Rows match if the column's value is one of the selected options.
+ * @param {'select'|'multiselect'} [config.columns[].globalFilterType='select'] - For a filterable column, specifies if the global filter control should be a standard single-select dropdown or a multi-select dropdown with checkboxes. Defaults to 'select'.
  * @param {string} [config.columns[].format] - Formatting type. Ex: 'currency:EUR', 'date:YYYY/MM/DD', 'percent', 'percent:2', 'percent_neutral', 'percent_neutral:2'.
  * @param {function} [config.columns[].render] - Custom rendering function for the cell.
  * @param {string} [config.columns[].renderAs='text'] - Rendering type: 'text' or 'chart'.
@@ -380,46 +381,87 @@ function createDynamicTable(config) {
                 filterLabel.textContent = `Filter by ${col.header}:`;
                 filterDiv.appendChild(filterLabel);
 
-                if (col.format === 'flag') {
-                    filterDiv.classList.add('custom-flag-filter');
-                    const customSelect = document.createElement('div');
-                    customSelect.id = `${containerId}-filter-${col.key}`;
-                    customSelect.className = 'dt-custom-select';
-                    customSelect.dataset.filterKey = col.key;
-                    const trigger = document.createElement('div');
-                    trigger.className = 'dt-custom-select-trigger';
-                    const triggerValue = document.createElement('span');
-                    triggerValue.className = 'dt-custom-select-value';
-                    triggerValue.textContent = 'All';
-                    trigger.appendChild(triggerValue);
-                    const arrow = document.createElement('span');
-                    arrow.className = 'dt-custom-arrow';
-                    arrow.innerHTML = '&#9660;';
-                    trigger.appendChild(arrow);
-                    customSelect.appendChild(trigger);
-                    const optionsContainer = document.createElement('div');
-                    optionsContainer.className = 'dt-custom-options';
-                    optionsContainer.style.display = 'none';
-                    customSelect.appendChild(optionsContainer);
-                    filterDiv.appendChild(customSelect);
+                const gFilterType = col.globalFilterType || 'select';
+
+                if (gFilterType === 'multiselect') {
+                    const globalMultiSelectDiv = document.createElement('div');
+                    globalMultiSelectDiv.className = 'dt-global-multiselect dt-custom-select'; 
+                    globalMultiSelectDiv.dataset.filterKey = col.key;
+
+                    const triggerDiv = document.createElement('div');
+                    triggerDiv.className = 'dt-custom-select-trigger';
+
+                    const valueSpan = document.createElement('span');
+                    valueSpan.className = 'dt-custom-select-value'; 
+                    valueSpan.textContent = 'All ' + col.header; 
+
+                    const arrowSpan = document.createElement('span');
+                    arrowSpan.className = 'dt-custom-arrow'; 
+                    arrowSpan.innerHTML = '&#9660;';
+
+                    triggerDiv.appendChild(valueSpan);
+                    triggerDiv.appendChild(arrowSpan);
+
+                    const dropdownDiv = document.createElement('div');
+                    dropdownDiv.className = 'dt-custom-options'; 
+                    dropdownDiv.style.display = 'none';
+
+                    globalMultiSelectDiv.appendChild(triggerDiv);
+                    globalMultiSelectDiv.appendChild(dropdownDiv);
+                    filterDiv.appendChild(globalMultiSelectDiv);
+
                     filterSelects[col.key] = {
-                        custom: true,
-                        mainElement: customSelect,
-                        triggerValueElement: triggerValue,
-                        optionsContainer: optionsContainer,
-                        value: ''
+                        custom: true, 
+                        isGlobalMultiSelect: true, 
+                        mainElement: globalMultiSelectDiv,
+                        triggerValueElement: valueSpan,
+                        optionsContainer: dropdownDiv,
+                        value: [] 
                     };
-                } else {
-                    const select = document.createElement('select');
-                    select.id = `${containerId}-filter-${col.key}`;
-                    select.dataset.filterKey = col.key;
-                    select.classList.add('dt-common-select');
-                    const defaultOption = document.createElement('option');
-                    defaultOption.value = '';
-                    defaultOption.textContent = `All ${col.header}`;
-                    select.appendChild(defaultOption);
-                    filterDiv.appendChild(select);
-                    filterSelects[col.key] = { custom: false, element: select };
+
+                } else { // Handles 'select' and default cases (including flags)
+                    if (col.format === 'flag') {
+                        filterDiv.classList.add('custom-flag-filter');
+                        const customSelect = document.createElement('div');
+                        customSelect.id = `${containerId}-filter-${col.key}`;
+                        customSelect.className = 'dt-custom-select';
+                        customSelect.dataset.filterKey = col.key;
+                        const trigger = document.createElement('div');
+                        trigger.className = 'dt-custom-select-trigger';
+                        const triggerValue = document.createElement('span');
+                        triggerValue.className = 'dt-custom-select-value';
+                        triggerValue.textContent = 'All';
+                        trigger.appendChild(triggerValue);
+                        const arrow = document.createElement('span');
+                        arrow.className = 'dt-custom-arrow';
+                        arrow.innerHTML = '&#9660;';
+                        trigger.appendChild(arrow);
+                        customSelect.appendChild(trigger);
+                        const optionsContainer = document.createElement('div');
+                        optionsContainer.className = 'dt-custom-options';
+                        optionsContainer.style.display = 'none';
+                        customSelect.appendChild(optionsContainer);
+                        filterDiv.appendChild(customSelect);
+                        filterSelects[col.key] = {
+                            custom: true,
+                            isGlobalMultiSelect: false, // Explicitly false
+                            mainElement: customSelect,
+                            triggerValueElement: triggerValue,
+                            optionsContainer: optionsContainer,
+                            value: ''
+                        };
+                    } else {
+                        const select = document.createElement('select');
+                        select.id = `${containerId}-filter-${col.key}`;
+                        select.dataset.filterKey = col.key;
+                        select.classList.add('dt-common-select');
+                        const defaultOption = document.createElement('option');
+                        defaultOption.value = '';
+                        defaultOption.textContent = `All ${col.header}`;
+                        select.appendChild(defaultOption);
+                        filterDiv.appendChild(select);
+                        filterSelects[col.key] = { custom: false, isGlobalMultiSelect: false, element: select }; // Explicitly false
+                    }
                 }
                 
                 controlsWrapper.appendChild(filterDiv);
@@ -683,13 +725,15 @@ function createDynamicTable(config) {
         }
     }
 
-    function updateMultiSelectValueDisplay(multiSelectContainerElement) {
+    function updateMultiSelectValueDisplay(multiSelectContainerElement, headerForDefaultAllText = null) {
         const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
-        const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value');
+        // Query for value span, accommodating both header and global multi-select structures
+        const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value') || 
+                          multiSelectContainerElement.querySelector('.dt-custom-select-value');
         if (!valueSpan) return;
 
         if (checkedCheckboxes.length === 0) {
-            valueSpan.textContent = 'All';
+            valueSpan.textContent = headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All';
         } else if (checkedCheckboxes.length <= 2) { 
             let selectedTexts = [];
             checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value));
@@ -784,10 +828,12 @@ function createDynamicTable(config) {
                                     dropdownDiv.appendChild(itemDiv);
 
                                     checkbox.addEventListener('change', () => {
-                                        updateMultiSelectValueDisplay(multiSelectContainer);
+                                        updateMultiSelectValueDisplay(multiSelectContainer); // Header version call
                                         processDataInternal();
                                     });
                                 });
+                                // After populating, update display in case of pre-selected values (future enhancement)
+                                updateMultiSelectValueDisplay(multiSelectContainer);
                             }
                         }
                     }
@@ -905,33 +951,45 @@ function createDynamicTable(config) {
         if (filterMode === 'header') {
             const activeHeaderFilters = {};
             if (thead) { // Ensure thead exists
-                // Handle text, regex, and single select inputs
-                const headerFilterInputs = thead.querySelectorAll('.dt-header-filter-input, .dt-header-filter-select');
-                headerFilterInputs.forEach(input => {
-                    const columnKey = input.dataset.columnKey;
-                    const value = input.value.trim();
-                    const originalColumn = columns.find(col => col.key === columnKey);
+                columns.forEach(colConfig => {
+                    if (colConfig.filterable && colConfig.headerFilterType && colConfig.key) {
+                        const columnKey = colConfig.key;
 
-                    if (value && originalColumn && originalColumn.headerFilterType && originalColumn.headerFilterType !== 'multiselect') { // Exclude multiselect here
-                        activeHeaderFilters[columnKey] = {
-                            value: value,
-                            type: originalColumn.headerFilterType
-                        };
-                    }
-                });
-
-                // Handle multiselect inputs
-                const multiSelectContainers = thead.querySelectorAll('.dt-header-multiselect');
-                multiSelectContainers.forEach(container => {
-                    const columnKey = container.dataset.columnKey;
-                    const checkedCheckboxes = container.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
-                    const originalColumn = columns.find(col => col.key === columnKey);
-
-                    if (checkedCheckboxes.length > 0 && originalColumn) {
-                        activeHeaderFilters[columnKey] = {
-                            values: Array.from(checkedCheckboxes).map(cb => cb.value), // Store array of selected values
-                            type: 'multiselect'
-                        };
+                        switch (colConfig.headerFilterType) {
+                            case 'text':
+                            case 'regex':
+                                const inputElement = thead.querySelector(`.dt-header-filter-input[data-column-key="${columnKey}"]`);
+                                if (inputElement && inputElement.value.trim()) {
+                                    activeHeaderFilters[columnKey] = {
+                                        value: inputElement.value.trim(),
+                                        type: colConfig.headerFilterType
+                                    };
+                                }
+                                break;
+                            case 'select':
+                                const selectElement = thead.querySelector(`.dt-header-filter-select[data-column-key="${columnKey}"]`);
+                                if (selectElement && selectElement.value) {
+                                    activeHeaderFilters[columnKey] = {
+                                        value: selectElement.value,
+                                        type: 'select'
+                                    };
+                                }
+                                break;
+                            case 'multiselect':
+                                const multiSelectContainer = thead.querySelector(`.dt-header-multiselect[data-column-key="${columnKey}"]`);
+                                if (multiSelectContainer) {
+                                    const checkedCheckboxes = multiSelectContainer.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+                                    if (checkedCheckboxes.length > 0) {
+                                        let selectedValues = [];
+                                        checkedCheckboxes.forEach(cb => selectedValues.push(cb.value));
+                                        activeHeaderFilters[columnKey] = {
+                                            values: selectedValues, // Array of selected string values
+                                            type: 'multiselect'
+                                        };
+                                    }
+                                }
+                                break;
+                        }
                     }
                 });
             }
@@ -1217,12 +1275,14 @@ function createDynamicTable(config) {
         
         // Global click listener to close custom dropdowns (flags, column visibility, AND multiselect)
         document.addEventListener('click', (event) => {
-            // For custom flag filter dropdowns
-            Object.values(filterSelects).forEach(filterConfig => {
-                if (filterConfig.custom && filterConfig.mainElement.classList.contains('open')) {
-                    if (!filterConfig.mainElement.contains(event.target)) {
-                        filterConfig.mainElement.classList.remove('open');
-                        filterConfig.optionsContainer.style.display = 'none';
+            // For custom flag filter dropdowns AND global multi-selects
+            Object.values(filterSelects).forEach(fConfig => {
+                if (fConfig.custom && fConfig.mainElement.classList.contains('open')) { // .open class is key
+                    if (!fConfig.mainElement.contains(event.target)) {
+                        fConfig.mainElement.classList.remove('open');
+                        if (fConfig.optionsContainer) { // Check as not all custom might have it
+                           fConfig.optionsContainer.style.display = 'none';
+                        }
                     }
                 }
             });
@@ -1251,48 +1311,39 @@ function createDynamicTable(config) {
         });
 
 
-        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
-            if (filterConfig.custom) {
-                const mainElement = filterConfig.mainElement;
-                const trigger = mainElement.querySelector('.dt-custom-select-trigger');
-                const optionsContainer = filterConfig.optionsContainer;
+        Object.entries(filterSelects).forEach(([key, fConfig]) => {
+            if (fConfig.custom) { // Handles both custom flag filters and global multi-selects
+                const mainElement = fConfig.mainElement;
+                const trigger = mainElement.querySelector('.dt-custom-select-trigger'); 
+                const optionsContainer = fConfig.optionsContainer;
 
-                if (trigger) {
+                if (trigger && optionsContainer) {
                     trigger.addEventListener('click', (event) => {
-                        event.stopPropagation(); // Prevent click from immediately closing due to document listener
+                        event.stopPropagation();
                         const isOpen = mainElement.classList.contains('open');
-                        // Close all other custom dropdowns
-                        Object.values(filterSelects).forEach(fc => {
-                            if (fc.custom && fc.mainElement !== mainElement) {
-                                fc.mainElement.classList.remove('open');
-                                fc.optionsContainer.style.display = 'none';
+
+                        // Close ALL other custom global dropdowns (flags and other multi-selects)
+                        Object.values(filterSelects).forEach(otherFConfig => {
+                            if (otherFConfig.custom && otherFConfig.mainElement !== mainElement) {
+                                otherFConfig.mainElement.classList.remove('open');
+                                if (otherFConfig.optionsContainer) {
+                                    otherFConfig.optionsContainer.style.display = 'none';
+                                }
                             }
                         });
-                        // Toggle current dropdown
+
                         mainElement.classList.toggle('open', !isOpen);
                         optionsContainer.style.display = isOpen ? 'none' : 'block';
                     });
                 }
-            } else {
-                // Standard select
-                if (filterConfig.element) {
-                    filterConfig.element.addEventListener('change', processDataInternal);
+            } else { // Standard single-select global filters
+                if (fConfig.element) {
+                    fConfig.element.addEventListener('change', processDataInternal);
                 }
             }
         });
 
-        // Global click listener to close custom dropdowns
-        document.addEventListener('click', (event) => {
-            Object.values(filterSelects).forEach(filterConfig => {
-                if (filterConfig.custom && filterConfig.mainElement.classList.contains('open')) {
-                    if (!filterConfig.mainElement.contains(event.target)) {
-                        filterConfig.mainElement.classList.remove('open');
-                        filterConfig.optionsContainer.style.display = 'none';
-                    }
-                }
-            });
-        });
-
+        // The global document click listener for closing dropdowns is already updated above.
 
         if (rowsPerPageSelectElement) {
             rowsPerPageSelectElement.addEventListener('change', function() {
@@ -1316,22 +1367,32 @@ function createDynamicTable(config) {
         }
 
         if (thead) {
-            thead.querySelectorAll('th.sortable').forEach(header => {
-                 header.addEventListener('click', (event) => { // Added event parameter
-                    // Check if the click target is within a filter placeholder
-                    if (event.target.closest('.dt-header-filter-placeholder')) {
-                        return; // Don't sort if click is on or in a filter input
-                    }
+            thead.addEventListener('click', (event) => {
+                const target = event.target;
+                const sortableHeader = target.closest('th.sortable');
 
-                    const columnKey = header.dataset.column;
-                    if (!columnKey) return; // Should not happen if 'sortable' class is only on valid columns
-                    if (sortColumn === columnKey) {
-                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        sortColumn = columnKey; sortDirection = 'asc';
-                    }
-                    updateSortIndicatorsInternal(); processDataInternal();
-                });
+                if (!sortableHeader) {
+                    return; // Click was not on a sortable header cell or its child
+                }
+
+                // Check if the click originated from within a filter placeholder
+                if (target.closest('.dt-header-filter-placeholder')) {
+                    return; // Don't sort if click is on or in a filter input
+                }
+
+                const columnKey = sortableHeader.dataset.column;
+                if (!columnKey) {
+                    return; // Should not happen if 'sortable' class is on a valid column
+                }
+
+                if (sortColumn === columnKey) {
+                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortColumn = columnKey;
+                    sortDirection = 'asc';
+                }
+                updateSortIndicatorsInternal();
+                processDataInternal();
             });
         }
         

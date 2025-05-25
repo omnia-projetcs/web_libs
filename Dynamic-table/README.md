@@ -175,4 +175,22 @@ Example column definition:
 { key: 'product_name', header: 'Product', filterable: true, headerFilterType: 'text' }
 ```
 
+### Global Multi-select Filters
+
+For columns using global filters (i.e., when `filterMode` is `'global'`), you can enable a multi-select interface for specific filterable columns:
+
+*   **`globalFilterType`** (in column definition):
+    *   `'select'` (default): The global filter for this column will be a standard single-choice dropdown.
+    *   `'multiselect'`: The global filter for this column will be a multi-select dropdown with checkboxes, allowing multiple values to be chosen. Rows match if the column's value is one of the selected options.
+
+Example column definition for a global multi-select filter:
+```javascript
+{ 
+    key: 'status', 
+    header: 'Status', 
+    filterable: true, 
+    globalFilterType: 'multiselect' 
+}
+```
+
 ---
