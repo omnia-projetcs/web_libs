@@ -135,12 +135,15 @@
                         header: 'Flag',
                         format: 'flag',
                         filterable: true,
-                        sortable: true
+                        sortable: true,
+                        headerFilterType: 'select' // Added for Status-like column
                     },
                     {
                         key: 'name', // Ensured key exists
                         header: 'Index', 
-                        sortable: true, 
+                        sortable: true,
+                        filterable: true, // Added filterable
+                        headerFilterType: 'text', // Added headerFilterType
                         render: (value, rowData, cell) => {
                             const link = document.createElement('a');
                             link.href = rowData.symbol ? `/light/shard/${rowData.symbol}/` : '#'; 
@@ -171,7 +174,9 @@
                     { 
                         key: 'ytd', 
                         header: 'YTD', 
-                        sortable: true, 
+                        sortable: true,
+                        filterable: true, // Added filterable
+                        headerFilterType: 'regex', // Added headerFilterType for regex demo
                         format: 'percent:2' // With coloring
                     },
                     { 
@@ -191,7 +196,8 @@
                 // showColumnVisibilitySelector: true, // Default behavior, selector will be shown. Explicitly omit to test default.
                 tableMaxHeight: '350px',
                 defaultSortColumn: 'name',
-                defaultSortDirection: 'asc'
+                defaultSortDirection: 'asc',
+                filterMode: 'header' // Set initial filter mode to header for this table
             });
         } else {
             document.getElementById('table-market-demo').innerHTML = '<p>"marketData" not found.</p>'; // Translated
@@ -237,7 +243,7 @@
                 jsonData: sampleData.userData,
                 columns: [
                     { key: 'id', header: 'ID', sortable: true },
-                    { key: 'firstName', header: 'First Name', sortable: true, filterable: true }, // Translated
+                    { key: 'firstName', header: 'First Name', sortable: true, filterable: true, headerFilterType: 'text' }, // Translated & Added headerFilterType
                     { key: 'lastName', header: 'Last Name', sortable: true, filterable: true }, // Translated
                     { key: 'email', header: 'Email', visible: false },
                     { key: 'ip_address', header: 'IP Address', visible: false },

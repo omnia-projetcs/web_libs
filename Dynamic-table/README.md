@@ -150,4 +150,31 @@ createDynamicTable({
 * `PureChart.js`: Required if you use `renderAs: 'chart'`. Ensure it's loaded before `dynamic-table.js`.
 * A CSS file (e.g., `dynamic-table.css`): Necessary for styling the table, controls, and pagination.
 
+### Header Filtering
+
+In addition to the global search and filter controls, Dynamic Table supports a header filtering mode where filter inputs are placed directly below each column's title.
+
+**Enabling Header Filtering:**
+
+To use header filtering, set the global configuration option:
+*   `filterMode`:
+    *   `'global'` (default): Uses the standard global search and filter dropdowns at the top of the table.
+    *   `'header'`: Activates filter inputs within each column header.
+
+A UI button is also provided in the control bar to toggle between these modes dynamically.
+
+**Configuring Column Header Filters:**
+
+When `filterMode` is set to `'header'` (either initially or via the toggle), you can specify the type of filter for each column using the `headerFilterType` property in its column definition. The column must also have `filterable: true`.
+
+*   `headerFilterType: 'text'`: Displays a simple text input. Filters by case-insensitive text matching.
+*   `headerFilterType: 'regex'`: Displays a text input where you can type a JavaScript regular expression for more advanced filtering (case-insensitive by default).
+*   `headerFilterType: 'select'`: Displays a dropdown select list. The options are dynamically populated with the unique values from that column's data.
+*   `headerFilterType: 'multiselect'`: (Currently a placeholder, full implementation pending).
+
+Example column definition:
+```javascript
+{ key: 'product_name', header: 'Product', filterable: true, headerFilterType: 'text' }
+```
+
 ---

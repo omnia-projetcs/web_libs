@@ -71,12 +71,15 @@
                     header: 'Flag',
                     format: 'flag',
                     filterable: true,
-                    sortable: true
+                    sortable: true,
+                    headerFilterType: 'select' // Added for Status-like column
                 },
                 {
                     key: 'name', // Ensured key exists
                     header: 'Index', 
-                    sortable: true, 
+                    sortable: true,
+                    filterable: true, // Added filterable
+                    headerFilterType: 'text', // Added headerFilterType
                     render: (value, rowData, cell) => {
                         const link = document.createElement('a');
                         link.href = rowData.symbol ? `/light/shard/${rowData.symbol}/` : '#'; 
@@ -89,7 +92,7 @@
                 },
                 { 
                     key: 'oneYearChart', // Added key
-                    header: '1 Year Chart', 
+                    header: '1 Year Chart',
                     renderAs: 'chart',
                     chartConfig: {
                         type: 'line',
@@ -104,9 +107,17 @@
                         }
                     }
                 },
-                { key: 'ytd', header: 'YTD', sortable: true, format: 'percent:2' },
+                { 
+                    key: 'ytd', 
+                    header: 'YTD', 
+                    sortable: true, 
+                    format: 'percent:2',
+                    filterable: true, // Added filterable
+                    headerFilterType: 'regex' // Added headerFilterType for regex demo
+                },
                 { key: 'y1', header: '1 Year', sortable: true, format: 'percent_neutral:2' },              
             ],
+            filterMode: 'header', // Set initial filter mode to header
             uniformChartHeight: 45,
             // showColumnVisibilitySelector: true, // Default is true, so selector will be shown
             rowsPerPage: 5,
