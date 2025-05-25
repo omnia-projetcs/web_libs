@@ -523,7 +523,7 @@
 .dt-column-selector-dropdown {
     position: absolute;
     top: 100%; /* Position below the button */
-    left: 0; 
+    right: 0; 
     /* If the button might be close to the right edge, 'right: 0;' might be better,
        or JS positioning. For now, left: 0 is standard. */
     background-color: #fff;
