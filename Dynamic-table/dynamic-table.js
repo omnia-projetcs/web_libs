@@ -129,6 +129,23 @@ function createDynamicTable(config) {
         filterSelects = {}, resultsCountSpan, paginationWrapper, prevButton,
         nextButton, pageInfoSpan, rowsPerPageSelectElement, columnSelectorWrapper;
 
+    // Helper function to close and reattach a moved header dropdown
+    function closeMovedHeaderDropdown(dropdownDiv) {
+        if (dropdownDiv && dropdownDiv.originalParent && dropdownDiv.classList.contains('dt-dropdown-moved-to-body')) {
+            dropdownDiv.originalParent.appendChild(dropdownDiv);
+            dropdownDiv.classList.remove('dt-dropdown-moved-to-body');
+            dropdownDiv.style.position = '';
+            dropdownDiv.style.top = '';
+            dropdownDiv.style.left = '';
+            dropdownDiv.style.width = '';
+            dropdownDiv.style.zIndex = '';
+            dropdownDiv.style.display = 'none'; // Ensure it's hidden after reattaching
+        } else if (dropdownDiv) {
+            // If not moved (or originalParent not set), just hide it
+            dropdownDiv.style.display = 'none';
+        }
+    }
+
     function convertWildcardToRegex(pattern) {
         let regexString = "";
         for (const char of pattern) {
@@ -251,15 +268,45 @@ function createDynamicTable(config) {
                                 multiSelectDiv.addEventListener('click', (e) => e.stopPropagation());
                                 
                                 triggerDiv.addEventListener('click', (event) => {
-                                    // event.stopPropagation(); // Already stopped by multiSelectDiv's listener for the outer box
-                                    const currentlyOpen = dropdownDiv.style.display === 'block';
-                                    // Close other open multiselects first
-                                    if (thead) { // Ensure thead is available
-                                        thead.querySelectorAll('.dt-header-multiselect .dt-multiselect-dropdown').forEach(d => {
-                                            if (d !== dropdownDiv) d.style.display = 'none';
+                                    const isCurrentlyOpen = dropdownDiv.classList.contains('dt-dropdown-moved-to-body') || dropdownDiv.style.display === 'block';
+
+                                    // Close other open multiselect dropdowns first
+                                    // This includes those potentially moved to the body
+                                    document.querySelectorAll('.dt-multiselect-dropdown.dt-dropdown-moved-to-body').forEach(movedDd => {
+                                        if (movedDd !== dropdownDiv) {
+                                            closeMovedHeaderDropdown(movedDd);
+                                        }
+                                    });
+                                    if (thead) {
+                                        thead.querySelectorAll('.dt-header-multiselect .dt-multiselect-dropdown').forEach(headerDd => {
+                                            if (headerDd !== dropdownDiv && headerDd.style.display === 'block') { // Only if it's not already moved
+                                                headerDd.style.display = 'none';
+                                            }
                                         });
                                     }
-                                    dropdownDiv.style.display = currentlyOpen ? 'none' : 'block';
+
+                                    if (isCurrentlyOpen) {
+                                        closeMovedHeaderDropdown(dropdownDiv);
+                                    } else {
+                                        // Store original parent if not already stored
+                                        if (!dropdownDiv.originalParent) {
+                                            dropdownDiv.originalParent = multiSelectDiv;
+                                        }
+
+                                        const rect = triggerDiv.getBoundingClientRect();
+                                        const top = rect.bottom + window.scrollY;
+                                        const left = rect.left + window.scrollX;
+                                        const width = rect.width;
+
+                                        document.body.appendChild(dropdownDiv);
+                                        dropdownDiv.classList.add('dt-dropdown-moved-to-body');
+                                        dropdownDiv.style.position = 'absolute';
+                                        dropdownDiv.style.top = top + 'px';
+                                        dropdownDiv.style.left = left + 'px';
+                                        dropdownDiv.style.width = width + 'px';
+                                        dropdownDiv.style.zIndex = '1050'; // Ensure it's above other elements
+                                        dropdownDiv.style.display = 'block';
+                                    }
                                 });
                                 
                                 filterPlaceholder.appendChild(multiSelectDiv);
@@ -1286,17 +1333,28 @@ function createDynamicTable(config) {
                 }
             }
             
-            // For header multi-select dropdowns
-            if (thead) { // Check if thead exists, relevant if table is not yet fully built or is destroyed
-                thead.querySelectorAll('.dt-header-multiselect').forEach(msContainer => {
-                    const dropdown = msContainer.querySelector('.dt-multiselect-dropdown');
-                    if (dropdown && dropdown.style.display === 'block') {
-                        if (!msContainer.contains(event.target)) {
-                            dropdown.style.display = 'none';
-                        }
-                    }
-                });
+            // For header multi-select dropdowns (both in header and moved to body)
+            const allHeaderDropdowns = [];
+            if (thead) {
+                thead.querySelectorAll('.dt-header-multiselect .dt-multiselect-dropdown').forEach(dd => allHeaderDropdowns.push(dd));
             }
+            document.querySelectorAll('.dt-multiselect-dropdown.dt-dropdown-moved-to-body').forEach(dd => {
+                if (!allHeaderDropdowns.includes(dd)) { // Avoid duplicates if it was just moved and also in thead query
+                    allHeaderDropdowns.push(dd);
+                }
+            });
+
+            allHeaderDropdowns.forEach(dropdown => {
+                // Check if it's currently visible (either as block or because it's moved to body)
+                const isVisible = dropdown.style.display === 'block' || dropdown.classList.contains('dt-dropdown-moved-to-body');
+                if (isVisible) {
+                    const msContainer = dropdown.originalParent || dropdown.closest('.dt-header-multiselect'); // Get container, whether moved or not
+                    // If click is outside the dropdown AND its original trigger container (msContainer)
+                    if (msContainer && !msContainer.contains(event.target) && !dropdown.contains(event.target)) {
+                        closeMovedHeaderDropdown(dropdown);
+                    }
+                }
+            });
         });
 
 
