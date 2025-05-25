@@ -296,14 +296,15 @@ function createDynamicTable(config) {
                                         const rect = triggerDiv.getBoundingClientRect();
                                         const top = rect.bottom + window.scrollY;
                                         const left = rect.left + window.scrollX;
-                                        const width = rect.width;
+                                        const width = rect.width; // Capture width from trigger
 
                                         document.body.appendChild(dropdownDiv);
                                         dropdownDiv.classList.add('dt-dropdown-moved-to-body');
                                         dropdownDiv.style.position = 'absolute';
                                         dropdownDiv.style.top = top + 'px';
                                         dropdownDiv.style.left = left + 'px';
-                                        dropdownDiv.style.width = width + 'px';
+                                        // dropdownDiv.style.width = width + 'px'; // REMOVED
+                                        dropdownDiv.style.minWidth = width + 'px'; // ADDED
                                         dropdownDiv.style.zIndex = '1050'; // Ensure it's above other elements
                                         dropdownDiv.style.display = 'block';
                                     }
@@ -775,25 +776,45 @@ function createDynamicTable(config) {
     function updateMultiSelectValueDisplay(multiSelectContainerElement, headerForDefaultAllText = null) {
         const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
         // Query for value span, accommodating both header and global multi-select structures
-        const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value') || 
+        const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value') ||
                           multiSelectContainerElement.querySelector('.dt-custom-select-value');
         if (!valueSpan) return;
 
-        if (checkedCheckboxes.length === 0) {
-            valueSpan.textContent = headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All';
-        } else if (checkedCheckboxes.length <= 2) { 
-            let selectedTexts = [];
-            checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value));
-            valueSpan.textContent = selectedTexts.join(', ');
-        } else {
-            valueSpan.textContent = `${checkedCheckboxes.length} selected`;
+        // Determine default text for "All" based on whether it's a header or global filter
+        // For header filters, multiSelectContainerElement is the .dt-header-multiselect
+        // For global, it's .dt-global-multiselect
+        // The `headerForDefaultAllText` parameter is now primarily for global filters.
+        // For header filters, the 'All' text doesn't include the column header.
+        const isHeaderFilter = multiSelectContainerElement.classList.contains('dt-header-multiselect');
+        const allText = isHeaderFilter ? 'All' : (headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All');
+
+
+        if (currentSelectedValuesArray) { // New logic using passed array (primarily for header multiselects)
+            if (currentSelectedValuesArray.length === 0) {
+                valueSpan.textContent = allText;
+            } else if (currentSelectedValuesArray.length <= 2) {
+                valueSpan.textContent = currentSelectedValuesArray.join(', ');
+            } else {
+                valueSpan.textContent = `${currentSelectedValuesArray.length} selected`;
+            }
+        } else { // Fallback / Original logic (for global multiselects or if array not passed)
+            const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+            if (checkedCheckboxes.length === 0) {
+                valueSpan.textContent = allText;
+            } else if (checkedCheckboxes.length <= 2) {
+                let selectedTexts = [];
+                checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value));
+                valueSpan.textContent = selectedTexts.join(', ');
+            } else {
+                valueSpan.textContent = `${checkedCheckboxes.length} selected`;
+            }
         }
     }
 
     function populateFilterOptions() {
         Object.entries(filterSelects).forEach(([key, filterConfig]) => {
             const columnDef = columns.find(c => c.key === key);
-            const header = columnDef ? columnDef.header : ''; // Used for 'All X' text
+            const header = columnDef ? columnDef.header : ''; // Used for 'All X' text for global filters
 
             if (filterConfig.custom && filterConfig.isGlobalMultiSelect) {
                 const optionsContainer = filterConfig.optionsContainer; // The div to populate
@@ -920,12 +941,33 @@ function createDynamicTable(config) {
                                     dropdownDiv.appendChild(itemDiv);
 
                                     checkbox.addEventListener('change', () => {
-                                        updateMultiSelectValueDisplay(multiSelectContainer); // Header version call
+                                        const currentDropdownDiv = checkbox.closest('.dt-multiselect-dropdown');
+                                        const currentMultiSelectContainer = currentDropdownDiv ? currentDropdownDiv.originalParent : null;
+
+                                        if (currentMultiSelectContainer) {
+                                            const allCheckboxesInDropdown = currentDropdownDiv.querySelectorAll('input[type="checkbox"]');
+                                            let selectedValues = [];
+                                            allCheckboxesInDropdown.forEach(cb => {
+                                                if (cb.checked) {
+                                                    selectedValues.push(cb.value);
+                                                }
+                                            });
+                                            currentMultiSelectContainer.selectedFilterValues = selectedValues;
+                                            updateMultiSelectValueDisplay(currentMultiSelectContainer, selectedValues); // Pass selectedValues
+                                        } else {
+                                            // Fallback if originalParent isn't set (should not happen for moved dropdowns)
+                                            // This path might be taken if called on a non-moved dropdown, though header ones are always moved now.
+                                            updateMultiSelectValueDisplay(multiSelectContainer);
+                                        }
                                         processDataInternal();
                                     });
                                 });
-                                // After populating, update display in case of pre-selected values (future enhancement)
-                                updateMultiSelectValueDisplay(multiSelectContainer);
+                                // After populating, initialize display and selectedFilterValues
+                                // Pass an empty array for selectedValues initially, or derive from default checked states if any (none currently)
+                                if (multiSelectContainer) {
+                                     multiSelectContainer.selectedFilterValues = []; // Initialize empty
+                                     updateMultiSelectValueDisplay(multiSelectContainer, []);
+                                }
                             }
                         }
                     }
@@ -1008,14 +1050,24 @@ function createDynamicTable(config) {
                             case 'multiselect':
                                 const multiSelectContainer = thead.querySelector(`.dt-header-multiselect[data-column-key="${columnKey}"]`);
                                 if (multiSelectContainer) {
-                                    const checkedCheckboxes = multiSelectContainer.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
-                                    if (checkedCheckboxes.length > 0) {
-                                        let selectedValues = [];
-                                        checkedCheckboxes.forEach(cb => selectedValues.push(cb.value));
-                                        activeHeaderFilters[columnKey] = {
-                                            values: selectedValues, // Array of selected string values
-                                            type: 'multiselect'
-                                        };
+                                    if (multiSelectContainer.selectedFilterValues && Array.isArray(multiSelectContainer.selectedFilterValues)) {
+                                        if (multiSelectContainer.selectedFilterValues.length > 0) {
+                                            activeHeaderFilters[columnKey] = {
+                                                values: multiSelectContainer.selectedFilterValues,
+                                                type: 'multiselect'
+                                            };
+                                        }
+                                    } else {
+                                        // Fallback if selectedFilterValues is not set (e.g., initial load before interaction)
+                                        const checkedCheckboxes = multiSelectContainer.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+                                        if (checkedCheckboxes.length > 0) {
+                                            let fallbackSelectedValues = [];
+                                            checkedCheckboxes.forEach(cb => fallbackSelectedValues.push(cb.value));
+                                            activeHeaderFilters[columnKey] = {
+                                                values: fallbackSelectedValues,
+                                                type: 'multiselect'
+                                            };
+                                        }
                                     }
                                 }
                                 break;

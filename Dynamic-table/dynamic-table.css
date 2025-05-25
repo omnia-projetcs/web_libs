@@ -284,8 +284,19 @@
     cursor: pointer;
     margin-bottom: 0; /* Override general label styles if any */
     flex-grow: 1; /* Allow label to take space */
+    white-space: nowrap;     /* ADDED for ellipsis */
+    overflow: hidden;        /* ADDED for ellipsis */
+    text-overflow: ellipsis; /* ADDED for ellipsis */
 }
 /* --- End Header Multi-select Filter --- */
+
+/* Specific styles for body-appended header multiselect dropdowns */
+.dt-multiselect-dropdown.dt-dropdown-moved-to-body {
+    width: auto; /* Allows dropdown to shrink to content or expand up to max-width */
+    max-width: 350px; /* Prevents dropdown from becoming excessively wide */
+    /* min-width is set by JS to match the trigger's width */
+    /* overflow-x: hidden; /* Optional: if item content itself can't be controlled, but ellipsis on items is preferred */
+}
 
 
 /* --- Global Multi-select Filter (within .dynamic-table-filter-control) --- */
