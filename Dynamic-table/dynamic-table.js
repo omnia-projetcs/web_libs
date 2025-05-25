@@ -799,18 +799,23 @@ function createDynamicTable(config) {
                         if (multiSelectContainer) {
                             const dropdownDiv = multiSelectContainer.querySelector('.dt-multiselect-dropdown');
                             if (dropdownDiv) {
-                                // dropdownDiv.innerHTML = ''; // Clear existing items
-
                                 // **** START MODIFICATION ****
-                                // Temporarily set simple text content to test if dropdownDiv can display anything.
-                                dropdownDiv.innerHTML = 'SIMPLEST DIAGNOSTIC TEXT';
-                                // Apply some direct styling to this text if possible, though it's part of innerHTML
-                                dropdownDiv.style.textAlign = 'center';
-                                dropdownDiv.style.paddingTop = '20px'; // Ensure it's not hidden by lack of padding
-                                dropdownDiv.style.color = 'purple'; // Make text color distinct
-                                dropdownDiv.style.fontWeight = 'bold';
+                                dropdownDiv.innerHTML = ''; // Clear it first
 
-                                // Comment out the original item population loop for now:
+                                // Apply aggressive inline styles to dropdownDiv itself
+                                dropdownDiv.style.setProperty('background', 'lightpink', 'important');
+                                dropdownDiv.style.setProperty('min-height', '50px', 'important');
+                                dropdownDiv.style.setProperty('height', 'auto', 'important');
+                                dropdownDiv.style.setProperty('overflow', 'visible', 'important');
+                                dropdownDiv.style.setProperty('color', 'black', 'important');
+                                dropdownDiv.style.setProperty('text-align', 'center', 'important');
+                                dropdownDiv.style.setProperty('padding', '20px', 'important'); // Added padding
+                                dropdownDiv.style.setProperty('font-weight', 'bold', 'important'); // Added font-weight
+
+                                // Append a simple text node
+                                dropdownDiv.appendChild(document.createTextNode('TEXTNODE TEST'));
+
+                                // Comment out the original item population loop and the updateMultiSelectValueDisplay call for this specific test
                                 /*
                                 const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
                                     .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
@@ -847,11 +852,10 @@ function createDynamicTable(config) {
                                         processDataInternal();
                                     });
                                 });
+                                
+                                updateMultiSelectValueDisplay(multiSelectContainer);
                                 */
                                 // **** END MODIFICATION ****
-
-                                // After populating, update display in case of pre-selected values (future enhancement)
-                                updateMultiSelectValueDisplay(multiSelectContainer); // This will still try to set "All" on the trigger
                             }
                         }
                     }
