@@ -883,68 +883,6 @@ function createDynamicTable(config) {
         });
     }
 
-    function populateFilterOptions() {
-        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
-            const columnDef = columns.find(c => c.key === key);
-            const header = columnDef ? columnDef.header : '';
-
-            if (filterConfig.custom) {
-                const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
-                populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
-            } else {
-                // Standard select element
-                const selectElement = filterConfig.element;
-                if (selectElement) {
-                    // Keep the first option ("All X")
-                    while (selectElement.options.length > 1) selectElement.remove(1);
-                    
-                    const uniqueValues = [...new Set(originalData.map(item => item[key]))].sort();
-                    uniqueValues.forEach(val => {
-                        if (val !== null && typeof val !== 'undefined') {
-                            const option = document.createElement('option');
-                            option.value = val;
-                            option.textContent = val;
-                            selectElement.appendChild(option);
-                        }
-                    });
-                }
-            }
-        });
-
-        // Populate header select filters
-        if (thead && originalData.length > 0) {
-            columns.forEach(colConfig => {
-                if (colConfig.filterable && colConfig.headerFilterType === 'select' && colConfig.key) {
-                    const headerSelectElement = thead.querySelector(`.dt-header-filter-select[data-column-key="${colConfig.key}"]`);
-                    if (headerSelectElement) {
-                        // Clear existing options (keep the first "All" option if it exists)
-                        while (headerSelectElement.options.length > 1) {
-                            headerSelectElement.remove(1);
-                        }
-
-                        const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
-                            .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '') // Filter out null, undefined, and empty strings
-                            .sort((a, b) => { // Ensure proper sorting for numbers and strings
-                                if (typeof a === 'number' && typeof b === 'number') {
-                                    return a - b;
-                                }
-                                return String(a).localeCompare(String(b));
-                            });
-                        
-                        uniqueValues.forEach(val => {
-                            const option = document.createElement('option');
-                            option.value = val;
-                            // For now, using raw value for textContent. 
-                            // Could use formatValue(val, colConfig.format) if formatted display is needed.
-                            option.textContent = val; 
-                            headerSelectElement.appendChild(option);
-                        });
-                    }
-                }
-            });
-        }
-    }
-
     function processDataInternal() {
         let filteredData;
 

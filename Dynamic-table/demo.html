@@ -48,38 +48,23 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Example configuration for dynamic-table:
-        // To hide the column visibility selector button (gear icon), add to the config below:
-        // showColumnVisibilitySelector: false, 
-        // (By default, it's true, so the selector will be shown if this line is omitted)
-        createDynamicTable({
+        const tableConfig = {
             containerId: 'main-dynamic-table',
-            jsonPath: 'sample-data.json', // Loading from the external JSON file
-            // Note: dynamic-table.js (v11) expects sample-data.json to be an array.
-            // If sample-data.json is an object with keys (like marketData, etc.), 
-            // you should fetch it here and pass the appropriate section via `jsonData`.
-            // For this demo, we'll assume sample-data.json is directly an array of 'marketData' objects to simplify.
-            // For a real case with the provided sample_data.json, you would need to fetch and extract the section.
-            // Example (not executed here, but to illustrate):
-            // fetch('sample-data.json').then(r => r.json()).then(data => {
-            //     createDynamicTable({ containerId: 'main-dynamic-table', jsonData: data.marketData, columns: [...] /* rest of the config */ });
-            // });
-            // For this demo, sample_data.json should directly contain the [marketData items] array
             columns: [
                 {
-                    key: 'countryCode', // Ensure keys are present for columns involved in sorting/filtering/visibility state
+                    key: 'countryCode', 
                     header: 'Flag',
                     format: 'flag',
                     filterable: true,
                     sortable: true,
-                    headerFilterType: 'multiselect' // Changed from 'select' to 'multiselect'
+                    headerFilterType: 'multiselect'
                 },
                 {
-                    key: 'name', // Ensured key exists
+                    key: 'name', 
                     header: 'Index', 
                     sortable: true,
-                    filterable: true, // Added filterable
-                    headerFilterType: 'text', // Added headerFilterType
+                    filterable: true, 
+                    headerFilterType: 'text', 
                     render: (value, rowData, cell) => {
                         const link = document.createElement('a');
                         link.href = rowData.symbol ? `/light/shard/${rowData.symbol}/` : '#'; 
@@ -91,7 +76,7 @@
                     }
                 },
                 { 
-                    key: 'oneYearChart', // Added key
+                    key: 'oneYearChart', 
                     header: '1 Year Chart',
                     renderAs: 'chart',
                     chartConfig: {
@@ -112,16 +97,15 @@
                     header: 'YTD', 
                     sortable: true, 
                     format: 'percent:2',
-                    filterable: true, // Added filterable
-                    headerFilterType: 'regex' // Added headerFilterType for regex demo
+                    filterable: true, 
+                    headerFilterType: 'regex' 
                 },
                 { key: 'y1', header: '1 Year', sortable: true, format: 'percent_neutral:2' },              
             ],
-            filterMode: 'header', // Set initial filter mode to header
+            filterMode: 'header', 
             uniformChartHeight: 45,
-            // showColumnVisibilitySelector: true, // Default is true, so selector will be shown
             rowsPerPage: 5,
-            rowsPerPageOptions: [3, 5, 10, 20, 'All'], // Translated 'Tout' to 'All'
+            rowsPerPageOptions: [3, 5, 10, 20, 'All'],
             showSearchControl: true,
             showResultsCount: true,
             showPagination: true, 
@@ -129,7 +113,26 @@
             tableMaxHeight: '400px',
             defaultSortColumn: 'name',
             defaultSortDirection: 'asc'
-        });
+        };
+
+        // Fetch data and then initialize the table
+        fetch('sample-data.json')
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.marketData && Array.isArray(data.marketData)) {
+                    createDynamicTable({...tableConfig, jsonData: data.marketData});
+                } else if (Array.isArray(data)) { // Fallback if sample-data.json was already just an array
+                    createDynamicTable({...tableConfig, jsonData: data});
+                } 
+                else {
+                    console.error('Error: Fetched data is not in the expected format (marketData array or direct array).', data);
+                    document.getElementById('main-dynamic-table').innerHTML = '<p style="color:red;">Error loading or processing table data.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching sample-data.json:', error);
+                document.getElementById('main-dynamic-table').innerHTML = '<p style="color:red;">Could not fetch table data.</p>';
+            });
     });
 </script>
 </body>
