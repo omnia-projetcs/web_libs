@@ -38,7 +38,7 @@
         <h1>Dynamic Table - External Data</h1>
         <div class="table-demo-container">
             <h2>Main Table</h2>
-            <p class="description">This table loads its data from <code>sample-data.json</code> and uses <code>jsonPath</code>.</p>
+            <p class="description">This table loads its data from <code>sample-data.json</code>. Filter mode is global.</p>
             <div id="main-dynamic-table"></div>
         </div>
     </div>
@@ -55,16 +55,16 @@
                     key: 'countryCode', 
                     header: 'Flag',
                     format: 'flag',
-                    filterable: true,
-                    sortable: true,
-                    headerFilterType: 'multiselect'
+                    filterable: true, // Retained for global filtering if a globalFilterType is set
+                    sortable: true
+                    // headerFilterType: 'multiselect' // Not active in global filterMode
                 },
                 {
                     key: 'name', 
                     header: 'Index', 
                     sortable: true,
                     filterable: true, 
-                    headerFilterType: 'text', 
+                    // headerFilterType: 'text', // Not active in global filterMode
                     render: (value, rowData, cell) => {
                         const link = document.createElement('a');
                         link.href = rowData.symbol ? `/light/shard/${rowData.symbol}/` : '#'; 
@@ -98,13 +98,14 @@
                     sortable: true, 
                     format: 'percent:2',
                     filterable: true, 
-                    headerFilterType: 'regex' 
+                    // headerFilterType: 'regex', // Not active in global filterMode
+                    globalFilterType: 'multiselect' // TESTING THIS
                 },
                 { key: 'y1', header: '1 Year', sortable: true, format: 'percent_neutral:2' },              
             ],
-            filterMode: 'header', 
+            filterMode: 'global', // Ensure global filters are active
             uniformChartHeight: 45,
-            rowsPerPage: 5,
+            rowsPerPage: 5, // Set to a small number to make filtering effects obvious
             rowsPerPageOptions: [3, 5, 10, 20, 'All'],
             showSearchControl: true,
             showResultsCount: true,
@@ -121,7 +122,7 @@
             .then(data => {
                 if (data && data.marketData && Array.isArray(data.marketData)) {
                     createDynamicTable({...tableConfig, jsonData: data.marketData});
-                } else if (Array.isArray(data)) { // Fallback if sample-data.json was already just an array
+                } else if (Array.isArray(data)) { 
                     createDynamicTable({...tableConfig, jsonData: data});
                 } 
                 else {

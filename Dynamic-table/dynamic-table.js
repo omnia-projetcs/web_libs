@@ -746,16 +746,61 @@ function createDynamicTable(config) {
     function populateFilterOptions() {
         Object.entries(filterSelects).forEach(([key, filterConfig]) => {
             const columnDef = columns.find(c => c.key === key);
-            const header = columnDef ? columnDef.header : '';
+            const header = columnDef ? columnDef.header : ''; // Used for 'All X' text
 
-            if (filterConfig.custom) {
+            if (filterConfig.custom && filterConfig.isGlobalMultiSelect) {
+                const optionsContainer = filterConfig.optionsContainer; // The div to populate
+                if (optionsContainer && originalData.length > 0) {
+                    optionsContainer.innerHTML = ''; // Clear existing items
+
+                    const uniqueValues = [...new Set(originalData.map(item => item[key]))]
+                        .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
+                        .sort((a, b) => {
+                            if (typeof a === 'number' && typeof b === 'number') return a - b;
+                            return String(a).localeCompare(String(b));
+                        });
+
+                    uniqueValues.forEach(value => {
+                        const checkboxId = `dt-gms-${containerId}-${key}-${String(value).replace(/\s+/g, '-')}`; // gms for global multi-select
+                        
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'dt-multiselect-item';
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = checkboxId;
+                        checkbox.value = value;
+                        checkbox.dataset.filterKey = key;
+
+                        const label = document.createElement('label');
+                        label.htmlFor = checkboxId;
+                        label.textContent = value; 
+
+                        itemDiv.appendChild(checkbox);
+                        itemDiv.appendChild(label);
+                        optionsContainer.appendChild(itemDiv);
+
+                        checkbox.addEventListener('change', () => {
+                            const checkedCBs = optionsContainer.querySelectorAll('input[type="checkbox"]:checked');
+                            let selectedValues = [];
+                            checkedCBs.forEach(cb => selectedValues.push(cb.value));
+                            filterSelects[key].value = selectedValues; // Update array of selected values
+                            
+                            updateMultiSelectValueDisplay(filterConfig.mainElement, header); 
+                            processDataInternal();
+                        });
+                    });
+                    // After populating, update display in case of pre-selected values (none for now)
+                    updateMultiSelectValueDisplay(filterConfig.mainElement, header);
+                }
+
+            } else if (filterConfig.custom) { // Handles other custom types (e.g., flags)
                 const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
                 populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
-            } else {
-                // Standard select element
+            
+            } else { // Standard select element (non-custom)
                 const selectElement = filterConfig.element;
                 if (selectElement) {
-                    // Keep the first option ("All X")
                     while (selectElement.options.length > 1) selectElement.remove(1);
                     
                     const uniqueValues = [...new Set(originalData.map(item => item[key]))].sort();
@@ -982,15 +1027,21 @@ function createDynamicTable(config) {
             });
 
             filteredData = originalData.filter(item => {
-                const specificFiltersMatch = Object.entries(activeGlobalFilters).every(([key, value]) => {
+                const specificFiltersMatch = Object.entries(activeGlobalFilters).every(([key, filterValue]) => {
                     const columnConfig = columns.find(col => col.key === key);
-                    if (columnConfig && columnConfig.format === 'flag') {
-                        const itemCanonicalValue = getCanonicalCountryCode(item[key]);
-                        return String(itemCanonicalValue) === value;
-                    }
-                    // Ensure item[key] is safely converted to string for comparison
                     const itemValueString = String(item[key] !== null && item[key] !== undefined ? item[key] : '');
-                    return itemValueString === value;
+
+                    if (columnConfig && columnConfig.globalFilterType === 'multiselect') {
+                        if (Array.isArray(filterValue) && filterValue.length > 0) {
+                            return filterValue.includes(itemValueString);
+                        }
+                        return true; // If filterValue is an empty array (no selections), it effectively means "all" for this filter.
+                    } else if (columnConfig && columnConfig.format === 'flag') { // For single-select custom flag filter
+                        const itemCanonicalValue = getCanonicalCountryCode(item[key]);
+                        return String(itemCanonicalValue) === filterValue;
+                    }
+                    // Default for single select (standard select elements)
+                    return itemValueString === filterValue;
                 });
                 if (!specificFiltersMatch) return false;
 
