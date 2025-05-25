@@ -34,7 +34,6 @@ const DT_LANG_PACKS = {
     columnSelectorTitle: 'Select columns to display',
     globalSearchLabel: 'Global Search:',
     globalSearchPlaceholder: 'Search...',
-    languageSelectorLabel: 'Language:', // New
     filterByLabel: 'Filter by {columnName}:',
     headerFilterPlaceholder: 'Filter {columnName}...',
     allOption: 'All',
@@ -62,32 +61,101 @@ const DT_LANG_PACKS = {
     columnSelectorTitle: 'Afficher/Masquer les colonnes',
     globalSearchLabel: 'Recherche globale :',
     globalSearchPlaceholder: 'Rechercher...',
-    languageSelectorLabel: 'Langue :',
     filterByLabel: 'Filtrer par {columnName} :',
     headerFilterPlaceholder: 'Filtrer {columnName}...',
-    allOption: 'Tous', // Used for select/multiselect "All"
-    allOptionWithColumn: 'Tous {columnName}', // Used for global select "All {columnName}"
-    itemsSelected: '{count} sélectionné(s)', // Note: French pluralization is complex, this is simplified.
-    resultsInfo: '{count} résultat(s)', // Simplified for testing.
+    allOption: 'Tous',
+    allOptionWithColumn: 'Tous {columnName}',
+    itemsSelected: '{count} sélectionné(s)',
+    resultsInfo: '{count} résultat(s)',
     rowsPerPageLabel: 'Lignes/page :',
-    allRowsOptionLabel: 'Toutes', // For "All" in rows per page selector
+    allRowsOptionLabel: 'Toutes',
     previousButtonLabel: 'Précédent',
     nextButtonLabel: 'Suivant',
     pageInfo: 'Page {currentPage} / {totalPages}',
     loadingMsg: 'Chargement...',
     noResultsMsg: 'Aucun résultat trouvé.'
   },
-  'es-ES': { /* Placeholders for Spanish translations */ },
-  'it-IT': { /* Placeholders for Italian translations */ },
-  'de-DE': { /* Placeholders for German translations */ }
-};
-
-const LANGUAGE_DISPLAY_NAMES = {
-  'en-US': 'English (US)',
-  'fr-FR': 'Français (FR)',
-  'es-ES': 'Español (ES)',
-  'it-IT': 'Italiano (IT)',
-  'de-DE': 'Deutsch (DE)'
+  'es-ES': {
+    errorDataNotProvided: 'Configuration Error: Data not provided.',
+    errorInvalidJsonData: 'Configuration Error: Invalid jsonData.',
+    errorInvalidData: 'Error: Invalid data.',
+    errorJsonPathNotDefined: 'Error: JSON path not defined.',
+    errorLoadingData: 'Error loading data.',
+    errorChart: 'Chart Error',
+    errorPureChartMissing: 'Chart Library Missing',
+    errorChartDataMissing: 'Chart Data Missing',
+    columnSelectorAriaLabel: 'Select columns to display',
+    columnSelectorTitle: 'Select columns to display',
+    globalSearchLabel: 'Global Search:',
+    globalSearchPlaceholder: 'Search...',
+    filterByLabel: 'Filter by {columnName}:',
+    headerFilterPlaceholder: 'Filter {columnName}...',
+    allOption: 'All',
+    allOptionWithColumn: 'All {columnName}',
+    itemsSelected: '{count} selected',
+    resultsInfo: '{count} result(s)',
+    rowsPerPageLabel: 'Rows/page:',
+    allRowsOptionLabel: 'All',
+    previousButtonLabel: 'Previous',
+    nextButtonLabel: 'Next',
+    pageInfo: 'Page {currentPage} / {totalPages}',
+    loadingMsg: 'Loading...',
+    noResultsMsg: 'No results found.'
+  },
+  'it-IT': {
+    errorDataNotProvided: 'Configuration Error: Data not provided.',
+    errorInvalidJsonData: 'Configuration Error: Invalid jsonData.',
+    errorInvalidData: 'Error: Invalid data.',
+    errorJsonPathNotDefined: 'Error: JSON path not defined.',
+    errorLoadingData: 'Error loading data.',
+    errorChart: 'Chart Error',
+    errorPureChartMissing: 'Chart Library Missing',
+    errorChartDataMissing: 'Chart Data Missing',
+    columnSelectorAriaLabel: 'Select columns to display',
+    columnSelectorTitle: 'Select columns to display',
+    globalSearchLabel: 'Global Search:',
+    globalSearchPlaceholder: 'Search...',
+    filterByLabel: 'Filter by {columnName}:',
+    headerFilterPlaceholder: 'Filter {columnName}...',
+    allOption: 'All',
+    allOptionWithColumn: 'All {columnName}',
+    itemsSelected: '{count} selected',
+    resultsInfo: '{count} result(s)',
+    rowsPerPageLabel: 'Rows/page:',
+    allRowsOptionLabel: 'All',
+    previousButtonLabel: 'Previous',
+    nextButtonLabel: 'Next',
+    pageInfo: 'Page {currentPage} / {totalPages}',
+    loadingMsg: 'Loading...',
+    noResultsMsg: 'No results found.'
+  },
+  'de-DE': {
+    errorDataNotProvided: 'Configuration Error: Data not provided.',
+    errorInvalidJsonData: 'Configuration Error: Invalid jsonData.',
+    errorInvalidData: 'Error: Invalid data.',
+    errorJsonPathNotDefined: 'Error: JSON path not defined.',
+    errorLoadingData: 'Error loading data.',
+    errorChart: 'Chart Error',
+    errorPureChartMissing: 'Chart Library Missing',
+    errorChartDataMissing: 'Chart Data Missing',
+    columnSelectorAriaLabel: 'Select columns to display',
+    columnSelectorTitle: 'Select columns to display',
+    globalSearchLabel: 'Global Search:',
+    globalSearchPlaceholder: 'Search...',
+    filterByLabel: 'Filter by {columnName}:',
+    headerFilterPlaceholder: 'Filter {columnName}...',
+    allOption: 'All',
+    allOptionWithColumn: 'All {columnName}',
+    itemsSelected: '{count} selected',
+    resultsInfo: '{count} result(s)',
+    rowsPerPageLabel: 'Rows/page:',
+    allRowsOptionLabel: 'All',
+    previousButtonLabel: 'Previous',
+    nextButtonLabel: 'Next',
+    pageInfo: 'Page {currentPage} / {totalPages}',
+    loadingMsg: 'Loading...',
+    noResultsMsg: 'No results found.'
+  }
 };
  
 /**
@@ -139,51 +207,12 @@ function createDynamicTable(config) {
         showResultsCount = true,
         showPagination = true,
         showRowsPerPageSelector = true,
-        rowsPerPageOptions = [10, 25, 50, 100, 'All'],
+        rowsPerPageOptions = [10, 25, 50, 100, 'All'], // Default 'Tout' changed to 'All'
         tableMaxHeight = null,
         uniformChartHeight = null,
-        showColumnVisibilitySelector = true,
-        language = 'en-US', // New: Default language
-        supportedLanguages = ['en-US', 'fr-FR', 'es-ES', 'it-IT', 'de-DE'] // New: Default supported languages
+        showColumnVisibilitySelector = true // New configuration option
         // filterMode is now directly from config or defaults to 'global'
     } = config;
-
-    // Initialize and validate language
-    let currentActiveLanguage = language;
-    const effectiveSupportedLanguages = Array.isArray(config.supportedLanguages) && config.supportedLanguages.length > 0 
-                                      ? config.supportedLanguages 
-                                      : supportedLanguages;
-
-    if (!effectiveSupportedLanguages.includes(currentActiveLanguage)) {
-        console.warn(`[DynamicTable] Language "${currentActiveLanguage}" is not in supportedLanguages. Defaulting to 'en-US'.`);
-        currentActiveLanguage = 'en-US';
-    }
-    if (!DT_LANG_PACKS[currentActiveLanguage]) { // Additional check if language pack doesn't exist for a supported lang
-        console.warn(`[DynamicTable] Language pack for "${currentActiveLanguage}" not found. Defaulting to 'en-US'.`);
-        currentActiveLanguage = 'en-US';
-    }
-    
-    // Localization helper function
-    function getLocalizedString(stringKey, templateVars = null) {
-        const langPack = DT_LANG_PACKS[currentActiveLanguage];
-        const fallbackLangPack = DT_LANG_PACKS['en-US']; // Always fallback to English
-        
-        let localizedString = stringKey; // Default to key if nothing found
-
-        if (langPack && langPack[stringKey]) {
-            localizedString = langPack[stringKey];
-        } else if (fallbackLangPack && fallbackLangPack[stringKey]) {
-            localizedString = fallbackLangPack[stringKey];
-        }
-        // If still stringKey, it means no translation was found in current or fallback.
-
-        if (templateVars && typeof localizedString === 'string') {
-            for (const key in templateVars) {
-                localizedString = localizedString.replace(new RegExp(`{${key}}`, 'g'), templateVars[key]);
-            }
-        }
-        return localizedString;
-    }
 
     const filterMode = config.filterMode || 'global';
     let initialRowsPerPageSetting = config.rowsPerPage !== undefined ? config.rowsPerPage : (rowsPerPageOptions[0] || 10);
@@ -213,12 +242,12 @@ function createDynamicTable(config) {
     }
     if (!jsonPath && !jsonData) {
         console.error(`[DynamicTable] Error: jsonPath or jsonData must be provided.`);
-        container.innerHTML = `<p style="color:red;">${getLocalizedString('errorDataNotProvided')}</p>`;
+        container.innerHTML = `<p style="color:red;">Configuration Error: Data not provided.</p>`;
         return;
     }
      if (jsonData && !Array.isArray(jsonData)) {
         console.error(`[DynamicTable] Error: jsonData must be an array.`);
-        container.innerHTML = `<p style="color:red;">${getLocalizedString('errorInvalidJsonData')}</p>`;
+        container.innerHTML = `<p style="color:red;">Configuration Error: Invalid jsonData.</p>`;
         return;
     }
     if (!Array.isArray(columns) || columns.length === 0) {
@@ -236,25 +265,7 @@ function createDynamicTable(config) {
 
     let tableWrapper, table, thead, tbody, controlsWrapper, globalSearchInput,
         filterSelects = {}, resultsCountSpan, paginationWrapper, prevButton,
-        nextButton, pageInfoSpan, rowsPerPageSelectElement, columnSelectorWrapper,
-        langSelectElement; // Declare langSelectElement here
-
-    // Helper function to close and reattach a moved header dropdown
-    function closeMovedHeaderDropdown(dropdownDiv) {
-        if (dropdownDiv && dropdownDiv.originalParent && dropdownDiv.classList.contains('dt-dropdown-moved-to-body')) {
-            dropdownDiv.originalParent.appendChild(dropdownDiv);
-            dropdownDiv.classList.remove('dt-dropdown-moved-to-body');
-            dropdownDiv.style.position = '';
-            dropdownDiv.style.top = '';
-            dropdownDiv.style.left = '';
-            dropdownDiv.style.width = '';
-            dropdownDiv.style.zIndex = '';
-            dropdownDiv.style.display = 'none'; // Ensure it's hidden after reattaching
-        } else if (dropdownDiv) {
-            // If not moved (or originalParent not set), just hide it
-            dropdownDiv.style.display = 'none';
-        }
-    }
+        nextButton, pageInfoSpan, rowsPerPageSelectElement, columnSelectorWrapper;
 
     function convertWildcardToRegex(pattern) {
         let regexString = "";
@@ -324,7 +335,7 @@ function createDynamicTable(config) {
                             case 'regex':
                                 const input = document.createElement('input');
                                 input.type = 'text';
-                                input.placeholder = getLocalizedString('headerFilterPlaceholder', { columnName: colState.header });
+                                input.placeholder = `Filter ${colState.header}...`;
                                 input.className = 'dt-header-filter-input';
                                 input.dataset.columnKey = colState.key;
                                 input.addEventListener('click', (e) => e.stopPropagation());
@@ -339,7 +350,7 @@ function createDynamicTable(config) {
                                 select.dataset.columnKey = colState.key;
                                 const defaultOption = document.createElement('option');
                                 defaultOption.value = '';
-                                defaultOption.textContent = getLocalizedString('allOption');
+                                defaultOption.textContent = 'All';
                                 select.appendChild(defaultOption);
                                 // select.addEventListener('click', (e) => e.stopPropagation());
                                 select.addEventListener('change', () => { 
@@ -357,7 +368,7 @@ function createDynamicTable(config) {
 
                                 const valueSpan = document.createElement('span');
                                 valueSpan.className = 'dt-multiselect-value';
-                                valueSpan.textContent = getLocalizedString('allOption'); // Default display text
+                                valueSpan.textContent = 'All'; // Default display text
 
                                 const arrowSpan = document.createElement('span');
                                 arrowSpan.className = 'dt-multiselect-arrow';
@@ -378,46 +389,15 @@ function createDynamicTable(config) {
                                 multiSelectDiv.addEventListener('click', (e) => e.stopPropagation());
                                 
                                 triggerDiv.addEventListener('click', (event) => {
-                                    const isCurrentlyOpen = dropdownDiv.classList.contains('dt-dropdown-moved-to-body') || dropdownDiv.style.display === 'block';
-
-                                    // Close other open multiselect dropdowns first
-                                    // This includes those potentially moved to the body
-                                    document.querySelectorAll('.dt-multiselect-dropdown.dt-dropdown-moved-to-body').forEach(movedDd => {
-                                        if (movedDd !== dropdownDiv) {
-                                            closeMovedHeaderDropdown(movedDd);
-                                        }
-                                    });
-                                    if (thead) {
-                                        thead.querySelectorAll('.dt-header-multiselect .dt-multiselect-dropdown').forEach(headerDd => {
-                                            if (headerDd !== dropdownDiv && headerDd.style.display === 'block') { // Only if it's not already moved
-                                                headerDd.style.display = 'none';
-                                            }
+                                    // event.stopPropagation(); // Already stopped by multiSelectDiv's listener for the outer box
+                                    const currentlyOpen = dropdownDiv.style.display === 'block';
+                                    // Close other open multiselects first
+                                    if (thead) { // Ensure thead is available
+                                        thead.querySelectorAll('.dt-header-multiselect .dt-multiselect-dropdown').forEach(d => {
+                                            if (d !== dropdownDiv) d.style.display = 'none';
                                         });
                                     }
-
-                                    if (isCurrentlyOpen) {
-                                        closeMovedHeaderDropdown(dropdownDiv);
-                                    } else {
-                                        // Store original parent if not already stored
-                                        if (!dropdownDiv.originalParent) {
-                                            dropdownDiv.originalParent = multiSelectDiv;
-                                        }
-
-                                        const rect = triggerDiv.getBoundingClientRect();
-                                        const top = rect.bottom + window.scrollY;
-                                        const left = rect.left + window.scrollX;
-                                        const width = rect.width; // Capture width from trigger
-
-                                        document.body.appendChild(dropdownDiv);
-                                        dropdownDiv.classList.add('dt-dropdown-moved-to-body');
-                                        dropdownDiv.style.position = 'absolute';
-                                        dropdownDiv.style.top = top + 'px';
-                                        dropdownDiv.style.left = left + 'px';
-                                        // dropdownDiv.style.width = width + 'px'; // REMOVED
-                                        dropdownDiv.style.minWidth = width + 'px'; // ADDED
-                                        dropdownDiv.style.zIndex = '1050'; // Ensure it's above other elements
-                                        dropdownDiv.style.display = 'block';
-                                    }
+                                    dropdownDiv.style.display = currentlyOpen ? 'none' : 'block';
                                 });
                                 
                                 filterPlaceholder.appendChild(multiSelectDiv);
@@ -439,8 +419,8 @@ function createDynamicTable(config) {
         const selectButton = document.createElement('button');
         selectButton.innerHTML = '&#x2699;'; // Gear icon
         selectButton.className = 'dt-column-selector-button';
-        selectButton.setAttribute('aria-label', getLocalizedString('columnSelectorAriaLabel'));
-        selectButton.title = getLocalizedString('columnSelectorTitle');
+        selectButton.setAttribute('aria-label', 'Select columns to display');
+        selectButton.title = 'Select columns to display'; // Tooltip
         selectorContainer.appendChild(selectButton);
 
         const dropdown = document.createElement('div');
@@ -516,11 +496,11 @@ function createDynamicTable(config) {
             searchDiv.className = 'dynamic-table-search-control';
             const searchLabel = document.createElement('label');
             searchLabel.htmlFor = `${containerId}-global-search`;
-            searchLabel.textContent = getLocalizedString('globalSearchLabel');
+            searchLabel.textContent = 'Global Search:';
             globalSearchInput = document.createElement('input');
             globalSearchInput.type = 'search';
             globalSearchInput.id = `${containerId}-global-search`;
-            globalSearchInput.placeholder = getLocalizedString('globalSearchPlaceholder');
+            globalSearchInput.placeholder = 'Search...';
             searchDiv.appendChild(searchLabel);
             searchDiv.appendChild(globalSearchInput);
             controlsWrapper.appendChild(searchDiv);
@@ -536,7 +516,7 @@ function createDynamicTable(config) {
                 // Labels for global filters are fine even if hidden initially
                 const filterLabel = document.createElement('label');
                 filterLabel.htmlFor = `${containerId}-filter-${col.key}`; 
-                filterLabel.textContent = getLocalizedString('filterByLabel', { columnName: col.header });
+                filterLabel.textContent = `Filter by ${col.header}:`;
                 filterDiv.appendChild(filterLabel);
 
                 const gFilterType = col.globalFilterType || 'select';
@@ -551,7 +531,7 @@ function createDynamicTable(config) {
 
                     const valueSpan = document.createElement('span');
                     valueSpan.className = 'dt-custom-select-value'; 
-                    valueSpan.textContent = getLocalizedString('allOptionWithColumn', { columnName: col.header });
+                    valueSpan.textContent = 'All ' + col.header; 
 
                     const arrowSpan = document.createElement('span');
                     arrowSpan.className = 'dt-custom-arrow'; 
@@ -588,7 +568,7 @@ function createDynamicTable(config) {
                         trigger.className = 'dt-custom-select-trigger';
                         const triggerValue = document.createElement('span');
                         triggerValue.className = 'dt-custom-select-value';
-                        triggerValue.textContent = getLocalizedString('allOption');
+                        triggerValue.textContent = 'All';
                         trigger.appendChild(triggerValue);
                         const arrow = document.createElement('span');
                         arrow.className = 'dt-custom-arrow';
@@ -615,7 +595,7 @@ function createDynamicTable(config) {
                         select.classList.add('dt-common-select');
                         const defaultOption = document.createElement('option');
                         defaultOption.value = '';
-                        defaultOption.textContent = getLocalizedString('allOptionWithColumn', { columnName: col.header });
+                        defaultOption.textContent = `All ${col.header}`;
                         select.appendChild(defaultOption);
                         filterDiv.appendChild(select);
                         filterSelects[col.key] = { custom: false, isGlobalMultiSelect: false, element: select }; // Explicitly false
@@ -647,10 +627,9 @@ function createDynamicTable(config) {
              const resultsDiv = document.createElement('div');
              resultsDiv.className = 'dynamic-table-results-info';
              resultsCountSpan = document.createElement('strong');
-             // resultsCountSpan.textContent will be set by renderTableInternal using localized string
-             // resultsDiv.appendChild(document.createTextNode(' result(s)')); // This will be part of the localized string
-             resultsDiv.appendChild(resultsCountSpan); 
-             // Text node will be set in renderTableInternal
+             resultsCountSpan.textContent = '0';
+             resultsDiv.appendChild(resultsCountSpan);
+             resultsDiv.appendChild(document.createTextNode(' result(s)'));
              rightControlsGroup.appendChild(resultsDiv); // Append to group
              hasRightControls = true;
         }
@@ -662,44 +641,6 @@ function createDynamicTable(config) {
         if (showColumnVisibilitySelector) {
             columnSelectorWrapper = buildColumnSelector(); // Ensure it's created if shown
             rightControlsGroup.appendChild(columnSelectorWrapper);
-            hasRightControls = true;
-        }
-
-        // Language Selector (add to rightControlsGroup)
-        if (effectiveSupportedLanguages.length > 1) { // Only show if more than one language is supported
-            const langControlDiv = document.createElement('div');
-            langControlDiv.className = 'dynamic-table-language-control';
-
-            const langLabel = document.createElement('label');
-            langLabel.htmlFor = `${containerId}-lang-select`;
-            langLabel.textContent = getLocalizedString('languageSelectorLabel');
-            
-            langSelectElement = document.createElement('select'); // Assign to the previously declared variable
-            langSelectElement.id = `${containerId}-lang-select`;
-            langSelectElement.className = 'dt-common-select'; // Use common styling
-
-            effectiveSupportedLanguages.forEach(langCode => {
-                const option = document.createElement('option');
-                option.value = langCode;
-                option.textContent = LANGUAGE_DISPLAY_NAMES[langCode] || langCode;
-                if (langCode === currentActiveLanguage) {
-                    option.selected = true;
-                }
-                langSelectElement.appendChild(option);
-            });
-            
-            // Placeholder for event listener - to be fully implemented in Step 5
-            langSelectElement.addEventListener('change', function() {
-                currentActiveLanguage = this.value;
-                // Ensure the language pack for the new language exists, otherwise, it would have defaulted to en-US already.
-                // No need for additional validation here if initial setup was correct.
-                console.log(`[DynamicTable] Language changed to: ${currentActiveLanguage}`);
-                rebuildUIForLanguageChange();
-            });
-
-            langControlDiv.appendChild(langLabel);
-            langControlDiv.appendChild(langSelectElement);
-            rightControlsGroup.appendChild(langControlDiv);
             hasRightControls = true;
         }
         
@@ -743,7 +684,7 @@ function createDynamicTable(config) {
                 rowsPerPageDiv.className = 'dynamic-table-rows-per-page-control';
                 const rowsLabel = document.createElement('label');
                 rowsLabel.htmlFor = `${containerId}-rows-per-page`;
-                rowsLabel.textContent = getLocalizedString('rowsPerPageLabel');
+                rowsLabel.textContent = 'Rows/page:'; // Translated
                 rowsPerPageSelectElement = document.createElement('select');
                 rowsPerPageSelectElement.id = `${containerId}-rows-per-page`;
                 rowsPerPageSelectElement.classList.add('dt-common-select');
@@ -752,7 +693,7 @@ function createDynamicTable(config) {
                     const option = document.createElement('option');
                     const isCurrentAllOption = isAllString(optionValue);
                     option.value = isCurrentAllOption ? Infinity : optionValue;
-                    option.textContent = isCurrentAllOption ? getLocalizedString('allRowsOptionLabel') : String(optionValue);
+                    option.textContent = String(optionValue); // Display original value (e.g., "All")
                     if ((isCurrentAllOption && currentRowsPerPage === Infinity) || 
                         (!isCurrentAllOption && Number(optionValue) === Number(currentRowsPerPage))) {
                         option.selected = true;
@@ -769,16 +710,16 @@ function createDynamicTable(config) {
             mainPaginationControlsDiv.className = 'dynamic-table-main-pagination-controls';
 
             prevButton = document.createElement('button');
-            prevButton.textContent = getLocalizedString('previousButtonLabel');
+            prevButton.textContent = 'Previous'; // Translated
             prevButton.disabled = true;
             mainPaginationControlsDiv.appendChild(prevButton);
 
             pageInfoSpan = document.createElement('span');
-            pageInfoSpan.textContent = getLocalizedString('pageInfo', { currentPage: 1, totalPages: 1 });
+            pageInfoSpan.textContent = 'Page 1 / 1'; // Translated
             mainPaginationControlsDiv.appendChild(pageInfoSpan);
 
             nextButton = document.createElement('button');
-            nextButton.textContent = getLocalizedString('nextButtonLabel');
+            nextButton.textContent = 'Next'; // Translated
             nextButton.disabled = true;
             mainPaginationControlsDiv.appendChild(nextButton);
             
@@ -808,98 +749,6 @@ function createDynamicTable(config) {
         );
         return String.fromCodePoint(...codePoints);
     }
-
-    function rebuildUIForLanguageChange() {
-        // 1. Update Global Controls Text
-        if (showSearchControl && globalSearchInput && globalSearchInput.previousElementSibling && globalSearchInput.previousElementSibling.tagName === 'LABEL') {
-            globalSearchInput.previousElementSibling.textContent = getLocalizedString('globalSearchLabel');
-            globalSearchInput.placeholder = getLocalizedString('globalSearchPlaceholder');
-        }
-
-        columns.forEach(col => {
-            if (col.filterable && col.key) {
-                const filterControl = container.querySelector(`[for="${containerId}-filter-${col.key}"]`);
-                if (filterControl) {
-                    filterControl.textContent = getLocalizedString('filterByLabel', { columnName: col.header });
-                }
-                // Update "All {columnName}" for global selects/multiselects
-                const globalSelect = filterSelects[col.key];
-                if (globalSelect) {
-                    if (globalSelect.custom && globalSelect.isGlobalMultiSelect) { // Global Multiselect
-                        // Default text is set in updateMultiSelectValueDisplay
-                    } else if (globalSelect.custom) { // Custom Flag Select
-                        // Default text "All" is set in populateCustomFlagOptions
-                         const triggerValue = globalSelect.triggerValueElement;
-                         if (triggerValue.textContent === DT_LANG_PACKS[currentActiveLanguage === 'en-US' ? 'fr-FR' : 'en-US'].allOption || // A bit hacky way to check if it was 'All'
-                             Object.values(DT_LANG_PACKS).some(pack => pack.allOption === triggerValue.textContent)) { // Check against all 'All'
-                            triggerValue.textContent = getLocalizedString('allOption');
-                         }
-                         // Also update options in dropdown if they contain "All"
-                         const allOptionInDropdown = globalSelect.optionsContainer.querySelector(`[data-value=""]`);
-                         if(allOptionInDropdown) allOptionInDropdown.textContent = getLocalizedString('allOption');
-
-                    } else if (globalSelect.element && globalSelect.element.options[0] && globalSelect.element.options[0].value === '') { // Standard Global Select
-                        globalSelect.element.options[0].textContent = getLocalizedString('allOptionWithColumn', { columnName: col.header });
-                    }
-                }
-            }
-        });
-        
-        if (columnSelectorWrapper) {
-            const selectButton = columnSelectorWrapper.querySelector('.dt-column-selector-button');
-            if (selectButton) {
-                selectButton.setAttribute('aria-label', getLocalizedString('columnSelectorAriaLabel'));
-                selectButton.title = getLocalizedString('columnSelectorTitle');
-            }
-        }
-        if (langSelectElement && langSelectElement.previousElementSibling && langSelectElement.previousElementSibling.tagName === 'LABEL') {
-            langSelectElement.previousElementSibling.textContent = getLocalizedString('languageSelectorLabel');
-        }
-
-        // 2. Rebuild Header Row (updates header filter placeholders & "All" options)
-        buildHeaderRow();
-
-        // 3. Update Pagination Text
-        if (showPagination) {
-            if (showRowsPerPageSelector && rowsPerPageSelectElement && rowsPerPageSelectElement.previousElementSibling && rowsPerPageSelectElement.previousElementSibling.tagName === 'LABEL') {
-                rowsPerPageSelectElement.previousElementSibling.textContent = getLocalizedString('rowsPerPageLabel');
-                // Update "All" option text in rowsPerPageSelectElement
-                for (let option of rowsPerPageSelectElement.options) {
-                    if (isAllString(option.textContent) || option.value === 'Infinity' || Object.values(DT_LANG_PACKS).some(pack => pack.allRowsOptionLabel === option.textContent)) {
-                        option.textContent = getLocalizedString('allRowsOptionLabel');
-                    }
-                }
-            }
-            if(prevButton) prevButton.textContent = getLocalizedString('previousButtonLabel');
-            if(nextButton) nextButton.textContent = getLocalizedString('nextButtonLabel');
-            // pageInfoSpan is updated by updatePaginationControlsInternal via processDataInternal
-        }
-        
-        // 4. Update multiselect trigger texts (after header row rebuild and potential data processing)
-        // For Header multiselects
-        if (thead) {
-            thead.querySelectorAll('.dt-header-multiselect').forEach(msContainer => {
-                const colKey = msContainer.dataset.columnKey;
-                const selectedValues = msContainer.selectedFilterValues || []; // Use stored values
-                updateMultiSelectValueDisplay(msContainer, selectedValues, null);
-            });
-        }
-        // For Global multiselects
-        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
-            if (filterConfig.custom && filterConfig.isGlobalMultiSelect) {
-                const columnDef = columns.find(c => c.key === key);
-                const headerText = columnDef ? columnDef.header : '';
-                updateMultiSelectValueDisplay(filterConfig.mainElement, filterConfig.value || [], headerText);
-            }
-        });
-
-
-        // 5. Refresh Table Data (this also updates results count and pagination info)
-        processDataInternal(); 
-        // renderTableInternal() alone could update results count and messages, but processData ensures data integrity
-        // and calls renderTableInternal. It also calls updatePaginationControlsInternal.
-    }
-
 
     function formatValue(value, formatType) {
         if (value === null || typeof value === 'undefined') return '';
@@ -970,11 +819,11 @@ function createDynamicTable(config) {
 
     function showLoadingMessage() {
         const visibleCols = getVisibleColumnsCount();
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row loading">${getLocalizedString('loadingMsg')}</td></tr>`; 
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row loading">Loading...</td></tr>`; 
     }
     function showNoResultsMessage() {
         const visibleCols = getVisibleColumnsCount();
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row no-results">${getLocalizedString('noResultsMsg')}</td></tr>`; 
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row no-results">No results found.</td></tr>`; 
     }
     
     function _initTableWithData(data) {
@@ -982,7 +831,7 @@ function createDynamicTable(config) {
         if (!Array.isArray(originalData)) {
             console.error(`[DynamicTable ${containerId}] Error: Provided data is not an array.`);
             const visibleCols = getVisibleColumnsCount();
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">${getLocalizedString('errorInvalidData')}</td></tr>`; 
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error: Invalid data.</td></tr>`; 
             return;
         }
         populateFilterOptions();
@@ -993,7 +842,7 @@ function createDynamicTable(config) {
         if (!jsonPath) { 
             console.error(`[DynamicTable ${containerId}] Error: jsonPath not defined.`);
             const visibleCols = getVisibleColumnsCount();
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">${getLocalizedString('errorJsonPathNotDefined')}</td></tr>`; 
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error: JSON path not defined.</td></tr>`; 
             return;
         }
         showLoadingMessage();
@@ -1005,7 +854,7 @@ function createDynamicTable(config) {
         } catch (error) {
             console.error(`[DynamicTable ${containerId}] Fetch error:`, error);
             const visibleCols = getVisibleColumnsCount();
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">${getLocalizedString('errorLoadingData')}</td></tr>`; 
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error loading data.</td></tr>`; 
             if (globalSearchInput) globalSearchInput.disabled = true;
             Object.values(filterSelects).forEach(sel => sel.disabled = true);
             if (prevButton) prevButton.disabled = true;
@@ -1014,50 +863,28 @@ function createDynamicTable(config) {
         }
     }
 
-    function updateMultiSelectValueDisplay(multiSelectContainerElement, currentSelectedValuesArray, headerForDefaultAllText = null) {
-        const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value') ||
+    function updateMultiSelectValueDisplay(multiSelectContainerElement, headerForDefaultAllText = null) {
+        const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+        // Query for value span, accommodating both header and global multi-select structures
+        const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value') || 
                           multiSelectContainerElement.querySelector('.dt-custom-select-value');
         if (!valueSpan) return;
 
-        const isHeaderFilter = multiSelectContainerElement.classList.contains('dt-header-multiselect');
-        let allText;
-        if (isHeaderFilter) {
-            allText = 'All';
-        } else { // Global filter
-            allText = headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All';
-        }
-
-        if (Array.isArray(currentSelectedValuesArray) && currentSelectedValuesArray.length > 0) {
-            if (currentSelectedValuesArray.length <= 2) { // Assuming 2 is the threshold for listing names
-                valueSpan.textContent = currentSelectedValuesArray.join(', ');
-            } else {
-                valueSpan.textContent = getLocalizedString('itemsSelected', { count: currentSelectedValuesArray.length });
-            }
+        if (checkedCheckboxes.length === 0) {
+            valueSpan.textContent = headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All';
+        } else if (checkedCheckboxes.length <= 2) { 
+            let selectedTexts = [];
+            checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value));
+            valueSpan.textContent = selectedTexts.join(', ');
         } else {
-            if (Array.isArray(currentSelectedValuesArray) && currentSelectedValuesArray.length === 0) { // Explicitly empty array
-                 valueSpan.textContent = allText;
-            } else if (!isHeaderFilter && (currentSelectedValuesArray === null || currentSelectedValuesArray === undefined)) {
-                // Fallback for global filters if array not passed: query checkboxes from multiSelectContainerElement
-                const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
-                if (checkedCheckboxes.length === 0) {
-                    valueSpan.textContent = allText;
-                } else if (checkedCheckboxes.length <= 2) {
-                    let selectedTexts = [];
-                    checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value)); // Or label text if preferred
-                    valueSpan.textContent = selectedTexts.join(', ');
-                } else {
-                    valueSpan.textContent = getLocalizedString('itemsSelected', { count: checkedCheckboxes.length });
-                }
-            } else { // Default for other cases (e.g. header filter initial call where currentSelectedValuesArray is null or empty array passed for header)
-                 valueSpan.textContent = allText;
-            }
+            valueSpan.textContent = `${checkedCheckboxes.length} selected`;
         }
     }
 
     function populateFilterOptions() {
         Object.entries(filterSelects).forEach(([key, filterConfig]) => {
             const columnDef = columns.find(c => c.key === key);
-            const header = columnDef ? columnDef.header : ''; // Used for 'All X' text for global filters
+            const header = columnDef ? columnDef.header : ''; // Used for 'All X' text
 
             if (filterConfig.custom && filterConfig.isGlobalMultiSelect) {
                 const optionsContainer = filterConfig.optionsContainer; // The div to populate
@@ -1097,12 +924,12 @@ function createDynamicTable(config) {
                             checkedCBs.forEach(cb => selectedValues.push(cb.value));
                             filterSelects[key].value = selectedValues; // Update array of selected values
                             
-                            updateMultiSelectValueDisplay(filterConfig.mainElement, filterSelects[key].value, header);
+                            updateMultiSelectValueDisplay(filterConfig.mainElement, header); 
                             processDataInternal();
                         });
                     });
                     // After populating, update display in case of pre-selected values (none for now)
-                    updateMultiSelectValueDisplay(filterConfig.mainElement, null, header);
+                    updateMultiSelectValueDisplay(filterConfig.mainElement, header);
                 }
 
             } else if (filterConfig.custom) { // Handles other custom types (e.g., flags)
@@ -1184,31 +1011,12 @@ function createDynamicTable(config) {
                                     dropdownDiv.appendChild(itemDiv);
 
                                     checkbox.addEventListener('change', () => {
-                                        const currentDropdownDiv = checkbox.closest('.dt-multiselect-dropdown');
-                                        const currentMultiSelectContainer = currentDropdownDiv ? currentDropdownDiv.originalParent : null;
-
-                                        if (currentMultiSelectContainer) {
-                                            const allCheckboxesInDropdown = currentDropdownDiv.querySelectorAll('input[type="checkbox"]');
-                                            let selectedValues = [];
-                                            allCheckboxesInDropdown.forEach(cb => {
-                                                if (cb.checked) {
-                                                    selectedValues.push(cb.value);
-                                                }
-                                            });
-                                            currentMultiSelectContainer.selectedFilterValues = selectedValues;
-                                            updateMultiSelectValueDisplay(currentMultiSelectContainer, selectedValues, null); // Pass selectedValues & null for headerForDefaultAllText
-                                        } else {
-                                            // Fallback if originalParent isn't set (should not happen for moved dropdowns)
-                                            updateMultiSelectValueDisplay(multiSelectContainer, null, null); // Fallback call
-                                        }
+                                        updateMultiSelectValueDisplay(multiSelectContainer); // Header version call
                                         processDataInternal();
                                     });
                                 });
-                                // After populating, initialize display and selectedFilterValues
-                                if (multiSelectContainer) {
-                                     multiSelectContainer.selectedFilterValues = []; // Initialize empty
-                                     updateMultiSelectValueDisplay(multiSelectContainer, null, null); // Initial call for header
-                                }
+                                // After populating, update display in case of pre-selected values (future enhancement)
+                                updateMultiSelectValueDisplay(multiSelectContainer);
                             }
                         }
                     }
@@ -1223,10 +1031,10 @@ function createDynamicTable(config) {
         // "All" Option
         const allOptionDiv = document.createElement('div');
         allOptionDiv.className = 'dt-custom-option';
-        allOptionDiv.textContent = getLocalizedString('allOption');
+        allOptionDiv.textContent = 'All'; // Changed: Text for "All" option in dropdown
         allOptionDiv.dataset.value = "";
         allOptionDiv.addEventListener('click', () => {
-            triggerValueElement.textContent = getLocalizedString('allOption');
+            triggerValueElement.textContent = 'All'; // Changed: Text for trigger when "All" is selected
             filterSelects[filterKey].value = "";
             optionsContainer.style.display = 'none';
             optionsContainer.closest('.dt-custom-select').classList.remove('open');
@@ -1291,24 +1099,14 @@ function createDynamicTable(config) {
                             case 'multiselect':
                                 const multiSelectContainer = thead.querySelector(`.dt-header-multiselect[data-column-key="${columnKey}"]`);
                                 if (multiSelectContainer) {
-                                    if (multiSelectContainer.selectedFilterValues && Array.isArray(multiSelectContainer.selectedFilterValues)) {
-                                        if (multiSelectContainer.selectedFilterValues.length > 0) {
-                                            activeHeaderFilters[columnKey] = {
-                                                values: multiSelectContainer.selectedFilterValues,
-                                                type: 'multiselect'
-                                            };
-                                        }
-                                    } else {
-                                        // Fallback if selectedFilterValues is not set (e.g., initial load before interaction)
-                                        const checkedCheckboxes = multiSelectContainer.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
-                                        if (checkedCheckboxes.length > 0) {
-                                            let fallbackSelectedValues = [];
-                                            checkedCheckboxes.forEach(cb => fallbackSelectedValues.push(cb.value));
-                                            activeHeaderFilters[columnKey] = {
-                                                values: fallbackSelectedValues,
-                                                type: 'multiselect'
-                                            };
-                                        }
+                                    const checkedCheckboxes = multiSelectContainer.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+                                    if (checkedCheckboxes.length > 0) {
+                                        let selectedValues = [];
+                                        checkedCheckboxes.forEach(cb => selectedValues.push(cb.value));
+                                        activeHeaderFilters[columnKey] = {
+                                            values: selectedValues, // Array of selected string values
+                                            type: 'multiselect'
+                                        };
                                     }
                                 }
                                 break;
@@ -1503,13 +1301,13 @@ function createDynamicTable(config) {
                                 if (chartInstance) { 
                                    activeChartInstances.push(chartInstance);
                                 }
-                            } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = getLocalizedString('errorChart'); }
+                            } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = 'Chart Err.'; }
                         } else if (typeof PureChart === 'undefined') {
                             console.warn(`[DynamicTable] PureChart is not defined for column ${colConfig.header}. Ensure PureChart.js is loaded.`);
-                            cell.textContent = getLocalizedString('errorPureChartMissing');
+                            cell.textContent = 'PureChart?';
                         } else {
                             console.warn(`[DynamicTable] Data for chart not found via dataKey '${colConfig.chartConfig.dataKey}' for column ${colConfig.header}.`);
-                            cell.textContent = getLocalizedString('errorChartDataMissing');
+                            cell.textContent = 'Data?';
                         }
                     } else {
                         const formattedValue = formatValue(value, colConfig.format);
@@ -1537,53 +1335,7 @@ function createDynamicTable(config) {
         });
 
         if (showPagination) updatePaginationControlsInternal();
-        
-        // Update results count with localized string
-        if (resultsCountSpan) {
-            const countText = displayData.length.toLocaleString(currentActiveLanguage);
-            const fullText = getLocalizedString('resultsInfo', { count: countText });
-            
-            // Clear previous content (strong tag and text node)
-            const parentResultsDiv = resultsCountSpan.parentElement;
-            if(parentResultsDiv) {
-                // Remove all children of parentResultsDiv
-                while (parentResultsDiv.firstChild) {
-                    parentResultsDiv.removeChild(parentResultsDiv.firstChild);
-                }
-                // Reconstruct with new localized string
-                // This is a bit naive; ideally, we'd have a placeholder for the count in the resultsDiv
-                // For now, let's assume the full string is set here.
-                // If resultsInfo is "{count} result(s)", we need to handle the strong tag.
-                // A better approach: resultsInfo: "<strong>{count}</strong> result(s)"
-                // Or, split the string. For now, simple replacement of the parent div's content.
-                // Assuming resultsInfo is "<strong>{count}</strong> result(s)"
-                // parentResultsDiv.innerHTML = getLocalizedString('resultsInfo', { count: countText });
-                
-                // Simpler: if resultsInfo is just "{count} result(s)"
-                // And we want to keep the strong tag for the count:
-                resultsCountSpan.textContent = countText; // Keep this for the <strong> part
-                
-                // Remove old text node if it exists
-                let nextSibling = resultsCountSpan.nextSibling;
-                while(nextSibling && nextSibling.nodeType === Node.TEXT_NODE) {
-                    parentResultsDiv.removeChild(nextSibling);
-                    nextSibling = resultsCountSpan.nextSibling;
-                }
-                // Add new text node based on localized string (extracting the part after {count})
-                // This is still hacky. A full template for resultsInfo is better.
-                // For now, assuming resultsInfo = "{count} items"
-                // and we want "<strong>{count}</strong> items"
-                // Let's assume resultsInfo will be like "Results: {count}" or similar for simple replacement.
-                // The current key is '{count} result(s)'.
-                // So, we can make the strong tag hold the count, and append the rest.
-                const resultTextParts = fullText.split('{count}'); // This is not robust.
-                                                                // Let's assume resultsInfo is "{count} result(s)"
-                                                                // and we want the " result(s)" part.
-                const textPart = fullText.replace(countText, '').trimStart(); // Get " result(s)"
-                parentResultsDiv.appendChild(resultsCountSpan); // ensure strong is there
-                parentResultsDiv.appendChild(document.createTextNode(` ${textPart}`)); // Add the text part
-            }
-        }
+        if(resultsCountSpan) resultsCountSpan.textContent = displayData.length.toLocaleString('en-US'); // Locale for results count
     }
 
     function updatePaginationControlsInternal() {
@@ -1605,7 +1357,7 @@ function createDynamicTable(config) {
         
          currentPage = Math.max(1, Math.min(currentPage, totalPages)); // Ensure current page is valid
 
-         pageInfoSpan.textContent = getLocalizedString('pageInfo', { currentPage: currentPage, totalPages: totalPages });
+         pageInfoSpan.textContent = `Page ${currentPage} / ${totalPages}`; // Translated
          prevButton.disabled = currentPage === 1;
          nextButton.disabled = currentPage === totalPages || totalItems === 0;
 
@@ -1672,28 +1424,17 @@ function createDynamicTable(config) {
                 }
             }
             
-            // For header multi-select dropdowns (both in header and moved to body)
-            const allHeaderDropdowns = [];
-            if (thead) {
-                thead.querySelectorAll('.dt-header-multiselect .dt-multiselect-dropdown').forEach(dd => allHeaderDropdowns.push(dd));
-            }
-            document.querySelectorAll('.dt-multiselect-dropdown.dt-dropdown-moved-to-body').forEach(dd => {
-                if (!allHeaderDropdowns.includes(dd)) { // Avoid duplicates if it was just moved and also in thead query
-                    allHeaderDropdowns.push(dd);
-                }
-            });
-
-            allHeaderDropdowns.forEach(dropdown => {
-                // Check if it's currently visible (either as block or because it's moved to body)
-                const isVisible = dropdown.style.display === 'block' || dropdown.classList.contains('dt-dropdown-moved-to-body');
-                if (isVisible) {
-                    const msContainer = dropdown.originalParent || dropdown.closest('.dt-header-multiselect'); // Get container, whether moved or not
-                    // If click is outside the dropdown AND its original trigger container (msContainer)
-                    if (msContainer && !msContainer.contains(event.target) && !dropdown.contains(event.target)) {
-                        closeMovedHeaderDropdown(dropdown);
+            // For header multi-select dropdowns
+            if (thead) { // Check if thead exists, relevant if table is not yet fully built or is destroyed
+                thead.querySelectorAll('.dt-header-multiselect').forEach(msContainer => {
+                    const dropdown = msContainer.querySelector('.dt-multiselect-dropdown');
+                    if (dropdown && dropdown.style.display === 'block') {
+                        if (!msContainer.contains(event.target)) {
+                            dropdown.style.display = 'none';
+                        }
                     }
-                }
-            });
+                });
+            }
         });
 
 

@@ -51,16 +51,6 @@
             color: #6c757d;
             margin-bottom:15px;
         }
-        /* Style to make the page scrollable */
-        .extra-content {
-            height: 1000px; /* Adjust as needed to ensure page scroll */
-            background-color: #e9ecef;
-            padding: 20px;
-            margin-top: 30px;
-            border-radius: 6px;
-            text-align: center;
-            color: #6c757d;
-        }
     </style>
 </head>
 <body>
@@ -74,7 +64,6 @@
                 This example uses a custom rendering function for the "Index" column (links), 
                 inline charts, colored and neutral percentages, 
                 pagination with rows/page selector, and a fixed table header with vertical scrolling.
-                It includes header multiselect filters.
             </p>
             <div id="table-market-demo"></div>
         </div>
@@ -95,10 +84,6 @@
             <div id="table-users-classic"></div>
         </div>
     </div>
-    
-    <div class="extra-content">
-        <p>Scroll down to test sticky header behavior with dropdowns.</p>
-    </div>
      
     <script src="PureChart.js"></script> 
     <script src="dynamic-table.js"></script> 
@@ -108,65 +93,21 @@
     const sampleData = {
       "marketData": [
         {
-          "symbol": "^FCHI", "name": "CAC 40", "category": "Index", "countryCode": "fr", "exchange": "Euronext Paris", "ytd": 0.0815, "y1": 0.1230,
+          "symbol": "^FCHI", "name": "CAC 40", "category": "Index", "countryCode": "fr", "ytd": 0.0815, "y1": 0.1230,
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [74, 75, 73, 76, 75, 77],"borderColor": "rgba(54,162,235,1)","backgroundColor": "rgba(54,162,235,0.1)","fill": true}]}
         },
         {
-          "symbol": "GC=F", "name": "Gold (Futures)", "category": "Commodity", "countryCode": "us", "exchange": "COMEX", "ytd": -0.0250, "y1": 0.2205, 
+          "symbol": "GC=F", "name": "Gold (Futures)", "category": "Commodity", "countryCode": "fi-US", "ytd": -0.0250, "y1": 0.2205, // Name translated
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [20, 20.5, 19.8, 23, 23.5, 23.2],"borderColor": "rgba(255,206,86,1)","backgroundColor": "rgba(255,206,86,0.1)","fill": true}]}
         },
         {
-          "symbol": "^GSPC", "name": "S&P 500", "category": "Index", "countryCode": "us", "exchange": "NYSE", "ytd": 0.1020, "y1": 0,
+          "symbol": "^GSPC", "name": "S&P 500", "category": "Index", "countryCode": "US", "ytd": 0.1020, "y1": 0,
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [48, 49, 50, 51, 52, 52.5],"borderColor": "rgba(75,192,192,1)","backgroundColor": "rgba(75,192,192,0.1)","fill": true}]}
         },
          {
-          "symbol": "BTC-USD", "name": "Bitcoin USD", "category": "Crypto", "countryCode": "de", "exchange": "CryptoCompare", "ytd": 0.6530, "y1": 1.2570, 
+          "symbol": "BTC-USD", "name": "Bitcoin USD", "category": "Crypto", "countryCode": "de", "ytd": 0.6530, "y1": 1.2570, 
           "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [40, 45, 60, 68, 65, 69],"borderColor": "rgba(255,159,64,1)","backgroundColor": "rgba(255,159,64,0.1)","fill": true}]}
-        },
-        {
-          "symbol": "AAPL", "name": "Apple Inc.", "category": "Stock", "countryCode": "us", "exchange": "NASDAQ", "ytd": 0.1500, "y1": 0.3000,
-          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [170, 175, 180, 178, 185, 190],"borderColor": "rgba(153,102,255,1)","backgroundColor": "rgba(153,102,255,0.1)","fill": true}]}
-        },
-        {
-          "symbol": "MSFT", "name": "Microsoft Corp.", "category": "Stock", "countryCode": "us", "exchange": "NASDAQ", "ytd": 0.1200, "y1": 0.2500,
-          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [330, 335, 340, 338, 345, 350],"borderColor": "rgba(255,99,132,1)","backgroundColor": "rgba(255,99,132,0.1)","fill": true}]}
-        },
-        {
-          "symbol": "GOOGL", "name": "Alphabet Inc.", "category": "Stock", "countryCode": "us", "exchange": "NASDAQ", "ytd": 0.1800, "y1": 0.2000,
-          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [130, 135, 140, 138, 145, 150],"borderColor": "rgba(54,162,235,1)","backgroundColor": "rgba(54,162,235,0.1)","fill": true}]}
-        },
-        {
-          "symbol": "^N225", "name": "Nikkei 225", "category": "Index", "countryCode": "jp", "exchange": "Tokyo SE", "ytd": 0.0500, "y1": 0.1000,
-          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [28, 29, 27, 30, 29, 31],"borderColor": "rgba(75,192,192,1)","backgroundColor": "rgba(75,192,192,0.1)","fill": true}]}
-        },
-        {
-          "symbol": "EURUSD=X", "name": "EUR/USD", "category": "Forex", "countryCode": "eu", "exchange": "Forex Market", "ytd": 0.0100, "y1": -0.0200,
-          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [1.08, 1.09, 1.07, 1.10, 1.09, 1.11],"borderColor": "rgba(255,206,86,1)","backgroundColor": "rgba(255,206,86,0.1)","fill": true}]}
-        },
-        {
-          "symbol": "CL=F", "name": "Crude Oil WTI", "category": "Commodity", "countryCode": "us", "exchange": "NYMEX", "ytd": 0.0300, "y1": 0.1500,
-          "graph": { "labels": ["J", "F", "M", "A", "M", "J"], "datasets": [{"label": "V", "values": [70, 75, 72, 78, 76, 80],"borderColor": "rgba(255,159,64,1)","backgroundColor": "rgba(255,159,64,0.1)","fill": true}]}
-        },
-        // Adding more unique exchanges for testing tall dropdown
-        { "symbol": "TSLA", "name": "Tesla Inc.", "category": "Stock", "countryCode": "us", "exchange": "NASDAQ", "ytd": 0.50, "y1": 0.60},
-        { "symbol": "AMZN", "name": "Amazon.com Inc.", "category": "Stock", "countryCode": "us", "exchange": "NASDAQ", "ytd": 0.20, "y1": 0.10},
-        { "symbol": "NVDA", "name": "NVIDIA Corporation", "category": "Stock", "countryCode": "us", "exchange": "NASDAQ", "ytd": 1.50, "y1": 2.00},
-        { "symbol": "BABA", "name": "Alibaba Group", "category": "Stock", "countryCode": "cn", "exchange": "NYSE", "ytd": -0.10, "y1": -0.20},
-        { "symbol": "HSBC", "name": "HSBC Holdings", "category": "Bank", "countryCode": "gb", "exchange": "LSE", "ytd": 0.05, "y1": 0.08},
-        { "symbol": "PHIA", "name": "Philips", "category": "Conglomerate", "countryCode": "nl", "exchange": "Euronext Amsterdam", "ytd": 0.02, "y1": 0.01},
-        { "symbol": "AIR", "name": "Airbus SE", "category": "Aerospace", "countryCode": "fr", "exchange": "Euronext Paris", "ytd": 0.12, "y1": 0.15},
-        { "symbol": "SIE", "name": "Siemens AG", "category": "Industrial", "countryCode": "de", "exchange": "Frankfurt SE", "ytd": 0.07, "y1": 0.09},
-        { "symbol": "BMW", "name": "BMW Group", "category": "Automotive", "countryCode": "de", "exchange": "Frankfurt SE", "ytd": 0.04, "y1": 0.06},
-        { "symbol": "TM", "name": "Toyota Motor", "category": "Automotive", "countryCode": "jp", "exchange": "Tokyo SE", "ytd": 0.08, "y1": 0.11},
-        { "symbol": "SHEL", "name": "Shell plc", "category": "Oil & Gas", "countryCode": "gb", "exchange": "LSE", "ytd": 0.06, "y1": 0.10},
-        { "symbol": "ROG", "name": "Roche Holding", "category": "Pharma", "countryCode": "ch", "exchange": "SIX Swiss Exchange", "ytd": 0.01, "y1": 0.03},
-        { "symbol": "NESN", "name": "Nestle SA", "category": "Food", "countryCode": "ch", "exchange": "SIX Swiss Exchange", "ytd": -0.02, "y1": 0.00},
-        { "symbol": "RIO", "name": "Rio Tinto", "category": "Mining", "countryCode": "au", "exchange": "ASX", "ytd": 0.03, "y1": 0.07},
-        { "symbol": "BHP", "name": "BHP Group", "category": "Mining", "countryCode": "au", "exchange": "ASX", "ytd": 0.02, "y1": 0.05},
-        { "symbol": "VALE", "name": "Vale S.A.", "category": "Mining", "countryCode": "br", "exchange": "B3", "ytd": -0.05, "y1": -0.10},
-        { "symbol": "IBE", "name": "Iberdrola", "category": "Utility", "countryCode": "es", "exchange": "BME", "ytd": 0.09, "y1": 0.12},
-        { "symbol": "ENEL", "name": "Enel", "category": "Utility", "countryCode": "it", "exchange": "Milan SE", "ytd": 0.07, "y1": 0.09},
-        { "symbol": "ASML", "name": "ASML Holding", "category": "Tech", "countryCode": "nl", "exchange": "Euronext Amsterdam", "ytd": 0.25, "y1": 0.30}
+        }
       ],
       "productData": [
         { "productName": "Laptop Pro", "category": "Electronics", "price": 1299.99, "popularityChart": { "labels": ["W1","W2","W3"], "datasets":[{"values":[5,8,6], "backgroundColor":"#36A2EB"}] } }, // productName, category translated, labels S->W
@@ -187,7 +128,7 @@
         if (sampleData.marketData) {
             createDynamicTable({
                 containerId: 'table-market-demo',
-                jsonData: sampleData.marketData, 
+                jsonData: sampleData.marketData, // Using jsonData
                 columns: [
                     {
                         key: 'countryCode', 
@@ -195,10 +136,10 @@
                         format: 'flag',
                         filterable: true,
                         sortable: true,
-                        headerFilterType: 'multiselect' 
+                        headerFilterType: 'multiselect' // Changed from 'select' to 'multiselect'
                     },
                     {
-                        key: 'name', 
+                        key: 'name', // Ensured key exists
                         header: 'Index', 
                         sortable: true,
                         filterable: true, 
@@ -221,14 +162,7 @@
                         headerFilterType: 'select'
                     },
                     { 
-                        key: 'exchange', // New column for tall dropdown
-                        header: 'Exchange', 
-                        sortable: true, 
-                        filterable: true, 
-                        headerFilterType: 'multiselect'
-                    },
-                    { 
-                        key: 'oneYearChart', 
+                        key: 'oneYearChart', // Added key
                         header: '1 Year Chart', 
                         renderAs: 'chart',
                         chartConfig: {
@@ -248,31 +182,33 @@
                         key: 'ytd', 
                         header: 'YTD', 
                         sortable: true,
-                        filterable: true, 
-                        headerFilterType: 'regex', 
-                        format: 'percent:2' 
+                        filterable: true, // Added filterable
+                        headerFilterType: 'regex', // Added headerFilterType for regex demo
+                        format: 'percent:2' // With coloring
                     },
                     { 
                         key: 'y1', 
-                        header: '1 Year', 
+                        header: '1 Year', // Translated from '1 An'
                         sortable: true, 
-                        format: 'percent_neutral:2' 
+                        format: 'percent_neutral:2' // Without coloring, 0 = empty
                     },                
                 ],
                 uniformChartHeight: 45,
-                rowsPerPage: 10, // Increased to show more rows initially
-                rowsPerPageOptions: [5, 10, 20, 'All'], 
+                rowsPerPage: 5,
+                rowsPerPageOptions: [3, 5, 10, 'All'], // Translated 'Tout' to 'All'
                 showSearchControl: true,
                 showResultsCount: true,
                 showPagination: true, 
                 showRowsPerPageSelector: true,
-                tableMaxHeight: '400px', // Set a max height for table scroll testing
+                // showColumnVisibilitySelector: true, // Default behavior, selector will be shown. Explicitly omit to test default.
+                tableMaxHeight: '350px',
                 defaultSortColumn: 'name',
                 defaultSortDirection: 'asc',
-                filterMode: 'header' 
+                filterMode: 'header', // Set initial filter mode to header for this table
+                language: 'de-DE'
             });
         } else {
-            document.getElementById('table-market-demo').innerHTML = '<p>"marketData" not found.</p>';
+            document.getElementById('table-market-demo').innerHTML = '<p>"marketData" not found.</p>'; // Translated
         }
 
 
@@ -283,9 +219,9 @@
                 jsonData: sampleData.productData,
                 columns: [
                     { key: 'productName', header: 'Product', sortable: true }, 
-                    { key: 'category', header: 'Category' }, 
+                    { key: 'category', header: 'Category' }, // No key, but not sortable/filterable and no complex render. Adding one for consistency.
                     { 
-                        key: 'popularityChartDisplay', 
+                        key: 'popularityChartDisplay', // Added key
                         header: 'Popularity', 
                         renderAs: 'chart',
                         chartConfig: {
@@ -301,10 +237,10 @@
                 showSearchControl: false,
                 showResultsCount: false,
                 showPagination: false,
-                showColumnVisibilitySelector: false, 
+                showColumnVisibilitySelector: false, // Hides the gear icon to toggle column visibility
             });
         } else {
-             document.getElementById('table-products-minimal').innerHTML = '<p>"productData" not found.</p>';
+             document.getElementById('table-products-minimal').innerHTML = '<p>"productData" not found.</p>'; // Translated
         }
 
 
@@ -315,21 +251,21 @@
                 jsonData: sampleData.userData,
                 columns: [
                     { key: 'id', header: 'ID', sortable: true },
-                    { key: 'firstName', header: 'First Name', sortable: true, filterable: true, headerFilterType: 'text' }, 
-                    { key: 'lastName', header: 'Last Name', sortable: true, filterable: true }, 
-                    { key: 'status', header: 'Status', sortable: true, filterable: true, globalFilterType: 'multiselect' }, 
+                    { key: 'firstName', header: 'First Name', sortable: true, filterable: true, headerFilterType: 'text' }, // Translated & Added headerFilterType
+                    { key: 'lastName', header: 'Last Name', sortable: true, filterable: true }, // Translated
+                    { key: 'status', header: 'Status', sortable: true, filterable: true, globalFilterType: 'multiselect' }, // Added Status column
                     { key: 'email', header: 'Email', visible: false },
                     { key: 'ip_address', header: 'IP Address', visible: false },
-                    { key: 'registrationDate', header: 'Registration', format: 'date:YYYY/MM/DD', sortable: true } 
+                    { key: 'registrationDate', header: 'Registration', format: 'date:YYYY/MM/DD', sortable: true } // Translated
                 ],
                 rowsPerPage: 5,
                 defaultSortColumn: 'lastName',
                 showPagination: true,
                 showRowsPerPageSelector: false,
-                showColumnVisibilitySelector: true, 
+                showColumnVisibilitySelector: true, // Explicitly shows the column visibility toggle (default is true)
             });
         } else {
-            document.getElementById('table-users-classic').innerHTML = '<p>"userData" not found.</p>'; 
+            document.getElementById('table-users-classic').innerHTML = '<p>"userData" not found.</p>'; // Translated
         }
     });
 </script>
