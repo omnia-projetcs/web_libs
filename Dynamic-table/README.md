@@ -161,16 +161,14 @@ To use header filtering, set the global configuration option:
     *   `'global'` (default): Uses the standard global search and filter dropdowns at the top of the table.
     *   `'header'`: Activates filter inputs within each column header.
 
-A UI button is also provided in the control bar to toggle between these modes dynamically.
-
 **Configuring Column Header Filters:**
 
-When `filterMode` is set to `'header'` (either initially or via the toggle), you can specify the type of filter for each column using the `headerFilterType` property in its column definition. The column must also have `filterable: true`.
+When `filterMode` is set to `'header'`, you can specify the type of filter for each column using the `headerFilterType` property in its column definition. The column must also have `filterable: true`.
 
-*   `headerFilterType: 'text'`: Displays a simple text input. Filters by case-insensitive text matching.
-*   `headerFilterType: 'regex'`: Displays a text input where you can type a JavaScript regular expression for more advanced filtering (case-insensitive by default).
+*   `headerFilterType: 'text'`: Displays a simple text input. Filters by case-insensitive text matching. Supports `*` as a multi-character wildcard and `?` as a single-character wildcard.
+*   `headerFilterType: 'regex'`: Displays a text input that uses a simplified, case-insensitive wildcard syntax for filtering: `*` matches any sequence of characters (including an empty one), and `?` matches any single character. This input is converted internally to a regular expression.
 *   `headerFilterType: 'select'`: Displays a dropdown select list. The options are dynamically populated with the unique values from that column's data.
-*   `headerFilterType: 'multiselect'`: (Currently a placeholder, full implementation pending).
+*   `headerFilterType: 'multiselect'`: Displays a dropdown list with checkboxes, allowing users to select multiple values from the column's unique data to filter by. The table will show rows where the column's value matches *any* of the selected options.
 
 Example column definition:
 ```javascript
