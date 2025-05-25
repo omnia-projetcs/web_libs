@@ -30,6 +30,7 @@
  * @param {string} config.columns[].header - The text to display in the header.
  * @param {boolean} [config.columns[].sortable=false] - If the column is sortable.
  * @param {boolean} [config.columns[].filterable=false] - If a filter should be created.
+ * @param {'text'|'regex'|'select'|'multiselect'|null} [config.columns[].headerFilterType=null] - Defines the type of filter to display in the header for this column. If null or undefined, no header filter is shown for this column.
  * @param {string} [config.columns[].format] - Formatting type. Ex: 'currency:EUR', 'date:YYYY/MM/DD', 'percent', 'percent:2', 'percent_neutral', 'percent_neutral:2'.
  * @param {function} [config.columns[].render] - Custom rendering function for the cell.
  * @param {string} [config.columns[].renderAs='text'] - Rendering type: 'text' or 'chart'.
@@ -49,6 +50,7 @@
  * @param {boolean} [config.showRowsPerPageSelector=true] - Show rows per page selector.
  * @param {(number|string)[]} [config.rowsPerPageOptions=[10, 25, 50, 100, 'All']] - Options for the selector. 'All' displays all items.
  * @param {string|null} [config.tableMaxHeight=null] - Max CSS height for table scroll.
+ * @param {'global'|'header'} [config.filterMode='global'] - Specifies the initial filter mode. 'global' uses top controls, 'header' uses in-header inputs.
  */
 function createDynamicTable(config) {
     const {
@@ -66,8 +68,10 @@ function createDynamicTable(config) {
         tableMaxHeight = null,
         uniformChartHeight = null,
         showColumnVisibilitySelector = true // New configuration option
+        // filterMode is handled below
     } = config;
 
+    let currentFilterMode = config.filterMode || 'global';
     let initialRowsPerPageSetting = config.rowsPerPage !== undefined ? config.rowsPerPage : (rowsPerPageOptions[0] || 10);
     let currentRowsPerPage;
 
@@ -146,6 +150,55 @@ function createDynamicTable(config) {
                 if (originalCol && originalCol.sortable && originalCol.key) {
                     th.classList.add('sortable');
                     th.dataset.column = originalCol.key;
+                }
+                if (currentFilterMode === 'header' && originalCol && originalCol.filterable) { // Also check if column is filterable
+                    const filterPlaceholder = document.createElement('div');
+                    filterPlaceholder.className = 'dt-header-filter-placeholder';
+                    
+                    const filterType = originalCol.headerFilterType || null; // Default to null if not defined
+
+                    if (filterType) {
+                        filterPlaceholder.innerHTML = ''; // Clear any temporary content
+
+                        switch (filterType) {
+                            case 'text':
+                            case 'regex': // For now, 'regex' will also be a text input
+                                const input = document.createElement('input');
+                                input.type = 'text';
+                                input.placeholder = `Filter ${colState.header}...`;
+                                input.className = 'dt-header-filter-input';
+                                input.dataset.columnKey = colState.key;
+                                input.addEventListener('click', (e) => e.stopPropagation());
+                                input.addEventListener('input', () => { // Event listener for text/regex input
+                                    processDataInternal();
+                                });
+                                filterPlaceholder.appendChild(input);
+                                break;
+                            case 'select':
+                                const select = document.createElement('select');
+                                select.className = 'dt-header-filter-select';
+                                select.dataset.columnKey = colState.key;
+                                const defaultOption = document.createElement('option');
+                                defaultOption.value = '';
+                                defaultOption.textContent = 'All';
+                                select.appendChild(defaultOption);
+                                select.addEventListener('click', (e) => e.stopPropagation());
+                                select.addEventListener('change', () => { // Event listener for select
+                                    processDataInternal();
+                                });
+                                filterPlaceholder.appendChild(select);
+                                break;
+                            case 'multiselect':
+                                const multiSelectPlaceholder = document.createElement('div');
+                                multiSelectPlaceholder.textContent = 'Multi-select (NYI)'; 
+                                multiSelectPlaceholder.className = 'dt-header-filter-multiselect-placeholder';
+                                multiSelectPlaceholder.dataset.columnKey = colState.key;
+                                multiSelectPlaceholder.addEventListener('click', (e) => e.stopPropagation());
+                                filterPlaceholder.appendChild(multiSelectPlaceholder);
+                                break;
+                        }
+                    }
+                    th.appendChild(filterPlaceholder);
                 }
                 headerRow.appendChild(th);
             }
@@ -231,6 +284,15 @@ function createDynamicTable(config) {
         controlsWrapper.className = 'dynamic-table-controls';
         let hasVisibleTopControls = false;
 
+        // Filter Mode Toggle Button
+        const filterModeToggle = document.createElement('button');
+        filterModeToggle.id = `${containerId}-filter-mode-toggle`;
+        filterModeToggle.className = 'dt-filter-mode-toggle-button'; // For styling
+        filterModeToggle.textContent = currentFilterMode === 'header' ? 'Switch to Global Filters' : 'Switch to Header Filters';
+        controlsWrapper.appendChild(filterModeToggle);
+        hasVisibleTopControls = true;
+
+
         if (showSearchControl) {
             const searchDiv = document.createElement('div');
             searchDiv.className = 'dynamic-table-search-control';
@@ -245,49 +307,44 @@ function createDynamicTable(config) {
             searchDiv.appendChild(globalSearchInput);
             controlsWrapper.appendChild(searchDiv);
             hasVisibleTopControls = true;
+            if (currentFilterMode === 'header') {
+                searchDiv.style.display = 'none'; // Initially hide if header mode
+            }
         }
         
-        // Add Column Selector to controls
-        columnSelectorWrapper = buildColumnSelector(); // buildColumnSelector is now defined
-        // controlsWrapper.appendChild(columnSelectorWrapper); // Will be added to rightControlsGroup
-        // hasVisibleTopControls = true; // Will be set if rightControlsGroup is added or other controls
-
         columns.forEach(col => {
             if (col.filterable && col.key) {
                 const filterDiv = document.createElement('div');
                 filterDiv.className = 'dynamic-table-filter-control';
-                const filterLabel = document.createElement('label');
-                // ID will be set on the main select or custom select wrapper
-                filterLabel.htmlFor = `${containerId}-filter-${col.key}`; 
-                filterLabel.textContent = `Filter by ${col.header}:`;
-                filterDiv.appendChild(filterLabel);
+                // No label for global filters if they might be hidden
+                // const filterLabel = document.createElement('label');
+                // filterLabel.htmlFor = `${containerId}-filter-${col.key}`; 
+                // filterLabel.textContent = `Filter by ${col.header}:`;
+                // filterDiv.appendChild(filterLabel);
 
                 if (col.format === 'flag') {
                     filterDiv.classList.add('custom-flag-filter');
 
                     const customSelect = document.createElement('div');
-                    customSelect.id = `${containerId}-filter-${col.key}`; // ID for the label
+                    customSelect.id = `${containerId}-filter-${col.key}`;
                     customSelect.className = 'dt-custom-select';
                     customSelect.dataset.filterKey = col.key;
 
                     const trigger = document.createElement('div');
                     trigger.className = 'dt-custom-select-trigger';
-
                     const triggerValue = document.createElement('span');
                     triggerValue.className = 'dt-custom-select-value';
-                    triggerValue.textContent = 'All'; // Changed: Default text for trigger
+                    triggerValue.textContent = 'All';
                     trigger.appendChild(triggerValue);
-
                     const arrow = document.createElement('span');
                     arrow.className = 'dt-custom-arrow';
-                    arrow.innerHTML = '&#9660;'; // Down arrow, could be '▼'
+                    arrow.innerHTML = '&#9660;';
                     trigger.appendChild(arrow);
-                    
                     customSelect.appendChild(trigger);
 
                     const optionsContainer = document.createElement('div');
                     optionsContainer.className = 'dt-custom-options';
-                    optionsContainer.style.display = 'none'; // Initially hidden
+                    optionsContainer.style.display = 'none';
                     customSelect.appendChild(optionsContainer);
 
                     filterDiv.appendChild(customSelect);
@@ -296,26 +353,26 @@ function createDynamicTable(config) {
                         mainElement: customSelect,
                         triggerValueElement: triggerValue,
                         optionsContainer: optionsContainer,
-                        value: '' // Initialize value for the custom select
+                        value: ''
                     };
-
                 } else {
                     const select = document.createElement('select');
-                    select.id = `${containerId}-filter-${col.key}`; // ID for the label
+                    select.id = `${containerId}-filter-${col.key}`;
                     select.dataset.filterKey = col.key;
                     select.classList.add('dt-common-select');
-                    
                     const defaultOption = document.createElement('option');
                     defaultOption.value = '';
                     defaultOption.textContent = `All ${col.header}`;
                     select.appendChild(defaultOption);
-                    
                     filterDiv.appendChild(select);
                     filterSelects[col.key] = { custom: false, element: select };
                 }
                 
                 controlsWrapper.appendChild(filterDiv);
                 hasVisibleTopControls = true;
+                if (currentFilterMode === 'header') {
+                    filterDiv.style.display = 'none'; // Initially hide if header mode
+                }
             }
         });
         
@@ -632,41 +689,127 @@ function createDynamicTable(config) {
                 }
             }
         });
+
+        // Populate header select filters
+        if (thead && originalData.length > 0) {
+            columns.forEach(colConfig => {
+                if (colConfig.filterable && colConfig.headerFilterType === 'select' && colConfig.key) {
+                    const headerSelectElement = thead.querySelector(`.dt-header-filter-select[data-column-key="${colConfig.key}"]`);
+                    if (headerSelectElement) {
+                        // Clear existing options (keep the first "All" option if it exists)
+                        while (headerSelectElement.options.length > 1) {
+                            headerSelectElement.remove(1);
+                        }
+
+                        const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
+                            .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '') // Filter out null, undefined, and empty strings
+                            .sort((a, b) => { // Ensure proper sorting for numbers and strings
+                                if (typeof a === 'number' && typeof b === 'number') {
+                                    return a - b;
+                                }
+                                return String(a).localeCompare(String(b));
+                            });
+                        
+                        uniqueValues.forEach(val => {
+                            const option = document.createElement('option');
+                            option.value = val;
+                            // For now, using raw value for textContent. 
+                            // Could use formatValue(val, colConfig.format) if formatted display is needed.
+                            option.textContent = val; 
+                            headerSelectElement.appendChild(option);
+                        });
+                    }
+                }
+            });
+        }
     }
 
     function processDataInternal() {
-        const globalSearchTerm = (globalSearchInput && showSearchControl) ? globalSearchInput.value.trim().toLowerCase() : "";
-        const activeFilters = {};
-        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
-            if (filterConfig.custom) {
-                if (filterConfig.value) { // Check if a value is selected
-                    activeFilters[key] = filterConfig.value;
-                }
-            } else {
-                // Standard select
-                if (filterConfig.element && filterConfig.element.value) {
-                    activeFilters[key] = filterConfig.element.value;
-                }
+        let filteredData;
+
+        if (currentFilterMode === 'header') {
+            const activeHeaderFilters = {};
+            if (thead) { // Ensure thead exists
+                const headerFilterInputs = thead.querySelectorAll('.dt-header-filter-input, .dt-header-filter-select');
+                headerFilterInputs.forEach(input => {
+                    const columnKey = input.dataset.columnKey;
+                    const value = input.value.trim();
+                    const originalColumn = columns.find(col => col.key === columnKey);
+
+                    if (value && originalColumn && originalColumn.headerFilterType) {
+                        activeHeaderFilters[columnKey] = {
+                            value: value,
+                            type: originalColumn.headerFilterType
+                        };
+                    }
+                });
             }
-        });
 
-        let filteredData = originalData.filter(item => {
-            // Check specific column filters
-            const specificFiltersMatch = Object.entries(activeFilters).every(([key, value]) => {
-                const columnConfig = columns.find(col => col.key === key); 
-                if (columnConfig && columnConfig.format === 'flag') {
-                    const itemCanonicalValue = getCanonicalCountryCode(item[key]);
-                    return String(itemCanonicalValue) === value; 
+            filteredData = originalData.filter(item => {
+                for (const key in activeHeaderFilters) {
+                    const columnConfig = columns.find(col => col.key === key); // Redundant if already have originalColumn above, but good for safety
+                    const itemValue = item[key];
+                    const filterDetails = activeHeaderFilters[key];
+                    const filterValue = filterDetails.value;
+                    const safeItemValue = String(itemValue !== null && itemValue !== undefined ? itemValue : '');
+
+                    if (filterDetails.type === 'regex') {
+                        try {
+                            const regex = new RegExp(filterValue, 'i');
+                            if (!regex.test(safeItemValue)) return false;
+                        } catch (e) {
+                            console.warn(`[DynamicTable] Invalid regex for column ${key}: ${filterValue}`, e);
+                            return false; // Treat invalid regex as non-match for safety
+                        }
+                    } else if (filterDetails.type === 'text') {
+                        if (!safeItemValue.toLowerCase().includes(filterValue.toLowerCase())) return false;
+                    } else if (filterDetails.type === 'select') {
+                        // For select, we might want to compare with the raw itemValue, not necessarily the stringified one,
+                        // depending on how select options are populated. Assuming string comparison for now.
+                        if (safeItemValue !== filterValue) return false;
+                    }
+                    // Multi-select logic will be added later
                 }
-                return String(item[key]) === value; 
+                return true; // Passed all active header filters
             });
-            if (!specificFiltersMatch) return false;
 
-            // Check global search term if active
-            return !globalSearchTerm || Object.values(item).some(val =>
-                String(val).toLowerCase().includes(globalSearchTerm)
-            );
-        });
+        } else { // 'global' filterMode
+            const globalSearchTerm = (globalSearchInput && showSearchControl) ? globalSearchInput.value.trim().toLowerCase() : "";
+            const activeGlobalFilters = {}; // Renamed to avoid confusion with activeHeaderFilters
+            Object.entries(filterSelects).forEach(([key, filterConfig]) => {
+                if (filterConfig.custom) {
+                    if (filterConfig.value) {
+                        activeGlobalFilters[key] = filterConfig.value;
+                    }
+                } else {
+                    if (filterConfig.element && filterConfig.element.value) {
+                        activeGlobalFilters[key] = filterConfig.element.value;
+                    }
+                }
+            });
+
+            filteredData = originalData.filter(item => {
+                const specificFiltersMatch = Object.entries(activeGlobalFilters).every(([key, value]) => {
+                    const columnConfig = columns.find(col => col.key === key);
+                    if (columnConfig && columnConfig.format === 'flag') {
+                        const itemCanonicalValue = getCanonicalCountryCode(item[key]);
+                        return String(itemCanonicalValue) === value;
+                    }
+                    // Ensure item[key] is safely converted to string for comparison
+                    const itemValueString = String(item[key] !== null && item[key] !== undefined ? item[key] : '');
+                    return itemValueString === value;
+                });
+                if (!specificFiltersMatch) return false;
+
+                // Global search term logic (only if global search is enabled and term is present)
+                if (showSearchControl && globalSearchTerm) {
+                    return Object.values(item).some(val =>
+                        String(val !== null && val !== undefined ? val : '').toLowerCase().includes(globalSearchTerm)
+                    );
+                }
+                return true; // Passed specific filters, and global search is either not active or also passed
+            });
+        }
 
         if (sortColumn) {
              filteredData.sort((a, b) => {
@@ -865,6 +1008,47 @@ function createDynamicTable(config) {
     }
 
     function attachEventListeners() {
+        const filterModeToggle = document.getElementById(`${containerId}-filter-mode-toggle`);
+        if (filterModeToggle) {
+            filterModeToggle.addEventListener('click', () => {
+                currentFilterMode = currentFilterMode === 'global' ? 'header' : 'global';
+                filterModeToggle.textContent = currentFilterMode === 'header' ? 'Switch to Global Filters' : 'Switch to Header Filters';
+
+                const globalSearchControl = globalSearchInput ? globalSearchInput.closest('.dynamic-table-search-control') : null;
+                if (globalSearchControl) {
+                    globalSearchControl.style.display = currentFilterMode === 'global' ? '' : 'none';
+                }
+                Object.values(filterSelects).forEach(fConfig => {
+                    const parentControl = fConfig.custom ? fConfig.mainElement.closest('.dynamic-table-filter-control') : fConfig.element.closest('.dynamic-table-filter-control');
+                    if (parentControl) {
+                        parentControl.style.display = currentFilterMode === 'global' ? '' : 'none';
+                    }
+                });
+                
+                buildHeaderRow(); // Rebuild header for header filters
+
+                if (currentFilterMode === 'header') { // Switched TO header
+                    if (globalSearchInput) globalSearchInput.value = '';
+                    Object.values(filterSelects).forEach(fConfig => {
+                        if (fConfig.custom) {
+                            fConfig.triggerValueElement.textContent = 'All'; 
+                            fConfig.value = '';
+                        } else {
+                            fConfig.element.value = '';
+                        }
+                    });
+                } else { // Switched TO global
+                    if (thead) {
+                        thead.querySelectorAll('.dt-header-filter-input, .dt-header-filter-select').forEach(input => {
+                            if (input.tagName === 'SELECT') input.value = '';
+                            else input.value = '';
+                        });
+                    }
+                }
+                processDataInternal(); 
+            });
+        }
+
         if (globalSearchInput) globalSearchInput.addEventListener('input', processDataInternal);
 
         Object.entries(filterSelects).forEach(([key, filterConfig]) => {

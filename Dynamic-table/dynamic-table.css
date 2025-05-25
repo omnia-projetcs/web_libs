@@ -160,6 +160,44 @@
     background-color: #dde4e6;
 }
 
+/* --- Header Filter Styles --- */
+.dt-header-filter-placeholder {
+    margin-top: 8px; /* Increased space for better visual separation */
+    /* No other specific alignment needed yet, parent th handles text-align. */
+}
+
+.dt-header-filter-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-sizing: border-box;
+    font-size: 0.9rem;
+    font-family: inherit; /* Ensure consistent font */
+}
+.dt-header-filter-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.dt-header-filter-select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-sizing: border-box;
+    font-size: 0.9rem;
+    font-family: inherit; /* Ensure consistent font */
+    background-color: #fff;
+}
+.dt-header-filter-select:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+/* --- End Header Filter Styles --- */
+
 .dynamic-table thead th:first-child {
     border-top-left-radius: var(--border-radius); /* Or a specific pixel value like 4px */
 }
