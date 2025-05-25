@@ -836,6 +836,21 @@ function createDynamicTable(config) {
                                         processDataInternal();
                                     });
                                 });
+
+                                // **** START NEW DIAGNOSTIC CODE ****
+                                const testItem = document.createElement('div');
+                                testItem.className = 'dt-multiselect-item'; // Ensure it picks up general item diagnostic styles
+                                testItem.textContent = 'HARDCODED TEST ITEM';
+                                // Add specific inline styles to make this one very obvious and override other diagnostics
+                                testItem.style.color = 'black !important';
+                                testItem.style.backgroundColor = 'orange !important';
+                                testItem.style.border = '3px solid darkred !important';
+                                testItem.style.padding = '5px !important';
+                                testItem.style.fontWeight = 'bold !important';
+                                testItem.style.display = 'block !important'; // Ensure it's block, even if .dt-multiselect-item is flex
+                                dropdownDiv.appendChild(testItem);
+                                // **** END NEW DIAGNOSTIC CODE ****
+
                                 // After populating, update display in case of pre-selected values (future enhancement)
                                 updateMultiSelectValueDisplay(multiSelectContainer);
                             }
@@ -844,6 +859,49 @@ function createDynamicTable(config) {
                 }
             });
         }
+    }
+
+    function populateGlobalMultiSelectOptions(filterKey, optionsContainer, uniqueValues, headerText) {
+        optionsContainer.innerHTML = ''; // Clear existing options
+
+        uniqueValues.forEach(value => {
+            const itemDiv = document.createElement('div');
+            // Assign class for styling - let's use 'dt-multiselect-item' for consistency in appearance with header items.
+            // If global multiselect items need different styling than header ones, a more specific class could be added too.
+            itemDiv.className = 'dt-multiselect-item'; 
+
+            const checkboxId = `dt-gms-${containerId}-${filterKey}-${String(value).replace(/\s+/g, '-')}`;
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = checkboxId;
+            checkbox.value = String(value); // Ensure value is string
+            checkbox.dataset.filterKey = filterKey;
+
+            const label = document.createElement('label');
+            label.htmlFor = checkboxId;
+            label.textContent = String(value); // Ensure value is string
+
+            itemDiv.appendChild(checkbox);
+            itemDiv.appendChild(label);
+            optionsContainer.appendChild(itemDiv);
+
+            checkbox.addEventListener('change', () => {
+                // Update the stored values for this global multiselect filter
+                const selectedValues = [];
+                // optionsContainer is the direct parent of itemDivs. Query all checkboxes within this specific optionsContainer.
+                const allCheckboxesInGroup = optionsContainer.querySelectorAll('input[type="checkbox"]'); 
+                allCheckboxesInGroup.forEach(cb => {
+                    if (cb.checked) {
+                        selectedValues.push(cb.value);
+                    }
+                });
+                filterSelects[filterKey].value = selectedValues; // Update the array of selected values in the central store
+
+                const mainElement = filterSelects[filterKey].mainElement; 
+                updateMultiSelectValueDisplay(mainElement, headerText);
+                processDataInternal();
+            });
+        });
     }
 
     function populateCustomFlagOptions(filterKey, optionsContainer, triggerValueElement, canonicalValues, headerText) {
@@ -893,8 +951,23 @@ function createDynamicTable(config) {
             const header = columnDef ? columnDef.header : '';
 
             if (filterConfig.custom) {
-                const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
-                populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
+                if (filterConfig.isGlobalMultiSelect) { // This is a global multiselect filter
+                    const uniqueValues = [...new Set(originalData.map(item => item[key]))]
+                        .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
+                        .sort((a, b) => {
+                            if (typeof a === 'number' && typeof b === 'number') return a - b;
+                            return String(a).localeCompare(String(b));
+                        });
+                    
+                    populateGlobalMultiSelectOptions(key, filterConfig.optionsContainer, uniqueValues, header);
+
+                    // After populating, update the display (e.g., to "All [headerText]")
+                    updateMultiSelectValueDisplay(filterConfig.mainElement, header); // header is columnDef.header
+
+                } else { // This is for custom global FLAG filters (isGlobalMultiSelect is false)
+                    const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
+                    populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
+                }
             } else {
                 // Standard select element
                 const selectElement = filterConfig.element;
