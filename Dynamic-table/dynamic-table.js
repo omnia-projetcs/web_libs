@@ -31,6 +31,10 @@
  * @param {boolean} [config.columns[].sortable=false] - If the column is sortable.
  * @param {boolean} [config.columns[].filterable=false] - If a filter should be created.
  * @param {'text'|'regex'|'select'|'multiselect'|null} [config.columns[].headerFilterType=null] - Defines the type of filter to display in the header for this column. If null or undefined, no header filter is shown for this column.
+ *     - `'text'`: Displays a text input. Filters by case-insensitive text matching, supporting `*` (multi-character) and `?` (single-character) wildcards.
+ *     - `'regex'`: Displays a text input. Filters using a simplified, case-insensitive wildcard syntax: `*` for multi-character, `?` for single-character. This is converted internally to a regular expression.
+ *     - `'select'`: Displays a dropdown select list with unique values from the column.
+ *     - `'multiselect'`: Displays a dropdown list with checkboxes, allowing selection of multiple values. Rows match if the column's value is one of the selected options.
  * @param {string} [config.columns[].format] - Formatting type. Ex: 'currency:EUR', 'date:YYYY/MM/DD', 'percent', 'percent:2', 'percent_neutral', 'percent_neutral:2'.
  * @param {function} [config.columns[].render] - Custom rendering function for the cell.
  * @param {string} [config.columns[].renderAs='text'] - Rendering type: 'text' or 'chart'.
@@ -50,7 +54,7 @@
  * @param {boolean} [config.showRowsPerPageSelector=true] - Show rows per page selector.
  * @param {(number|string)[]} [config.rowsPerPageOptions=[10, 25, 50, 100, 'All']] - Options for the selector. 'All' displays all items.
  * @param {string|null} [config.tableMaxHeight=null] - Max CSS height for table scroll.
- * @param {'global'|'header'} [config.filterMode='global'] - Specifies the initial filter mode. 'global' uses top controls, 'header' uses in-header inputs.
+ * @param {'global'|'header'} [config.filterMode='global'] - Specifies the filter mode. 'global' uses top controls, 'header' uses in-header inputs. This is set at initialization.
  */
 function createDynamicTable(config) {
     const {
@@ -68,10 +72,10 @@ function createDynamicTable(config) {
         tableMaxHeight = null,
         uniformChartHeight = null,
         showColumnVisibilitySelector = true // New configuration option
-        // filterMode is handled below
+        // filterMode is now directly from config or defaults to 'global'
     } = config;
 
-    let currentFilterMode = config.filterMode || 'global';
+    const filterMode = config.filterMode || 'global';
     let initialRowsPerPageSetting = config.rowsPerPage !== undefined ? config.rowsPerPage : (rowsPerPageOptions[0] || 10);
     let currentRowsPerPage;
 
@@ -124,6 +128,22 @@ function createDynamicTable(config) {
         filterSelects = {}, resultsCountSpan, paginationWrapper, prevButton,
         nextButton, pageInfoSpan, rowsPerPageSelectElement, columnSelectorWrapper;
 
+    function convertWildcardToRegex(pattern) {
+        let regexString = "";
+        for (const char of pattern) {
+            if (char === '*') {
+                regexString += '.*';
+            } else if (char === '?') {
+                regexString += '.';
+            } else if (/[.+(){}\[\]\\^$|]/.test(char)) { // Check if char is a regex special char
+                regexString += '\\' + char; // Escape it
+            } else {
+                regexString += char; // Add literal char
+            }
+        }
+        return regexString;
+    }
+
     // Initialize columnVisibilityStates
     columns.forEach(col => {
         columnVisibilityStates.push({
@@ -143,33 +163,44 @@ function createDynamicTable(config) {
         const headerRow = thead.insertRow();
         columnVisibilityStates.forEach(colState => {
             if (colState.visible) {
-                const originalCol = columns.find(c => c.key === colState.key); // Find original column for properties like 'sortable'
+                const originalCol = columns.find(c => c.key === colState.key);
                 const th = document.createElement('th');
-                th.textContent = colState.header;
                 th.setAttribute('scope', 'col');
+
+                const titleLineDiv = document.createElement('div');
+                titleLineDiv.className = 'dt-title-line';
+
+                const headerTextSpan = document.createElement('span');
+                headerTextSpan.className = 'dt-header-text';
+                headerTextSpan.textContent = colState.header;
+                
+                titleLineDiv.appendChild(headerTextSpan);
+                th.appendChild(titleLineDiv);
+
                 if (originalCol && originalCol.sortable && originalCol.key) {
                     th.classList.add('sortable');
                     th.dataset.column = originalCol.key;
                 }
-                if (currentFilterMode === 'header' && originalCol && originalCol.filterable) { // Also check if column is filterable
+
+                if (filterMode === 'header' && originalCol && originalCol.filterable) {
                     const filterPlaceholder = document.createElement('div');
                     filterPlaceholder.className = 'dt-header-filter-placeholder';
                     
-                    const filterType = originalCol.headerFilterType || null; // Default to null if not defined
+                    const filterType = originalCol.headerFilterType || null;
 
                     if (filterType) {
-                        filterPlaceholder.innerHTML = ''; // Clear any temporary content
+                        filterPlaceholder.innerHTML = ''; 
 
                         switch (filterType) {
                             case 'text':
-                            case 'regex': // For now, 'regex' will also be a text input
+                            case 'regex':
                                 const input = document.createElement('input');
                                 input.type = 'text';
                                 input.placeholder = `Filter ${colState.header}...`;
                                 input.className = 'dt-header-filter-input';
                                 input.dataset.columnKey = colState.key;
                                 input.addEventListener('click', (e) => e.stopPropagation());
-                                input.addEventListener('input', () => { // Event listener for text/regex input
+                                input.addEventListener('input', () => { 
                                     processDataInternal();
                                 });
                                 filterPlaceholder.appendChild(input);
@@ -182,28 +213,63 @@ function createDynamicTable(config) {
                                 defaultOption.value = '';
                                 defaultOption.textContent = 'All';
                                 select.appendChild(defaultOption);
-                                select.addEventListener('click', (e) => e.stopPropagation());
-                                select.addEventListener('change', () => { // Event listener for select
+                                // select.addEventListener('click', (e) => e.stopPropagation());
+                                select.addEventListener('change', () => { 
                                     processDataInternal();
                                 });
                                 filterPlaceholder.appendChild(select);
                                 break;
                             case 'multiselect':
-                                const multiSelectPlaceholder = document.createElement('div');
-                                multiSelectPlaceholder.textContent = 'Multi-select (NYI)'; 
-                                multiSelectPlaceholder.className = 'dt-header-filter-multiselect-placeholder';
-                                multiSelectPlaceholder.dataset.columnKey = colState.key;
-                                multiSelectPlaceholder.addEventListener('click', (e) => e.stopPropagation());
-                                filterPlaceholder.appendChild(multiSelectPlaceholder);
+                                const multiSelectDiv = document.createElement('div');
+                                multiSelectDiv.className = 'dt-header-multiselect';
+                                multiSelectDiv.dataset.columnKey = colState.key;
+
+                                const triggerDiv = document.createElement('div');
+                                triggerDiv.className = 'dt-multiselect-trigger';
+
+                                const valueSpan = document.createElement('span');
+                                valueSpan.className = 'dt-multiselect-value';
+                                valueSpan.textContent = 'All'; // Default display text
+
+                                const arrowSpan = document.createElement('span');
+                                arrowSpan.className = 'dt-multiselect-arrow';
+                                arrowSpan.innerHTML = '&#9660;';
+
+                                triggerDiv.appendChild(valueSpan);
+                                triggerDiv.appendChild(arrowSpan);
+
+                                const dropdownDiv = document.createElement('div');
+                                dropdownDiv.className = 'dt-multiselect-dropdown';
+                                dropdownDiv.style.display = 'none';
+                                // Items will be populated later
+
+                                multiSelectDiv.appendChild(triggerDiv);
+                                multiSelectDiv.appendChild(dropdownDiv);
+
+                                // Prevent click on the component from sorting the column
+                                multiSelectDiv.addEventListener('click', (e) => e.stopPropagation());
+                                
+                                triggerDiv.addEventListener('click', (event) => {
+                                    // event.stopPropagation(); // Already stopped by multiSelectDiv's listener for the outer box
+                                    const currentlyOpen = dropdownDiv.style.display === 'block';
+                                    // Close other open multiselects first
+                                    if (thead) { // Ensure thead is available
+                                        thead.querySelectorAll('.dt-header-multiselect .dt-multiselect-dropdown').forEach(d => {
+                                            if (d !== dropdownDiv) d.style.display = 'none';
+                                        });
+                                    }
+                                    dropdownDiv.style.display = currentlyOpen ? 'none' : 'block';
+                                });
+                                
+                                filterPlaceholder.appendChild(multiSelectDiv);
                                 break;
                         }
                     }
-                    th.appendChild(filterPlaceholder);
+                    th.appendChild(filterPlaceholder); // Appended after titleLineDiv
                 }
                 headerRow.appendChild(th);
             }
         });
-        // Re-apply sort indicators after rebuilding the header
         updateSortIndicatorsInternal();
     }
 
@@ -284,17 +350,10 @@ function createDynamicTable(config) {
         controlsWrapper.className = 'dynamic-table-controls';
         let hasVisibleTopControls = false;
 
-        // Filter Mode Toggle Button
-        const filterModeToggle = document.createElement('button');
-        filterModeToggle.id = `${containerId}-filter-mode-toggle`;
-        filterModeToggle.className = 'dt-filter-mode-toggle-button'; // For styling
-        filterModeToggle.textContent = currentFilterMode === 'header' ? 'Switch to Global Filters' : 'Switch to Header Filters';
-        controlsWrapper.appendChild(filterModeToggle);
-        hasVisibleTopControls = true;
-
-
+        // Global Search Control (created first, then potentially hidden)
+        let searchDiv; // Declare searchDiv to access its parentElement later
         if (showSearchControl) {
-            const searchDiv = document.createElement('div');
+            searchDiv = document.createElement('div'); // Assign to searchDiv
             searchDiv.className = 'dynamic-table-search-control';
             const searchLabel = document.createElement('label');
             searchLabel.htmlFor = `${containerId}-global-search`;
@@ -307,29 +366,26 @@ function createDynamicTable(config) {
             searchDiv.appendChild(globalSearchInput);
             controlsWrapper.appendChild(searchDiv);
             hasVisibleTopControls = true;
-            if (currentFilterMode === 'header') {
-                searchDiv.style.display = 'none'; // Initially hide if header mode
-            }
         }
         
+        // Global Filter Dropdowns (created first, then potentially hidden)
+        const globalFilterControls = []; // To store references to filterDivs
         columns.forEach(col => {
             if (col.filterable && col.key) {
                 const filterDiv = document.createElement('div');
                 filterDiv.className = 'dynamic-table-filter-control';
-                // No label for global filters if they might be hidden
-                // const filterLabel = document.createElement('label');
-                // filterLabel.htmlFor = `${containerId}-filter-${col.key}`; 
-                // filterLabel.textContent = `Filter by ${col.header}:`;
-                // filterDiv.appendChild(filterLabel);
+                // Labels for global filters are fine even if hidden initially
+                const filterLabel = document.createElement('label');
+                filterLabel.htmlFor = `${containerId}-filter-${col.key}`; 
+                filterLabel.textContent = `Filter by ${col.header}:`;
+                filterDiv.appendChild(filterLabel);
 
                 if (col.format === 'flag') {
                     filterDiv.classList.add('custom-flag-filter');
-
                     const customSelect = document.createElement('div');
                     customSelect.id = `${containerId}-filter-${col.key}`;
                     customSelect.className = 'dt-custom-select';
                     customSelect.dataset.filterKey = col.key;
-
                     const trigger = document.createElement('div');
                     trigger.className = 'dt-custom-select-trigger';
                     const triggerValue = document.createElement('span');
@@ -341,12 +397,10 @@ function createDynamicTable(config) {
                     arrow.innerHTML = '&#9660;';
                     trigger.appendChild(arrow);
                     customSelect.appendChild(trigger);
-
                     const optionsContainer = document.createElement('div');
                     optionsContainer.className = 'dt-custom-options';
                     optionsContainer.style.display = 'none';
                     customSelect.appendChild(optionsContainer);
-
                     filterDiv.appendChild(customSelect);
                     filterSelects[col.key] = {
                         custom: true,
@@ -369,12 +423,20 @@ function createDynamicTable(config) {
                 }
                 
                 controlsWrapper.appendChild(filterDiv);
+                globalFilterControls.push(filterDiv); // Store reference
                 hasVisibleTopControls = true;
-                if (currentFilterMode === 'header') {
-                    filterDiv.style.display = 'none'; // Initially hide if header mode
-                }
             }
         });
+
+        // Hide global controls if filterMode is 'header'
+        if (filterMode === 'header') {
+            if (searchDiv) { // searchDiv is the parent of globalSearchInput
+                searchDiv.style.display = 'none';
+            }
+            globalFilterControls.forEach(control => {
+                control.style.display = 'none';
+            });
+        }
         
         // Create a group for right-aligned controls
         const rightControlsGroup = document.createElement('div');
@@ -621,6 +683,119 @@ function createDynamicTable(config) {
         }
     }
 
+    function updateMultiSelectValueDisplay(multiSelectContainerElement) {
+        const checkedCheckboxes = multiSelectContainerElement.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+        const valueSpan = multiSelectContainerElement.querySelector('.dt-multiselect-value');
+        if (!valueSpan) return;
+
+        if (checkedCheckboxes.length === 0) {
+            valueSpan.textContent = 'All';
+        } else if (checkedCheckboxes.length <= 2) { 
+            let selectedTexts = [];
+            checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value));
+            valueSpan.textContent = selectedTexts.join(', ');
+        } else {
+            valueSpan.textContent = `${checkedCheckboxes.length} selected`;
+        }
+    }
+
+    function populateFilterOptions() {
+        Object.entries(filterSelects).forEach(([key, filterConfig]) => {
+            const columnDef = columns.find(c => c.key === key);
+            const header = columnDef ? columnDef.header : '';
+
+            if (filterConfig.custom) {
+                const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
+                populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
+            } else {
+                // Standard select element
+                const selectElement = filterConfig.element;
+                if (selectElement) {
+                    // Keep the first option ("All X")
+                    while (selectElement.options.length > 1) selectElement.remove(1);
+                    
+                    const uniqueValues = [...new Set(originalData.map(item => item[key]))].sort();
+                    uniqueValues.forEach(val => {
+                        if (val !== null && typeof val !== 'undefined') {
+                            const option = document.createElement('option');
+                            option.value = val;
+                            option.textContent = val;
+                            selectElement.appendChild(option);
+                        }
+                    });
+                }
+            }
+        });
+
+        // Populate header select and multi-select filters
+        if (thead && originalData.length > 0) {
+            columns.forEach(colConfig => {
+                if (colConfig.filterable && colConfig.key) {
+                    if (colConfig.headerFilterType === 'select') {
+                        const headerSelectElement = thead.querySelector(`.dt-header-filter-select[data-column-key="${colConfig.key}"]`);
+                        if (headerSelectElement) {
+                            while (headerSelectElement.options.length > 1) {
+                                headerSelectElement.remove(1);
+                            }
+                            const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
+                                .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
+                                .sort((a, b) => {
+                                    if (typeof a === 'number' && typeof b === 'number') return a - b;
+                                    return String(a).localeCompare(String(b));
+                                });
+                            uniqueValues.forEach(val => {
+                                const option = document.createElement('option');
+                                option.value = val;
+                                option.textContent = val; 
+                                headerSelectElement.appendChild(option);
+                            });
+                        }
+                    } else if (colConfig.headerFilterType === 'multiselect') {
+                        const multiSelectContainer = thead.querySelector(`.dt-header-multiselect[data-column-key="${colConfig.key}"]`);
+                        if (multiSelectContainer) {
+                            const dropdownDiv = multiSelectContainer.querySelector('.dt-multiselect-dropdown');
+                            if (dropdownDiv) {
+                                dropdownDiv.innerHTML = ''; // Clear existing items
+                                const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
+                                    .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
+                                    .sort((a, b) => {
+                                        if (typeof a === 'number' && typeof b === 'number') return a - b;
+                                        return String(a).localeCompare(String(b));
+                                    });
+
+                                uniqueValues.forEach(value => {
+                                    const checkboxId = `dt-ms-${containerId}-${colConfig.key}-${String(value).replace(/\s+/g, '-')}`;
+                                    
+                                    const itemDiv = document.createElement('div');
+                                    itemDiv.className = 'dt-multiselect-item';
+
+                                    const checkbox = document.createElement('input');
+                                    checkbox.type = 'checkbox';
+                                    checkbox.id = checkboxId;
+                                    checkbox.value = value;
+                                    checkbox.dataset.columnKey = colConfig.key;
+
+                                    const label = document.createElement('label');
+                                    label.htmlFor = checkboxId;
+                                    label.textContent = value; 
+
+                                    itemDiv.appendChild(checkbox);
+                                    itemDiv.appendChild(label);
+                                    dropdownDiv.appendChild(itemDiv);
+
+                                    checkbox.addEventListener('change', () => {
+                                        updateMultiSelectValueDisplay(multiSelectContainer);
+                                        processDataInternal();
+                                    });
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
     function populateCustomFlagOptions(filterKey, optionsContainer, triggerValueElement, canonicalValues, headerText) {
         optionsContainer.innerHTML = ''; // Clear existing options
 
@@ -727,19 +902,35 @@ function createDynamicTable(config) {
     function processDataInternal() {
         let filteredData;
 
-        if (currentFilterMode === 'header') {
+        if (filterMode === 'header') {
             const activeHeaderFilters = {};
             if (thead) { // Ensure thead exists
+                // Handle text, regex, and single select inputs
                 const headerFilterInputs = thead.querySelectorAll('.dt-header-filter-input, .dt-header-filter-select');
                 headerFilterInputs.forEach(input => {
                     const columnKey = input.dataset.columnKey;
                     const value = input.value.trim();
                     const originalColumn = columns.find(col => col.key === columnKey);
 
-                    if (value && originalColumn && originalColumn.headerFilterType) {
+                    if (value && originalColumn && originalColumn.headerFilterType && originalColumn.headerFilterType !== 'multiselect') { // Exclude multiselect here
                         activeHeaderFilters[columnKey] = {
                             value: value,
                             type: originalColumn.headerFilterType
+                        };
+                    }
+                });
+
+                // Handle multiselect inputs
+                const multiSelectContainers = thead.querySelectorAll('.dt-header-multiselect');
+                multiSelectContainers.forEach(container => {
+                    const columnKey = container.dataset.columnKey;
+                    const checkedCheckboxes = container.querySelectorAll('.dt-multiselect-item input[type="checkbox"]:checked');
+                    const originalColumn = columns.find(col => col.key === columnKey);
+
+                    if (checkedCheckboxes.length > 0 && originalColumn) {
+                        activeHeaderFilters[columnKey] = {
+                            values: Array.from(checkedCheckboxes).map(cb => cb.value), // Store array of selected values
+                            type: 'multiselect'
                         };
                     }
                 });
@@ -753,24 +944,30 @@ function createDynamicTable(config) {
                     const filterValue = filterDetails.value;
                     const safeItemValue = String(itemValue !== null && itemValue !== undefined ? itemValue : '');
 
-                    if (filterDetails.type === 'regex') {
+                    if (filterDetails.type === 'text' || filterDetails.type === 'regex') {
+                        const actualRegexPattern = convertWildcardToRegex(filterValue);
                         try {
-                            const regex = new RegExp(filterValue, 'i');
+                            const regex = new RegExp(actualRegexPattern, 'i');
                             if (!regex.test(safeItemValue)) return false;
                         } catch (e) {
-                            console.warn(`[DynamicTable] Invalid regex for column ${key}: ${filterValue}`, e);
-                            return false; // Treat invalid regex as non-match for safety
+                            console.warn(`[DynamicTable] Invalid pattern/regex for column ${key}: ${filterValue} (converted to ${actualRegexPattern})`, e);
+                            return false; 
                         }
-                    } else if (filterDetails.type === 'text') {
-                        if (!safeItemValue.toLowerCase().includes(filterValue.toLowerCase())) return false;
                     } else if (filterDetails.type === 'select') {
-                        // For select, we might want to compare with the raw itemValue, not necessarily the stringified one,
-                        // depending on how select options are populated. Assuming string comparison for now.
                         if (safeItemValue !== filterValue) return false;
+                    } else if (filterDetails.type === 'multiselect') {
+                        // itemValue is already stringified as safeItemValue
+                        if (filterDetails.values && filterDetails.values.length > 0) {
+                            // Ensure item's value for this column is one of the selected values.
+                            // Values in filterDetails.values are already strings from checkbox.value
+                            if (!filterDetails.values.includes(safeItemValue)) {
+                                return false; 
+                            }
+                        }
+                        // If filterDetails.values is empty or undefined, this filter doesn't apply, so don't return false.
                     }
-                    // Multi-select logic will be added later
                 }
-                return true; // Passed all active header filters
+                return true; 
             });
 
         } else { // 'global' filterMode
@@ -997,59 +1194,62 @@ function createDynamicTable(config) {
             // Remove existing arrow first
             const arrow = th.querySelector('.sort-arrow');
             if (arrow) arrow.remove();
-            // Add arrow if this is the sorted column
+            
             if (th.dataset.column === sortColumn) {
                 const arrowSpan = document.createElement('span');
                 arrowSpan.className = 'sort-arrow ' + sortDirection;
-                // arrowSpan.innerHTML = sortDirection === 'asc' ? '&#9650;' : '&#9660;'; // Unicode arrows
-                th.appendChild(arrowSpan); // Append after text content
+                
+                const titleLineDiv = th.querySelector('.dt-title-line');
+                if (titleLineDiv) {
+                    titleLineDiv.appendChild(arrowSpan);
+                } else {
+                    // Fallback: this case should ideally not be reached if buildHeaderRow is correct
+                    th.appendChild(arrowSpan); 
+                }
             }
         });
     }
 
     function attachEventListeners() {
-        const filterModeToggle = document.getElementById(`${containerId}-filter-mode-toggle`);
-        if (filterModeToggle) {
-            filterModeToggle.addEventListener('click', () => {
-                currentFilterMode = currentFilterMode === 'global' ? 'header' : 'global';
-                filterModeToggle.textContent = currentFilterMode === 'header' ? 'Switch to Global Filters' : 'Switch to Header Filters';
-
-                const globalSearchControl = globalSearchInput ? globalSearchInput.closest('.dynamic-table-search-control') : null;
-                if (globalSearchControl) {
-                    globalSearchControl.style.display = currentFilterMode === 'global' ? '' : 'none';
-                }
-                Object.values(filterSelects).forEach(fConfig => {
-                    const parentControl = fConfig.custom ? fConfig.mainElement.closest('.dynamic-table-filter-control') : fConfig.element.closest('.dynamic-table-filter-control');
-                    if (parentControl) {
-                        parentControl.style.display = currentFilterMode === 'global' ? '' : 'none';
-                    }
-                });
-                
-                buildHeaderRow(); // Rebuild header for header filters
-
-                if (currentFilterMode === 'header') { // Switched TO header
-                    if (globalSearchInput) globalSearchInput.value = '';
-                    Object.values(filterSelects).forEach(fConfig => {
-                        if (fConfig.custom) {
-                            fConfig.triggerValueElement.textContent = 'All'; 
-                            fConfig.value = '';
-                        } else {
-                            fConfig.element.value = '';
-                        }
-                    });
-                } else { // Switched TO global
-                    if (thead) {
-                        thead.querySelectorAll('.dt-header-filter-input, .dt-header-filter-select').forEach(input => {
-                            if (input.tagName === 'SELECT') input.value = '';
-                            else input.value = '';
-                        });
-                    }
-                }
-                processDataInternal(); 
-            });
-        }
+        // Removed filterModeToggle event listener block
 
         if (globalSearchInput) globalSearchInput.addEventListener('input', processDataInternal);
+        
+        // Global click listener to close custom dropdowns (flags, column visibility, AND multiselect)
+        document.addEventListener('click', (event) => {
+            // For custom flag filter dropdowns
+            Object.values(filterSelects).forEach(filterConfig => {
+                if (filterConfig.custom && filterConfig.mainElement.classList.contains('open')) {
+                    if (!filterConfig.mainElement.contains(event.target)) {
+                        filterConfig.mainElement.classList.remove('open');
+                        filterConfig.optionsContainer.style.display = 'none';
+                    }
+                }
+            });
+
+            // For column visibility dropdown
+            if (columnSelectorWrapper) {
+                const dropdown = columnSelectorWrapper.querySelector('.dt-column-selector-dropdown');
+                if (dropdown && dropdown.style.display === 'block') {
+                    if (!columnSelectorWrapper.contains(event.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                }
+            }
+            
+            // For header multi-select dropdowns
+            if (thead) { // Check if thead exists, relevant if table is not yet fully built or is destroyed
+                thead.querySelectorAll('.dt-header-multiselect').forEach(msContainer => {
+                    const dropdown = msContainer.querySelector('.dt-multiselect-dropdown');
+                    if (dropdown && dropdown.style.display === 'block') {
+                        if (!msContainer.contains(event.target)) {
+                            dropdown.style.display = 'none';
+                        }
+                    }
+                });
+            }
+        });
+
 
         Object.entries(filterSelects).forEach(([key, filterConfig]) => {
             if (filterConfig.custom) {
@@ -1117,7 +1317,12 @@ function createDynamicTable(config) {
 
         if (thead) {
             thead.querySelectorAll('th.sortable').forEach(header => {
-                 header.addEventListener('click', () => {
+                 header.addEventListener('click', (event) => { // Added event parameter
+                    // Check if the click target is within a filter placeholder
+                    if (event.target.closest('.dt-header-filter-placeholder')) {
+                        return; // Don't sort if click is on or in a filter input
+                    }
+
                     const columnKey = header.dataset.column;
                     if (!columnKey) return; // Should not happen if 'sortable' class is only on valid columns
                     if (sortColumn === columnKey) {
