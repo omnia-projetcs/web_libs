@@ -797,26 +797,24 @@ function createDynamicTable(config) {
                     } else if (colConfig.headerFilterType === 'multiselect') {
                         const multiSelectContainer = thead.querySelector(`.dt-header-multiselect[data-column-key="${colConfig.key}"]`);
                         if (multiSelectContainer) {
+                            // **** START MODIFICATION ****
+                            // Apply a very obvious background color to the multiSelectContainer itself
+                            multiSelectContainer.style.setProperty('background-color', 'purple', 'important');
+                            multiSelectContainer.style.setProperty('padding', '5px', 'important'); // Add padding to make background visible
+
+                            // Restore the previous state for dropdownDiv content generation attempt
+                            // (i.e., remove the 'TEXTNODE TEST' and uncomment the item loop)
                             const dropdownDiv = multiSelectContainer.querySelector('.dt-multiselect-dropdown');
                             if (dropdownDiv) {
-                                // **** START MODIFICATION ****
-                                dropdownDiv.innerHTML = ''; // Clear it first
+                                dropdownDiv.innerHTML = ''; // Clear existing items (this was part of original logic)
 
-                                // Apply aggressive inline styles to dropdownDiv itself
-                                dropdownDiv.style.setProperty('background', 'lightpink', 'important');
-                                dropdownDiv.style.setProperty('min-height', '50px', 'important');
-                                dropdownDiv.style.setProperty('height', 'auto', 'important');
-                                dropdownDiv.style.setProperty('overflow', 'visible', 'important');
-                                dropdownDiv.style.setProperty('color', 'black', 'important');
-                                dropdownDiv.style.setProperty('text-align', 'center', 'important');
-                                dropdownDiv.style.setProperty('padding', '20px', 'important'); // Added padding
-                                dropdownDiv.style.setProperty('font-weight', 'bold', 'important'); // Added font-weight
+                                // The following 'TEXTNODE TEST' specific code should be removed:
+                                // dropdownDiv.style.setProperty('background', 'lightpink', 'important');
+                                // dropdownDiv.style.setProperty('min-height', '50px', 'important');
+                                // ... (other inline styles for dropdownDiv)
+                                // dropdownDiv.appendChild(document.createTextNode('TEXTNODE TEST'));
 
-                                // Append a simple text node
-                                dropdownDiv.appendChild(document.createTextNode('TEXTNODE TEST'));
-
-                                // Comment out the original item population loop and the updateMultiSelectValueDisplay call for this specific test
-                                /*
+                                // UNCOMMENT the original item population loop:
                                 const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
                                     .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
                                     .sort((a, b) => { 
@@ -827,7 +825,7 @@ function createDynamicTable(config) {
                                 uniqueValues.forEach(value => {
                                     const checkboxId = `dt-ms-${containerId}-${colConfig.key}-${String(value).replace(/\s+/g, '-')}`;
                                     const itemDiv = document.createElement('div');
-                                    itemDiv.className = 'dt-multiselect-item';
+                                    itemDiv.className = 'dt-multiselect-item'; // Will pick up main diagnostic CSS
 
                                     const checkbox = document.createElement('input');
                                     checkbox.type = 'checkbox';
@@ -854,9 +852,8 @@ function createDynamicTable(config) {
                                 });
                                 
                                 updateMultiSelectValueDisplay(multiSelectContainer);
-                                */
-                                // **** END MODIFICATION ****
                             }
+                            // **** END MODIFICATION ****
                         }
                     }
                 }
