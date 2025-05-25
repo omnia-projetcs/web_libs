@@ -797,111 +797,49 @@ function createDynamicTable(config) {
                     } else if (colConfig.headerFilterType === 'multiselect') {
                         const multiSelectContainer = thead.querySelector(`.dt-header-multiselect[data-column-key="${colConfig.key}"]`);
                         if (multiSelectContainer) {
-                            // **** START MODIFICATION ****
-                            // Apply a very obvious background color to the multiSelectContainer itself
-                            multiSelectContainer.style.setProperty('background-color', 'purple', 'important');
-                            multiSelectContainer.style.setProperty('padding', '5px', 'important'); // Add padding to make background visible
-
-                            // Restore the previous state for dropdownDiv content generation attempt
-                            // (i.e., remove the 'TEXTNODE TEST' and uncomment the item loop)
                             const dropdownDiv = multiSelectContainer.querySelector('.dt-multiselect-dropdown');
                             if (dropdownDiv) {
-                                dropdownDiv.innerHTML = ''; // Clear existing items (this was part of original logic)
-
-                                // The following 'TEXTNODE TEST' specific code should be removed:
-                                // dropdownDiv.style.setProperty('background', 'lightpink', 'important');
-                                // dropdownDiv.style.setProperty('min-height', '50px', 'important');
-                                // ... (other inline styles for dropdownDiv)
-                                // dropdownDiv.appendChild(document.createTextNode('TEXTNODE TEST'));
-
-                                // UNCOMMENT the original item population loop:
+                                dropdownDiv.innerHTML = ''; // Clear existing items
                                 const uniqueValues = [...new Set(originalData.map(item => item[colConfig.key]))]
                                     .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
-                                    .sort((a, b) => { 
+                                    .sort((a, b) => {
                                         if (typeof a === 'number' && typeof b === 'number') return a - b;
                                         return String(a).localeCompare(String(b));
                                     });
 
                                 uniqueValues.forEach(value => {
                                     const checkboxId = `dt-ms-${containerId}-${colConfig.key}-${String(value).replace(/\s+/g, '-')}`;
+                                    
                                     const itemDiv = document.createElement('div');
-                                    itemDiv.className = 'dt-multiselect-item'; // Will pick up main diagnostic CSS
+                                    itemDiv.className = 'dt-multiselect-item';
 
                                     const checkbox = document.createElement('input');
                                     checkbox.type = 'checkbox';
                                     checkbox.id = checkboxId;
-                                    checkbox.value = String(value);
+                                    checkbox.value = value;
                                     checkbox.dataset.columnKey = colConfig.key;
 
                                     const label = document.createElement('label');
                                     label.htmlFor = checkboxId;
-                                    if (colConfig.format === 'flag') {
-                                        label.innerHTML = `<span class="fi fi-${getCanonicalCountryCode(String(value))}"></span> ${String(value)}`;
-                                    } else {
-                                        label.textContent = String(value);
-                                    }
+                                    label.textContent = value; 
 
                                     itemDiv.appendChild(checkbox);
                                     itemDiv.appendChild(label);
-                                    dropdownDiv.appendChild(itemDiv); 
+                                    dropdownDiv.appendChild(itemDiv);
 
                                     checkbox.addEventListener('change', () => {
-                                        updateMultiSelectValueDisplay(multiSelectContainer);
+                                        updateMultiSelectValueDisplay(multiSelectContainer); // Header version call
                                         processDataInternal();
                                     });
                                 });
-                                
+                                // After populating, update display in case of pre-selected values (future enhancement)
                                 updateMultiSelectValueDisplay(multiSelectContainer);
                             }
-                            // **** END MODIFICATION ****
                         }
                     }
                 }
             });
         }
-    }
-
-    function populateGlobalMultiSelectOptions(filterKey, optionsContainer, uniqueValues, headerText) {
-        optionsContainer.innerHTML = ''; // Clear existing options
-
-        uniqueValues.forEach(value => {
-            const itemDiv = document.createElement('div');
-            // Assign class for styling - let's use 'dt-multiselect-item' for consistency in appearance with header items.
-            // If global multiselect items need different styling than header ones, a more specific class could be added too.
-            itemDiv.className = 'dt-multiselect-item'; 
-
-            const checkboxId = `dt-gms-${containerId}-${filterKey}-${String(value).replace(/\s+/g, '-')}`;
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = checkboxId;
-            checkbox.value = String(value); // Ensure value is string
-            checkbox.dataset.filterKey = filterKey;
-
-            const label = document.createElement('label');
-            label.htmlFor = checkboxId;
-            label.textContent = String(value); // Ensure value is string
-
-            itemDiv.appendChild(checkbox);
-            itemDiv.appendChild(label);
-            optionsContainer.appendChild(itemDiv);
-
-            checkbox.addEventListener('change', () => {
-                // Update the stored values for this global multiselect filter
-                const selectedValues = [];
-                // optionsContainer is the direct parent of itemDivs. Query all checkboxes within this specific optionsContainer.
-                const allCheckboxesInGroup = optionsContainer.querySelectorAll('input[type="checkbox"]'); 
-                allCheckboxesInGroup.forEach(cb => {
-                    if (cb.checked) {
-                        selectedValues.push(cb.value);
-                    }
-                });
-                filterSelects[filterKey].value = selectedValues; // Update the array of selected values in the central store
-
-                const mainElement = filterSelects[filterKey].mainElement; 
-                updateMultiSelectValueDisplay(mainElement, headerText);
-                processDataInternal();
-            });
-        });
     }
 
     function populateCustomFlagOptions(filterKey, optionsContainer, triggerValueElement, canonicalValues, headerText) {
@@ -951,23 +889,8 @@ function createDynamicTable(config) {
             const header = columnDef ? columnDef.header : '';
 
             if (filterConfig.custom) {
-                if (filterConfig.isGlobalMultiSelect) { // This is a global multiselect filter
-                    const uniqueValues = [...new Set(originalData.map(item => item[key]))]
-                        .filter(val => val !== null && typeof val !== 'undefined' && String(val).trim() !== '')
-                        .sort((a, b) => {
-                            if (typeof a === 'number' && typeof b === 'number') return a - b;
-                            return String(a).localeCompare(String(b));
-                        });
-                    
-                    populateGlobalMultiSelectOptions(key, filterConfig.optionsContainer, uniqueValues, header);
-
-                    // After populating, update the display (e.g., to "All [headerText]")
-                    updateMultiSelectValueDisplay(filterConfig.mainElement, header); // header is columnDef.header
-
-                } else { // This is for custom global FLAG filters (isGlobalMultiSelect is false)
-                    const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
-                    populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
-                }
+                const canonicalValues = [...new Set(originalData.map(item => getCanonicalCountryCode(item[key])))].filter(Boolean).sort();
+                populateCustomFlagOptions(key, filterConfig.optionsContainer, filterConfig.triggerValueElement, canonicalValues, header);
             } else {
                 // Standard select element
                 const selectElement = filterConfig.element;
