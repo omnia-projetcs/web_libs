@@ -10,6 +10,8 @@ A fast, light, and customizable HTML table generator.
 *   Custom cell rendering, including embedding charts (using PureChart.js).
 *   Pagination, global search, results count, and rows-per-page selector.
 *   Column visibility toggling.
+*   Filter multi select
+*   Darkmode
 
 ## Extended-search
 A fast and light advanced search input field with flags and multi-line information.
