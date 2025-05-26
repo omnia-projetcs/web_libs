@@ -183,52 +183,32 @@ class PureChart {
         };
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
+        
+        // Part 1: Robust Axis Configuration Merging
         const defaultSingleYAxisConfig = defaults.options.yAxes[0];
 
-        // Refined yAxes initialization
-        if (this.config.options.yAxis && !userOptions.options?.yAxes) { // Check userOptions to ensure yAxes wasn't also provided
-            // If old yAxis is provided (and yAxes is not in userOptions), convert it
-            const userSingularYAxisConfig = this.config.options.yAxis; // Already merged with userOptions.options.yAxis if it existed
-            this.config.options.yAxes = [ PureChart._mergeDeep(PureChart._mergeDeep({}, defaultSingleYAxisConfig), userSingularYAxisConfig) ];
-            delete this.config.options.yAxis; // Remove the old singular yAxis property
-        } else if (userOptions.options?.yAxes && Array.isArray(userOptions.options.yAxes)) {
-            // If yAxes was provided by the user (it's an array in userOptions)
-            this.config.options.yAxes = userOptions.options.yAxes.map(eachUserAxisConfig => {
-              let base = PureChart._mergeDeep({}, defaultSingleYAxisConfig); // Start with a fresh copy
-              return PureChart._mergeDeep(base, eachUserAxisConfig); // Merge the user's specific properties
+        if (this.config.options.yAxis && (!userOptions.options?.yAxes || userOptions.options.yAxes === undefined) ) { // Check if user provided singular yAxis AND NOT plural yAxes
+            const userSingularYAxisConfig = this.config.options.yAxis;
+            let base = PureChart._mergeDeep({}, defaultSingleYAxisConfig);
+            this.config.options.yAxes = [ PureChart._mergeDeep(base, userSingularYAxisConfig) ];
+            delete this.config.options.yAxis;
+        } else if (this.config.options.yAxes && Array.isArray(this.config.options.yAxes)) { // User provided plural yAxes or it came from global defaults
+            this.config.options.yAxes = this.config.options.yAxes.map(eachUserAxisConfig => {
+                let base = PureChart._mergeDeep({}, defaultSingleYAxisConfig);
+                return PureChart._mergeDeep(base, eachUserAxisConfig);
             });
-        } else {
-            // If neither yAxis nor yAxes were in userOptions, ensure yAxes is defaulted
-            // this.config.options.yAxes would have come from the initial defaults merge
-            // Or, if userOptions.options was defined but yAxes was not, it also relies on the initial merge.
-            // This step ensures that if yAxes somehow ended up undefined/null, it's set to default.
-            if (!this.config.options.yAxes) {
-                 this.config.options.yAxes = [ PureChart._mergeDeep({}, defaultSingleYAxisConfig) ];
-            } else if (Array.isArray(this.config.options.yAxes)) {
-                // If yAxes exists (came from defaults during initial merge), ensure each axis is fully defaulted
-                // This handles cases where the default yAxes array might be altered or incomplete.
-                this.config.options.yAxes = this.config.options.yAxes.map(eachDefaultAxisConfig => {
-                    // This ensures even the default axis/axes from 'defaults' object are deep copies and correctly merged.
-                    // For user-provided yAxes, the 'else if' above handles them against defaultSingleYAxisConfig.
-                    // This branch is more for ensuring the 'defaults.options.yAxes' itself is processed robustly if it was the source.
-                    let base = PureChart._mergeDeep({}, defaultSingleYAxisConfig);
-                    return PureChart._mergeDeep(base, eachDefaultAxisConfig);
-                });
-            }
+        } else { // Neither yAxis (singular) nor yAxes (plural array) was in userOptions. Ensure yAxes is defaulted.
+            this.config.options.yAxes = [ PureChart._mergeDeep({}, defaultSingleYAxisConfig) ];
         }
 
-        // Ensure all yAxes have an id and position (this loop should run AFTER the above logic)
+        // Then, the existing loop to ensure id and position:
         if (this.config.options.yAxes && Array.isArray(this.config.options.yAxes)) {
             this.config.options.yAxes.forEach((axis, index) => {
-                if (!axis.id) {
-                    axis.id = index === 0 ? 'left' : `yAxis-${index}`; // Default ID
-                }
-                if (!axis.position) {
-                    axis.position = index === 0 ? 'left' : (index === 1 ? 'right' : 'left'); // Default position
-                }
+                if (!axis.id) { axis.id = index === 0 ? 'left' : `yAxis-${index}`; }
+                if (!axis.position) { axis.position = index === 0 ? 'left' : (index === 1 ? 'right' : 'left'); }
             });
         }
-        
+
         // Initialize activePalette based on the theme
         if (this.config.theme === 'dark') {
             this.activePalette = PC_DARK_THEME_PALETTE;
@@ -1356,9 +1336,10 @@ class PureChart {
                 }
 
                 const yAxisScaleInfo = this.yAxisScales[yAxisID];
-                if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale) || !yAxisScaleInfo.axisConfig.display) {
-                    console.warn(`PureChart _drawBarChart: Invalid or non-displayed Y-axis scale for dataset '${dataset.label}' on yAxisID '${yAxisID}'. Skipping bar.`);
-                    return; // Skip drawing this bar if its Y-axis scale is invalid or not displayed
+                // Part 2: Decouple Data Series Drawing from Axis Visual display Property
+                if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale)) {
+                    console.warn(`PureChart _drawBarChart: Invalid Y-axis scale for dataset '${dataset.label}' on yAxisID '${yAxisID}'. Skipping bar.`);
+                    return; // Skip drawing this bar if its Y-axis scale is invalid
                 }
 
                 // 'j' is the index within barDatasets, used for positioning bars within the group.
@@ -1430,8 +1411,9 @@ class PureChart {
             }
 
             const yAxisScaleInfo = this.yAxisScales[yAxisID];
-            if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale) || !yAxisScaleInfo.axisConfig.display) {
-                console.warn(`PureChart _drawLineChart: Invalid or non-displayed Y-axis scale for dataset '${ds.label}' on yAxisID '${yAxisID}'. Skipping line.`);
+            // Part 2: Decouple Data Series Drawing from Axis Visual display Property
+            if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale)) {
+                console.warn(`PureChart _drawLineChart: Invalid Y-axis scale for dataset '${ds.label}' on yAxisID '${yAxisID}'. Skipping line.`);
                 this.ctx.restore(); return;
             }
             
