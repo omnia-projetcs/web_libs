@@ -1353,7 +1353,7 @@ function createDynamicTable(config) {
             // Update the accompanying text node, which is the next sibling of resultsCountSpan
             const textNode = resultsCountSpan.nextSibling;
             if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-                textNode.textContent = ` ${currentLangPack.resultsInfo.replace('{count}', '')}`.trimStart();
+                textNode.textContent = ` ${currentLangPack.resultsInfo.replace('{count}', '')}`;
             }
         }
     }
