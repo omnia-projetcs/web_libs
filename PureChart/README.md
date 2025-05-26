@@ -24,6 +24,7 @@ PureChart.js is a lightweight, dependency-free JavaScript library for creating s
     * **Horizontal annotation lines** with labels.
     * Specific styling options for each chart type.
 * **Data Loading:** Supports loading chart configurations from a JSON file.
+*   **Theming:** Light and Dark mode support.
 
 ## Getting Started
 
@@ -139,6 +140,15 @@ Customizes chart appearance and behavior.
 **Type-Specific Options (`options.bar`, `options.line`, `options.percentageDistribution`):**
 * (Refer to existing documentation for these.)
 
+**NEW: `options.theme` (String):**
+*   Specifies the color theme for the chart.
+*   Possible values:
+    *   `'light'` (Default): Standard theme with light backgrounds and dark text/elements.
+    *   `'dark'`: Theme optimized for dark backgrounds with lighter text and adjusted default colors.
+*   The theme affects default colors for axes, grid lines, titles, legends, tooltips, and default dataset series colors.
+*   Dataset-specific colors (e.g., `backgroundColor`, `borderColor`) will override theme defaults for that dataset.
+*   See the "Theming" section below for more details.
+
 **NEW: `options.annotations` (Array of AnnotationObjects):**
 Used to draw horizontal lines and labels on the chart, typically for highlighting thresholds, targets, etc.
 ```javascript
@@ -242,7 +252,7 @@ data: {
 ## Loading Configuration from JSON (`PureChart.fromJSON()`)
 
 You can load chart configurations from an external JSON file. The JSON structure should mirror the JavaScript configuration object.
-**All new features and options described above (dataset `type`, `borderDash`, `sourceDatasetIndex`, `period`, `options.annotations`, and dataset `averageLine`) can be included in the JSON configuration.**
+**All new features and options described above (dataset `type`, `borderDash`, `sourceDatasetIndex`, `period`, `options.annotations`, `options.theme`, and dataset `averageLine`) can be included in the JSON configuration.**
 
 The `fromJSON` method signature is:
 
@@ -271,6 +281,7 @@ This README provides basic setup and configuration details. For detailed example
 *   Simple Moving Average (SMA) lines
 *   Annotations
 *   Loading from JSON
+*   Light and Dark Theming
 
 Please see the `demo.html` (basic examples) and `demo_full.html` (comprehensive showcase) files included in the PureChart package. The `sample-data.json` file also serves as a good reference for JSON configurations.
 
@@ -281,3 +292,51 @@ Contributions, issues, and feature requests are welcome. Please feel free to for
 ## License
 
 This project is open source and available under the MIT License.
+
+---
+
+## Theming
+
+PureChart now supports a basic theming system to control the overall look and feel of your charts. You can choose between a 'light' (default) and a 'dark' theme.
+
+### Setting the Theme
+
+To set a theme, pass the `theme` option within the `options` object when creating a new chart instance:
+
+```javascript
+const myChart = new PureChart('myCanvasId', {
+    type: 'bar',
+    data: {
+        labels: ['A', 'B', 'C'],
+        datasets: [{
+            label: 'Sample Data',
+            values: [10, 20, 30]
+            // You can still specify backgroundColor or borderColor here
+            // to override theme defaults for this specific dataset.
+        }]
+    },
+    options: {
+        theme: 'dark', // Activates the dark theme
+        title: {
+            display: true,
+            text: 'Dark Mode Chart'
+        }
+        // ... other chart options
+    }
+});
+```
+
+### Theme Details
+
+-   **`'light'` (Default):** The standard theme with light backgrounds and dark text/elements.
+-   **`'dark'`:** A theme optimized for dark backgrounds, using lighter text, grids, and adjusted default dataset colors for better visibility.
+
+The selected theme will affect the default colors for:
+-   Axis lines and labels
+-   Title text
+-   Legend text
+-   Grid lines
+-   Tooltip background and text
+-   Default series colors for bars/lines (if not specified in the dataset itself)
+
+If you provide specific colors within a dataset's configuration (e.g., `borderColor`, `backgroundColor`), those will take precedence over the theme's defaults for that particular dataset.

@@ -9,12 +9,14 @@
     <h1>PureChart Demonstration - New Features</h1>
 
     <div class="chart-container">
-        <h2>Example 1: Mixed Types, Clickable Legend, Dashed Line</h2>
+        <h2>Example 1: Mixed Types (Light Theme)</h2>
+        <p>This chart demonstrates mixed bar and line types with a clickable legend, dashed line, and an average line for one of the datasets. It explicitly uses <code>theme: 'light'</code>.</p>
         <canvas id="mixedChartCanvas" width="700" height="350"></canvas>
     </div>
 
     <div class="chart-container">
-        <h2>Example 2: SMA and Annotation</h2>
+        <h2>Example 2: SMA and Annotation (Dark Theme)</h2>
+        <p>This line chart showcases a Simple Moving Average (SMA) and various types of annotations. It explicitly uses <code>theme: 'dark'</code>.</p>
         <canvas id="smaAnnotationChartCanvas" width="700" height="350"></canvas>
     </div>
 
@@ -72,9 +74,10 @@
                     ]
                 },
                 options: {
+                    theme: 'light', // Explicitly set light theme
                     title: {
                         display: true,
-                        text: 'Website Traffic Overview (Mixed Chart)'
+                        text: 'Website Traffic Overview (Light Theme)'
                     },
                     legend: {
                         display: true,
@@ -116,9 +119,10 @@
                     ]
                 },
                 options: {
+                    theme: 'dark', // Explicitly set dark theme
                     title: {
                         display: true,
-                        text: 'Stock Price with SMA and Target Annotation'
+                        text: 'Stock Price with SMA (Dark Theme)'
                     },
                     legend: {
                         display: true
