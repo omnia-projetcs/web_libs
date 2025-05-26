@@ -1,3 +1,50 @@
+:root {
+    /* Light Theme (Defaults - many are implicit or defined ad-hoc below, formalizing a few) */
+    --dt-light-bg-primary: #fff;
+    --dt-light-bg-secondary: #f9fafa;
+    --dt-light-bg-tertiary: #f0f5f8; /* For hovered elements */
+    --dt-light-text-primary: #2c3e50; /* Darker text for headers */
+    --dt-light-text-secondary: #555;  /* Lighter text for body and controls */
+    --dt-light-border-primary: #e0e0e0;
+    --dt-light-border-secondary: #ccc;
+    --dt-light-accent-primary: #3498db; /* Blue */
+    --dt-light-accent-secondary: #28a745; /* Green for positive */
+    --dt-light-accent-negative: #dc3545; /* Red for negative */
+    --dt-light-input-bg: #fff;
+    --dt-light-input-border: #ccc;
+    --dt-light-input-focus-shadow: rgba(52, 152, 219, 0.2);
+    --dt-light-button-bg: #fff;
+    --dt-light-button-hover-bg: #3498db;
+    --dt-light-button-text: #3498db;
+    --dt-light-button-hover-text: #fff;
+    --dt-light-header-bg: #ecf0f1;
+    --dt-light-header-text: #2c3e50;
+    --dt-light-header-border: #bdc3c7;
+}
+
+.dt-dark-mode {
+    --dt-dark-bg-primary: #1e1e1e;
+    --dt-dark-bg-secondary: #2a2a2a;
+    --dt-dark-bg-tertiary: #333333; /* For hovered elements or accents */
+    --dt-dark-text-primary: #e0e0e0;
+    --dt-dark-text-secondary: #b0b0b0;
+    --dt-dark-border-primary: #444444;
+    --dt-dark-border-secondary: #555555;
+    --dt-dark-accent-primary: #5fa8d3; /* A light blue */
+    --dt-dark-accent-secondary: #6faa60; /* A light green for positive */
+    --dt-dark-accent-negative: #d35f5f; /* A light red for negative */
+    --dt-dark-input-bg: #252525;
+    --dt-dark-input-border: #484848;
+    --dt-dark-input-focus-shadow: rgba(95, 168, 211, 0.3);
+    --dt-dark-button-bg: #383838;
+    --dt-dark-button-hover-bg: #454545;
+    --dt-dark-button-text: var(--dt-dark-text-primary);
+    --dt-dark-button-hover-text: var(--dt-dark-accent-primary);
+    --dt-dark-header-bg: #252525; /* Darker header for dark mode */
+    --dt-dark-header-text: #e0e0e0;
+    --dt-dark-header-border: #3a3a3a;
+}
+
 /**
  File dynamic-table.css
  Description Light and fast html table
@@ -24,8 +71,7 @@
 .dynamic-table-wrapper {
     --border-radius: 4px; /* Define the radius variable */
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    /* Container styles removed or commented out for seamless integration: */
-    /* background-color: #fff; */
+    background-color: var(--dt-light-bg-primary, #fff); /* Default to light */
     /* padding: 20px 30px; */
     /* border-radius: 8px; */
     /* box-shadow: 0 2px 10px rgba(0,0,0,0.05); */
@@ -40,7 +86,7 @@
     gap: 15px;
     margin-bottom: 20px; /* Internal margin between controls and table */
     padding-bottom: 20px; /* Space before the border */
-    border-bottom: 1px solid #e0e0e0; /* Visual separator */
+    border-bottom: 1px solid var(--dt-light-border-primary, #e0e0e0); /* Visual separator */
 }
 
 /* Order for control elements - REMOVED */
@@ -54,13 +100,15 @@
     display: block;
     margin-bottom: 5px;
     font-size: 0.9rem;
-    color: #555;
+    color: var(--dt-light-text-secondary, #555);
     font-weight: 500;
 }
 
 .dynamic-table-controls input[type="search"] {
     padding: 8px 12px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-input-border, #ccc);
+    background-color: var(--dt-light-input-bg, #fff);
+    color: var(--dt-light-text-secondary, #555);
     border-radius: 4px;
     font-size: 1rem;
     min-width: 200px; 
@@ -68,13 +116,13 @@
 }
 .dynamic-table-controls input[type="search"]:focus {
      outline: none;
-     border-color: #3498db;
-     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+     border-color: var(--dt-light-accent-primary, #3498db);
+     box-shadow: 0 0 0 2px var(--dt-light-input-focus-shadow, rgba(52, 152, 219, 0.2));
 }
 
 .dynamic-table-results-info {
     font-size: 0.9rem;
-    color: #555;
+    color: var(--dt-light-text-secondary, #555);
     text-align: right;
     /* margin-left: auto; */ /* This is now handled by the right-controls-group */
     padding-bottom: 8px; /* Align with input bottoms if align-items: flex-end is on parent */
@@ -86,18 +134,19 @@
 /* Common style for ALL selects in the library */
 .dt-common-select {
     padding: 8px 12px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-input-border, #ccc);
     border-radius: 4px;
     font-size: 1rem; 
     box-sizing: border-box;
-    background-color: #fff; 
+    background-color: var(--dt-light-input-bg, #fff); 
+    color: var(--dt-light-text-secondary, #555);
     /* Native browser appearance for the arrow, or custom styling if desired */
 }
 
 .dt-common-select:focus {
      outline: none;
-     border-color: #3498db; 
-     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2); 
+     border-color: var(--dt-light-accent-primary, #3498db); 
+     box-shadow: 0 0 0 2px var(--dt-light-input-focus-shadow, rgba(52, 152, 219, 0.2)); 
 }
 
 /* Specific styles for selects in the top control bar (filters) */
@@ -123,12 +172,12 @@
 
 /* Styles for the fixed (sticky) header */
 .dynamic-table thead th {
-    background-color: #ecf0f1; /* Background color essential for sticky */
-    color: #2c3e50;
+    background-color: var(--dt-light-header-bg, #ecf0f1); /* Background color essential for sticky */
+    color: var(--dt-light-header-text, #2c3e50);
     padding: 12px 15px;
     text-align: left;
     font-weight: 600;
-    border-bottom: 2px solid #bdc3c7;
+    border-bottom: 2px solid var(--dt-light-header-border, #bdc3c7);
     white-space: nowrap;
     position: sticky;
     top: 0;
@@ -158,7 +207,7 @@
 .dynamic-table thead th .sort-arrow.asc::after { content: '▲'; }
 .dynamic-table thead th .sort-arrow.desc::after { content: '▼'; }
 .dynamic-table thead th.sortable:hover {
-    background-color: #dde4e6;
+    background-color: var(--dt-light-bg-tertiary, #dde4e6); /* Slightly darker for hover */
 }
 
 /* Styles for header text and sort arrow alignment */
@@ -183,7 +232,9 @@
 .dt-header-filter-input {
     width: 100%;
     padding: 6px 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-input-border, #ccc);
+    background-color: var(--dt-light-input-bg, #fff);
+    color: var(--dt-light-text-secondary, #555);
     border-radius: 3px;
     box-sizing: border-box;
     font-size: 0.9rem;
@@ -191,24 +242,25 @@
 }
 .dt-header-filter-input:focus {
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    border-color: var(--dt-light-accent-primary, #3498db);
+    box-shadow: 0 0 0 2px var(--dt-light-input-focus-shadow, rgba(52, 152, 219, 0.2));
 }
 
 .dt-header-filter-select {
     width: 100%;
     padding: 6px 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-input-border, #ccc);
+    background-color: var(--dt-light-input-bg, #fff);
+    color: var(--dt-light-text-secondary, #555);
     border-radius: 3px;
     box-sizing: border-box;
     font-size: 0.9rem;
     font-family: inherit; /* Ensure consistent font */
-    background-color: #fff;
 }
 .dt-header-filter-select:focus {
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    border-color: var(--dt-light-accent-primary, #3498db);
+    box-shadow: 0 0 0 2px var(--dt-light-input-focus-shadow, rgba(52, 152, 219, 0.2));
 }
 /* --- End Header Filter Styles --- */
 
@@ -216,9 +268,10 @@
 .dt-header-multiselect {
     position: relative; /* For dropdown positioning */
     width: 100%;
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-input-border, #ccc);
     border-radius: 3px;
-    background-color: #fff;
+    background-color: var(--dt-light-input-bg, #fff);
+    color: var(--dt-light-text-secondary, #555);
     font-size: 0.9rem;
     box-sizing: border-box;
     cursor: pointer;
@@ -250,8 +303,8 @@
     top: 100%;
     left: -1px; /* Align with border */
     right: -1px; /* Align with border */
-    background-color: #fff;
-    border: 1px solid #ccc;
+    background-color: var(--dt-light-input-bg, #fff);
+    border: 1px solid var(--dt-light-input-border, #ccc);
     border-top: none;
     border-radius: 0 0 3px 3px;
     max-height: 200px;
@@ -270,7 +323,7 @@
 }
 
 .dt-multiselect-item:hover {
-    background-color: #f0f5f8;
+    background-color: var(--dt-light-bg-tertiary, #f0f5f8);
 }
 
 .dt-multiselect-item input[type="checkbox"] {
@@ -280,7 +333,7 @@
 
 .dt-multiselect-item label {
     font-weight: normal;
-    color: #333;
+    color: var(--dt-light-text-secondary, #333);
     cursor: pointer;
     margin-bottom: 0; /* Override general label styles if any */
     flex-grow: 1; /* Allow label to take space */
@@ -304,7 +357,7 @@
     user-select: none;
 }
 .dt-global-multiselect .dt-custom-options .dt-multiselect-item:hover {
-    background-color: #f0f5f8;
+    background-color: var(--dt-light-bg-tertiary, #f0f5f8);
 }
 .dt-global-multiselect .dt-custom-options .dt-multiselect-item input[type="checkbox"] {
     margin-right: 8px;
@@ -312,7 +365,7 @@
 }
 .dt-global-multiselect .dt-custom-options .dt-multiselect-item label {
     font-weight: normal;
-    color: #333;
+    color: var(--dt-light-text-secondary, #333);
     cursor: pointer;
     margin-bottom: 0; 
     flex-grow: 1;
@@ -330,8 +383,8 @@
 
 .dynamic-table tbody td {
     padding: 10px 15px;
-    border-bottom: 1px solid #e0e0e0;
-    color: #555;
+    border-bottom: 1px solid var(--dt-light-border-primary, #e0e0e0);
+    color: var(--dt-light-text-secondary, #555);
     /* vertical-align: middle; */ /* Can be overridden by dt-chart-cell */
 }
 
@@ -358,17 +411,17 @@
 
 /* Classes for coloring percentage values */
 .dynamic-table tbody td.dt-value-positive {
-    color: #28a745; /* Green */
+    color: var(--dt-light-accent-secondary, #28a745); /* Green */
     font-weight: bold; /* Optional: make more visible */
 }
 .dynamic-table tbody td.dt-value-negative {
-    color: #dc3545; /* Red */
+    color: var(--dt-light-accent-negative, #dc3545); /* Red */
     font-weight: bold; /* Optional */
 }
 
 
 .dynamic-table tbody tr:nth-child(even) {
-    background-color: #f9fafa;
+    background-color: var(--dt-light-bg-secondary, #f9fafa);
 }
 /* The background color of the even row might interfere with the dt-value text color.
    If so, you might need to make the background of dt-value cells transparent.
@@ -380,15 +433,15 @@
 
 
 .dynamic-table tbody tr:hover {
-    background-color: #f0f5f8;
+    background-color: var(--dt-light-bg-tertiary, #f0f5f8);
 }
 
 .dynamic-table .message-row td {
     text-align: center;
     padding: 30px;
     font-style: italic;
-    color: #777;
-    background-color: #fff !important; 
+    color: var(--dt-light-text-secondary, #777);
+    background-color: var(--dt-light-bg-primary, #fff) !important; 
 }
 
 /* --- Pagination --- */
@@ -399,7 +452,7 @@
     gap: 10px; /* Space between groups of elements (left and right) */
     margin-top: 20px; /* Margin between the table (or its scroll wrapper) and pagination */
     padding-top: 20px;
-    border-top: 1px solid #e0e0e0; /* Visual separator */
+    border-top: 1px solid var(--dt-light-border-primary, #e0e0e0); /* Visual separator */
 }
 
 /* Container for the rows/page selector (left part of pagination) */
@@ -428,7 +481,7 @@
     margin-bottom: 0; 
     margin-right: 5px; 
     font-size: 0.9rem;
-    color: #555;
+    color: var(--dt-light-text-secondary, #555);
     font-weight: normal; 
 }
 
@@ -441,31 +494,31 @@
 
 .dynamic-table-pagination button {
     padding: 8px 15px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-border-secondary, #ccc);
     border-radius: 4px;
-    background-color: #fff;
-    color: #3498db;
+    background-color: var(--dt-light-button-bg, #fff);
+    color: var(--dt-light-button-text, #3498db);
     cursor: pointer;
     font-size: 0.9rem;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .dynamic-table-pagination button:hover:not(:disabled) {
-    background-color: #3498db;
-    color: #fff;
-    border-color: #3498db;
+    background-color: var(--dt-light-button-hover-bg, #3498db);
+    color: var(--dt-light-button-hover-text, #fff);
+    border-color: var(--dt-light-accent-primary, #3498db);
 }
 
 .dynamic-table-pagination button:disabled {
-    color: #aaa;
+    color: var(--dt-light-text-secondary, #aaa);
     cursor: not-allowed;
-    background-color: #f0f0f0;
-    border-color: #ddd;
+    background-color: var(--dt-light-bg-tertiary, #f0f0f0); /* Use a light tertiary bg for disabled */
+    border-color: var(--dt-light-border-primary, #ddd);
 }
 
 .dynamic-table-pagination span { /* Page info */
     font-size: 0.9rem;
-    color: #555;
+    color: var(--dt-light-text-secondary, #555);
     margin: 0 5px; /* Reduce margin if needed */
     white-space: nowrap;
 }
@@ -524,9 +577,10 @@
 .dt-custom-select {
     position: relative; /* For positioning the options list */
     min-width: 200px; /* Default for other custom selects if any, or standard filters */
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-input-border, #ccc);
     border-radius: 4px;
-    background-color: #fff;
+    background-color: var(--dt-light-input-bg, #fff);
+    color: var(--dt-light-text-secondary, #555);
     font-size: 1rem;
     box-sizing: border-box;
     cursor: pointer;
@@ -535,8 +589,8 @@
 
 .dt-custom-select:focus { /* For accessibility, though direct focus might be on a child */
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    border-color: var(--dt-light-accent-primary, #3498db);
+    box-shadow: 0 0 0 2px var(--dt-light-input-focus-shadow, rgba(52, 152, 219, 0.2));
 }
 
 .dt-custom-select-trigger {
@@ -574,8 +628,8 @@
     top: 100%; /* Position below the trigger */
     left: 0;
     right: 0;
-    background-color: #fff;
-    border: 1px solid #ccc;
+    background-color: var(--dt-light-input-bg, #fff);
+    border: 1px solid var(--dt-light-input-border, #ccc);
     border-top: none; /* Avoid double border with select box */
     border-radius: 0 0 4px 4px;
     max-height: 200px; /* Prevent overly long lists */
@@ -595,11 +649,11 @@
 }
 
 .dt-custom-option:hover {
-    background-color: #f0f5f8; /* Similar to table row hover */
+    background-color: var(--dt-light-bg-tertiary, #f0f5f8); /* Similar to table row hover */
 }
 
 .dt-custom-option.selected { /* If we add a class for the selected one */
-    background-color: #e0eaf1;
+    background-color: var(--dt-light-bg-tertiary, #e0eaf1); /* Use tertiary for selected as well */
     font-weight: bold;
 }
 
@@ -660,24 +714,24 @@
 
 .dt-column-selector-button {
     padding: 8px 12px; /* Similar to search input and common select */
-    border: 1px solid #ccc;
+    border: 1px solid var(--dt-light-input-border, #ccc);
     border-radius: 4px;
-    background-color: #fff;
-    color: #555; /* Standard text color for controls */
+    background-color: var(--dt-light-input-bg, #fff);
+    color: var(--dt-light-text-secondary, #555); /* Standard text color for controls */
     cursor: pointer;
     font-size: 1rem; /* Match other controls */
     font-family: inherit; /* Ensure font consistency */
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
 .dt-column-selector-button:hover {
-    border-color: #aaa;
+    border-color: var(--dt-light-border-secondary, #aaa); /* Darker border on hover */
 }
 
 .dt-column-selector-button:focus {
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    border-color: var(--dt-light-accent-primary, #3498db);
+    box-shadow: 0 0 0 2px var(--dt-light-input-focus-shadow, rgba(52, 152, 219, 0.2));
 }
 
 .dt-column-selector-dropdown {
@@ -686,11 +740,11 @@
     right: 0; 
     /* If the button might be close to the right edge, 'right: 0;' might be better,
        or JS positioning. For now, left: 0 is standard. */
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-top-color: #ddd; /* Slightly lighter top border for separation */
+    background-color: var(--dt-light-input-bg, #fff);
+    border: 1px solid var(--dt-light-border-secondary, #ccc);
+    border-top-color: var(--dt-light-border-primary, #ddd); /* Slightly lighter top border for separation */
     border-radius: 0 0 4px 4px; /* Rounded bottom corners */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Standard shadow */
     z-index: 1050; /* Higher than sticky header and custom flag dropdown */
     min-width: 200px; /* Ensure a reasonable width */
     max-height: 250px; /* Limit height for long lists */
@@ -706,7 +760,7 @@
 }
 
 .dt-column-selector-item:hover {
-    background-color: #f0f5f8; /* Consistent hover color */
+    background-color: var(--dt-light-bg-tertiary, #f0f5f8); /* Consistent hover color */
 }
 
 .dt-column-selector-item label {
@@ -716,7 +770,7 @@
     align-items: center;
     font-weight: normal; /* Override general label bolding if any */
     font-size: 0.95rem; /* Slightly smaller for dropdown items */
-    color: #333;
+    color: var(--dt-light-text-secondary, #333);
     cursor: pointer;
     margin-bottom: 0; /* Reset from general label style */
 }
@@ -745,3 +799,425 @@
         box-sizing: border-box;
     }
 }
+
+/* === Dark Mode Styles === */
+.dt-dark-mode.dynamic-table-wrapper {
+    background-color: var(--dt-dark-bg-primary);
+}
+
+.dt-dark-mode .dynamic-table-controls {
+    border-bottom: 1px solid var(--dt-dark-border-primary);
+}
+
+.dt-dark-mode .dynamic-table-controls label {
+    color: var(--dt-dark-text-secondary);
+}
+
+.dt-dark-mode .dynamic-table-controls input[type="search"] {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dynamic-table-controls input[type="search"]:focus {
+     border-color: var(--dt-dark-accent-primary);
+     box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+
+.dt-dark-mode .dynamic-table-results-info {
+    color: var(--dt-dark-text-secondary);
+}
+
+/* Common style for ALL selects in dark mode */
+.dt-dark-mode .dt-common-select {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-common-select:focus {
+     border-color: var(--dt-dark-accent-primary);
+     box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+
+
+/* Table dark mode */
+.dt-dark-mode .dynamic-table thead th {
+    background-color: var(--dt-dark-header-bg);
+    color: var(--dt-dark-header-text);
+    border-bottom: 2px solid var(--dt-dark-header-border);
+}
+.dt-dark-mode .dynamic-table-scroll-wrapper[style*="overflow-y: auto"] thead th,
+.dt-dark-mode .dynamic-table-scroll-wrapper[style*="overflow-y: scroll"] thead th {
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4); /* Darker shadow for dark mode */
+}
+.dt-dark-mode .dynamic-table thead th.sortable:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+
+/* Header Filter Dark Mode */
+.dt-dark-mode .dt-header-filter-input {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-header-filter-input:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+.dt-dark-mode .dt-header-filter-select { /* This is a dt-common-select, already styled */
+    /* border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary); */
+}
+/* .dt-dark-mode .dt-header-filter-select:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+} */
+
+/* Header Multi-select Filter Dark Mode */
+.dt-dark-mode .dt-header-multiselect {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-multiselect-dropdown {
+    background-color: var(--dt-dark-input-bg); /* Dropdown bg */
+    border: 1px solid var(--dt-dark-border-secondary); /* Slightly different border for dropdown */
+    border-top: none;
+}
+.dt-dark-mode .dt-multiselect-item:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-multiselect-item label {
+    color: var(--dt-dark-text-primary);
+}
+/* Checkbox styling in multiselect might need attention if native ones look bad on dark bg */
+/* .dt-dark-mode .dt-multiselect-item input[type="checkbox"] { ... } */
+
+/* Global Multi-select Filter (dark mode) */
+/* .dt-global-multiselect uses .dt-custom-select, so its dark mode is handled by .dt-dark-mode .dt-custom-select */
+.dt-dark-mode .dt-global-multiselect .dt-custom-options .dt-multiselect-item:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-global-multiselect .dt-custom-options .dt-multiselect-item label {
+    color: var(--dt-dark-text-primary);
+}
+
+
+.dt-dark-mode .dynamic-table tbody td {
+    border-bottom: 1px solid var(--dt-dark-border-primary);
+    color: var(--dt-dark-text-secondary);
+}
+.dt-dark-mode .dynamic-table tbody td.dt-value-positive {
+    color: var(--dt-dark-accent-secondary);
+}
+.dt-dark-mode .dynamic-table tbody td.dt-value-negative {
+    color: var(--dt-dark-accent-negative);
+}
+.dt-dark-mode .dynamic-table tbody tr:nth-child(even) {
+    background-color: var(--dt-dark-bg-secondary);
+}
+.dt-dark-mode .dynamic-table tbody tr:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dynamic-table .message-row td {
+    color: var(--dt-dark-text-secondary);
+    background-color: var(--dt-dark-bg-primary) !important;
+}
+
+/* Pagination dark mode */
+.dt-dark-mode .dynamic-table-pagination {
+    border-top: 1px solid var(--dt-dark-border-primary);
+}
+.dt-dark-mode .dynamic-table-rows-per-page-control label {
+    color: var(--dt-dark-text-secondary);
+}
+/* .dt-dark-mode .dynamic-table-rows-per-page-control .dt-common-select is already handled */
+
+.dt-dark-mode .dynamic-table-pagination button {
+    border: 1px solid var(--dt-dark-border-secondary);
+    background-color: var(--dt-dark-button-bg);
+    color: var(--dt-dark-button-text);
+}
+.dt-dark-mode .dynamic-table-pagination button:hover:not(:disabled) {
+    background-color: var(--dt-dark-button-hover-bg);
+    color: var(--dt-dark-button-hover-text);
+    border-color: var(--dt-dark-accent-primary);
+}
+.dt-dark-mode .dynamic-table-pagination button:disabled {
+    color: var(--dt-dark-text-secondary);
+    background-color: var(--dt-dark-bg-tertiary); /* Use a dark tertiary bg for disabled */
+    border-color: var(--dt-dark-border-primary);
+    opacity: 0.5; /* Make it more obviously disabled */
+}
+.dt-dark-mode .dynamic-table-pagination span {
+    color: var(--dt-dark-text-secondary);
+}
+
+/* Custom Dropdown Dark Mode (for flag filters, global multiselects) */
+.dt-dark-mode .dt-custom-select {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary); /* Text for the trigger value */
+}
+.dt-dark-mode .dt-custom-select:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+.dt-dark-mode .dt-custom-options {
+    background-color: var(--dt-dark-input-bg); /* Dropdown bg */
+    border: 1px solid var(--dt-dark-border-secondary); /* Slightly different for dropdown */
+    border-top: none;
+}
+.dt-dark-mode .dt-custom-option {
+    color: var(--dt-dark-text-primary); /* Text color for options */
+}
+.dt-dark-mode .dt-custom-option:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-custom-option.selected {
+    background-color: var(--dt-dark-bg-tertiary); /* Or a slightly different shade if needed */
+    /* font-weight: bold; is already applied */
+}
+/* Unicode flags in .dt-custom-option might need color adjustment if they are text-based */
+/* span.fi (image based flags) should be fine */
+
+
+/* Column Visibility Selector Dark Mode */
+.dt-dark-mode .dt-column-selector-button {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-column-selector-button:hover {
+    border-color: var(--dt-dark-border-secondary); /* Darker border on hover */
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-column-selector-button:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+.dt-dark-mode .dt-column-selector-dropdown {
+    background-color: var(--dt-dark-input-bg);
+    border: 1px solid var(--dt-dark-border-secondary);
+    border-top-color: var(--dt-dark-border-primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.25); /* Darker shadow for dark mode */
+}
+.dt-dark-mode .dt-column-selector-item:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-column-selector-item label {
+    color: var(--dt-dark-text-primary);
+}
+/* Checkboxes in .dt-column-selector-item might need specific styling for dark mode */
+/* .dt-dark-mode .dt-column-selector-item input[type="checkbox"] { ... } */
+
+/* === Dark Mode Styles === */
+.dt-dark-mode.dynamic-table-wrapper {
+    background-color: var(--dt-dark-bg-primary);
+}
+
+.dt-dark-mode .dynamic-table-controls {
+    border-bottom: 1px solid var(--dt-dark-border-primary);
+}
+
+.dt-dark-mode .dynamic-table-controls label {
+    color: var(--dt-dark-text-secondary);
+}
+
+.dt-dark-mode .dynamic-table-controls input[type="search"] {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dynamic-table-controls input[type="search"]:focus {
+     border-color: var(--dt-dark-accent-primary);
+     box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+
+.dt-dark-mode .dynamic-table-results-info {
+    color: var(--dt-dark-text-secondary);
+}
+
+/* Common style for ALL selects in dark mode */
+.dt-dark-mode .dt-common-select {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-common-select:focus {
+     border-color: var(--dt-dark-accent-primary);
+     box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+
+
+/* Table dark mode */
+.dt-dark-mode .dynamic-table thead th {
+    background-color: var(--dt-dark-header-bg);
+    color: var(--dt-dark-header-text);
+    border-bottom: 2px solid var(--dt-dark-header-border);
+}
+.dt-dark-mode .dynamic-table-scroll-wrapper[style*="overflow-y: auto"] thead th,
+.dt-dark-mode .dynamic-table-scroll-wrapper[style*="overflow-y: scroll"] thead th {
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4); /* Darker shadow for dark mode */
+}
+.dt-dark-mode .dynamic-table thead th.sortable:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+
+/* Header Filter Dark Mode */
+.dt-dark-mode .dt-header-filter-input {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-header-filter-input:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+.dt-dark-mode .dt-header-filter-select { /* This is a dt-common-select, already styled */
+    /* border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary); */
+}
+/* .dt-dark-mode .dt-header-filter-select:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+} */
+
+/* Header Multi-select Filter Dark Mode */
+.dt-dark-mode .dt-header-multiselect {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-multiselect-dropdown {
+    background-color: var(--dt-dark-input-bg); /* Dropdown bg */
+    border: 1px solid var(--dt-dark-border-secondary); /* Slightly different border for dropdown */
+    border-top: none;
+}
+.dt-dark-mode .dt-multiselect-item:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-multiselect-item label {
+    color: var(--dt-dark-text-primary);
+}
+/* Checkbox styling in multiselect might need attention if native ones look bad on dark bg */
+/* .dt-dark-mode .dt-multiselect-item input[type="checkbox"] { ... } */
+
+/* Global Multi-select Filter (dark mode) */
+/* .dt-global-multiselect uses .dt-custom-select, so its dark mode is handled by .dt-dark-mode .dt-custom-select */
+.dt-dark-mode .dt-global-multiselect .dt-custom-options .dt-multiselect-item:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-global-multiselect .dt-custom-options .dt-multiselect-item label {
+    color: var(--dt-dark-text-primary);
+}
+
+
+.dt-dark-mode .dynamic-table tbody td {
+    border-bottom: 1px solid var(--dt-dark-border-primary);
+    color: var(--dt-dark-text-secondary);
+}
+.dt-dark-mode .dynamic-table tbody td.dt-value-positive {
+    color: var(--dt-dark-accent-secondary);
+}
+.dt-dark-mode .dynamic-table tbody td.dt-value-negative {
+    color: var(--dt-dark-accent-negative);
+}
+.dt-dark-mode .dynamic-table tbody tr:nth-child(even) {
+    background-color: var(--dt-dark-bg-secondary);
+}
+.dt-dark-mode .dynamic-table tbody tr:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dynamic-table .message-row td {
+    color: var(--dt-dark-text-secondary);
+    background-color: var(--dt-dark-bg-primary) !important;
+}
+
+/* Pagination dark mode */
+.dt-dark-mode .dynamic-table-pagination {
+    border-top: 1px solid var(--dt-dark-border-primary);
+}
+.dt-dark-mode .dynamic-table-rows-per-page-control label {
+    color: var(--dt-dark-text-secondary);
+}
+/* .dt-dark-mode .dynamic-table-rows-per-page-control .dt-common-select is already handled */
+
+.dt-dark-mode .dynamic-table-pagination button {
+    border: 1px solid var(--dt-dark-border-secondary);
+    background-color: var(--dt-dark-button-bg);
+    color: var(--dt-dark-button-text);
+}
+.dt-dark-mode .dynamic-table-pagination button:hover:not(:disabled) {
+    background-color: var(--dt-dark-button-hover-bg);
+    color: var(--dt-dark-button-hover-text);
+    border-color: var(--dt-dark-accent-primary);
+}
+.dt-dark-mode .dynamic-table-pagination button:disabled {
+    color: var(--dt-dark-text-secondary);
+    background-color: var(--dt-dark-bg-tertiary); /* Use a dark tertiary bg for disabled */
+    border-color: var(--dt-dark-border-primary);
+    opacity: 0.5; /* Make it more obviously disabled */
+}
+.dt-dark-mode .dynamic-table-pagination span {
+    color: var(--dt-dark-text-secondary);
+}
+
+/* Custom Dropdown Dark Mode (for flag filters, global multiselects) */
+.dt-dark-mode .dt-custom-select {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary); /* Text for the trigger value */
+}
+.dt-dark-mode .dt-custom-select:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+.dt-dark-mode .dt-custom-options {
+    background-color: var(--dt-dark-input-bg); /* Dropdown bg */
+    border: 1px solid var(--dt-dark-border-secondary); /* Slightly different for dropdown */
+    border-top: none;
+}
+.dt-dark-mode .dt-custom-option {
+    color: var(--dt-dark-text-primary); /* Text color for options */
+}
+.dt-dark-mode .dt-custom-option:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-custom-option.selected {
+    background-color: var(--dt-dark-bg-tertiary); /* Or a slightly different shade if needed */
+    /* font-weight: bold; is already applied */
+}
+/* Unicode flags in .dt-custom-option might need color adjustment if they are text-based */
+/* span.fi (image based flags) should be fine */
+
+
+/* Column Visibility Selector Dark Mode */
+.dt-dark-mode .dt-column-selector-button {
+    border: 1px solid var(--dt-dark-input-border);
+    background-color: var(--dt-dark-input-bg);
+    color: var(--dt-dark-text-primary);
+}
+.dt-dark-mode .dt-column-selector-button:hover {
+    border-color: var(--dt-dark-border-secondary); /* Darker border on hover */
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-column-selector-button:focus {
+    border-color: var(--dt-dark-accent-primary);
+    box-shadow: 0 0 0 2px var(--dt-dark-input-focus-shadow);
+}
+.dt-dark-mode .dt-column-selector-dropdown {
+    background-color: var(--dt-dark-input-bg);
+    border: 1px solid var(--dt-dark-border-secondary);
+    border-top-color: var(--dt-dark-border-primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.25); /* Darker shadow for dark mode */
+}
+.dt-dark-mode .dt-column-selector-item:hover {
+    background-color: var(--dt-dark-bg-tertiary);
+}
+.dt-dark-mode .dt-column-selector-item label {
+    color: var(--dt-dark-text-primary);
+}
+/* Checkboxes in .dt-column-selector-item might need specific styling for dark mode */
+/* .dt-dark-mode .dt-column-selector-item input[type="checkbox"] { ... } */
