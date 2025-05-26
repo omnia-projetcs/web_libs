@@ -44,6 +44,14 @@ The `createDynamicTable` function accepts a configuration object with the follow
 * **`containerId`** (String, required): The ID of the HTML `div` element where the table will be injected.
 * **`jsonPath`** (String, optional): The path to your JSON data file. Use this *or* `jsonData`.
 * **`jsonData`** (Array, optional): An array of JavaScript objects to use as data directly. Use this *or* `jsonPath`.
+* **`language`** (String, optional, default: `'en-US'`): Sets the display language for all table UI elements, including labels, buttons, and messages.
+    * Supported language codes:
+        * `'en-US'` (English, Default)
+        * `'fr-FR'` (French)
+        * `'es-ES'` (Spanish)
+        * `'it-IT'` (Italian)
+        * `'de-DE'` (German)
+    * If an unsupported code is provided, it will default to `'en-US'`.
 * **`columns`** (Array of Objects, required): An array describing each column. Each column object can have:
     * `key` (String): The corresponding key in your JSON data objects. Used for text display, sorting, filtering, and as the first argument to a custom `render` function. Not strictly required if only using a custom `render` function that doesn't depend on a specific value from the row, or for a chart column that only uses `dataKey` on a sub-object.
     * `header` (String, required): The text to display in the column header (`<th>`).
