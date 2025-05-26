@@ -450,6 +450,7 @@ function createDynamicTable(config) {
                 buildHeaderRow(); // Rebuild the header
                 renderTableInternal(); // Re-render table body
                 // updatePaginationControlsInternal(); // Already called by renderTableInternal if pagination is on
+                populateFilterOptions(); // Repopulate all filter options
             });
 
             const label = document.createElement('label');
