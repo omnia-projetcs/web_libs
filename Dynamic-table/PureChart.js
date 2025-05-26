@@ -2,7 +2,7 @@
  * @file PureChart.js
  * @description Light and fast chart without any other libs
  * @author Nicolas HANTEVILLE
- * @version 0.9.4
+ * @version 0.13
  *
  * Copyright 2025 Nicolas HANTEVILLE
  * @link https://github.com/omnia-projetcs/web_libs
