@@ -183,25 +183,41 @@ class PureChart {
         };
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
+        const defaultSingleYAxisConfig = defaults.options.yAxes[0];
 
-        // Handle existing single yAxis user configurations
-        if (this.config.options.yAxis && !this.config.options.yAxes) {
-            // If old yAxis is provided and yAxes is not, convert it
-            this.config.options.yAxes = [PureChart._mergeDeep(defaults.options.yAxes[0], this.config.options.yAxis)];
-            // Ensure the new yAxes[0] has an id and position if the old yAxis didn't explicitly set them.
-            if (!this.config.options.yAxes[0].id) {
-                this.config.options.yAxes[0].id = 'left';
-            }
-            if (!this.config.options.yAxes[0].position) {
-                this.config.options.yAxes[0].position = 'left';
-            }
+        // Refined yAxes initialization
+        if (this.config.options.yAxis && !userOptions.options?.yAxes) { // Check userOptions to ensure yAxes wasn't also provided
+            // If old yAxis is provided (and yAxes is not in userOptions), convert it
+            const userSingularYAxisConfig = this.config.options.yAxis; // Already merged with userOptions.options.yAxis if it existed
+            this.config.options.yAxes = [ PureChart._mergeDeep(PureChart._mergeDeep({}, defaultSingleYAxisConfig), userSingularYAxisConfig) ];
             delete this.config.options.yAxis; // Remove the old singular yAxis property
-        } else if (!this.config.options.yAxes) {
-            // If neither is provided, ensure yAxes defaults to at least one axis from 'defaults'
-            // This case should ideally be covered by _mergeDeep, but as a safeguard:
-            this.config.options.yAxes = [PureChart._mergeDeep({}, defaults.options.yAxes[0])];
+        } else if (userOptions.options?.yAxes && Array.isArray(userOptions.options.yAxes)) {
+            // If yAxes was provided by the user (it's an array in userOptions)
+            this.config.options.yAxes = userOptions.options.yAxes.map(eachUserAxisConfig => {
+              let base = PureChart._mergeDeep({}, defaultSingleYAxisConfig); // Start with a fresh copy
+              return PureChart._mergeDeep(base, eachUserAxisConfig); // Merge the user's specific properties
+            });
+        } else {
+            // If neither yAxis nor yAxes were in userOptions, ensure yAxes is defaulted
+            // this.config.options.yAxes would have come from the initial defaults merge
+            // Or, if userOptions.options was defined but yAxes was not, it also relies on the initial merge.
+            // This step ensures that if yAxes somehow ended up undefined/null, it's set to default.
+            if (!this.config.options.yAxes) {
+                 this.config.options.yAxes = [ PureChart._mergeDeep({}, defaultSingleYAxisConfig) ];
+            } else if (Array.isArray(this.config.options.yAxes)) {
+                // If yAxes exists (came from defaults during initial merge), ensure each axis is fully defaulted
+                // This handles cases where the default yAxes array might be altered or incomplete.
+                this.config.options.yAxes = this.config.options.yAxes.map(eachDefaultAxisConfig => {
+                    // This ensures even the default axis/axes from 'defaults' object are deep copies and correctly merged.
+                    // For user-provided yAxes, the 'else if' above handles them against defaultSingleYAxisConfig.
+                    // This branch is more for ensuring the 'defaults.options.yAxes' itself is processed robustly if it was the source.
+                    let base = PureChart._mergeDeep({}, defaultSingleYAxisConfig);
+                    return PureChart._mergeDeep(base, eachDefaultAxisConfig);
+                });
+            }
         }
-        // Ensure all yAxes have an id and position
+
+        // Ensure all yAxes have an id and position (this loop should run AFTER the above logic)
         if (this.config.options.yAxes && Array.isArray(this.config.options.yAxes)) {
             this.config.options.yAxes.forEach((axis, index) => {
                 if (!axis.id) {
@@ -212,7 +228,7 @@ class PureChart {
                 }
             });
         }
-
+        
         // Initialize activePalette based on the theme
         if (this.config.theme === 'dark') {
             this.activePalette = PC_DARK_THEME_PALETTE;
