@@ -19,6 +19,61 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+const PC_LIGHT_THEME_PALETTE = {
+    name: "light",
+    backgroundColor: '#FFFFFF', // General background for the chart area if needed
+    axisColor: '#666666',
+    gridColor: '#E0E0E0',
+    labelColor: '#333333', // General label color (axes, titles)
+    titleColor: '#333333',
+    legendColor: '#333333',
+    tooltipBgColor: 'rgba(0,0,0,0.85)',
+    tooltipColor: '#FFFFFF',
+    defaultDatasetColors: [
+        '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6f42c1', 
+        '#e83e8c', '#fd7e14', '#20c997', '#6610f2'
+    ],
+    // Colors for specific chart elements if they need to differ from global settings
+    bar: {
+        borderColorDarkenPercent: 20,
+    },
+    line: {
+        // pointColor, pointBorderColor can also be themed if desired
+    },
+    annotations: {
+        // Default colors for annotations if not specified in the annotation itself
+        // lineColor: '#888888', // Example
+        // labelColor: '#555555' // Example
+    }
+};
+
+const PC_DARK_THEME_PALETTE = {
+    name: "dark",
+    backgroundColor: '#22272E', // Dark background
+    axisColor: '#ADBAC7',       // Lighter axis lines
+    gridColor: '#444C56',       // Subtle grid lines
+    labelColor: '#F0F6FC',      // Light label text
+    titleColor: '#F0F6FC',
+    legendColor: '#F0F6FC',
+    tooltipBgColor: 'rgba(20,20,25,0.85)', // Darker tooltip with some transparency
+    tooltipColor: '#F0F6FC',
+    defaultDatasetColors: [ // Potentially brighter or different colors for dark theme
+        '#58A6FF', '#52D57B', '#F87171', '#FDB863', '#6CBBEB', '#B197FC',
+        '#F781BE', '#FFA94D', '#48D2A0', '#A371F7'
+    ],
+    bar: {
+        borderColorDarkenPercent: 0, // May not need to darken, or might lighten instead
+        borderColorLightenPercent: 20 // Example: lighten border for dark theme bars
+    },
+    line: {
+        // pointColor, pointBorderColor adjustments for dark theme
+    },
+    annotations: {
+        // lineColor: '#AAAAAA', 
+        // labelColor: '#DDDDDD' 
+    }
+};
  
 class PureChart {
     constructor(elementId, userOptions) {
@@ -38,6 +93,7 @@ class PureChart {
             width: this.canvas.width || 300,
             height: this.canvas.height || 150,
             type: 'bar',
+            theme: 'light',
             data: {},
             options: {
                 padding: { top: 20, right: 20, bottom: 40, left: 20 },
@@ -131,6 +187,20 @@ class PureChart {
         };
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
+
+        // Initialize activePalette based on the theme
+        if (this.config.theme === 'dark') {
+            this.activePalette = PC_DARK_THEME_PALETTE;
+        } else {
+            this.activePalette = PC_LIGHT_THEME_PALETTE; // Default to light
+        }
+        // If a custom theme object is provided in options, merge it over the selected palette
+        if (typeof this.config.theme === 'object' && this.config.theme !== null) {
+            const basePalette = (this.config.theme.extends === 'dark' && PC_DARK_THEME_PALETTE) ? PC_DARK_THEME_PALETTE : PC_LIGHT_THEME_PALETTE;
+            this.activePalette = PureChart._mergeDeep(basePalette, this.config.theme);
+        }
+
+
         this._validateConfig();
         if (!this.isValid) return;
 
