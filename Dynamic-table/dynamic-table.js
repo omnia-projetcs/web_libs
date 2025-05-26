@@ -210,9 +210,12 @@ function createDynamicTable(config) {
         rowsPerPageOptions = [10, 25, 50, 100, 'All'], // Default 'Tout' changed to 'All'
         tableMaxHeight = null,
         uniformChartHeight = null,
-        showColumnVisibilitySelector = true // New configuration option
+        showColumnVisibilitySelector = true, // New configuration option
+        language = 'en-US' // New language option
         // filterMode is now directly from config or defaults to 'global'
     } = config;
+
+    const currentLangPack = DT_LANG_PACKS[language] || DT_LANG_PACKS['en-US'];
 
     const filterMode = config.filterMode || 'global';
     let initialRowsPerPageSetting = config.rowsPerPage !== undefined ? config.rowsPerPage : (rowsPerPageOptions[0] || 10);
@@ -242,12 +245,12 @@ function createDynamicTable(config) {
     }
     if (!jsonPath && !jsonData) {
         console.error(`[DynamicTable] Error: jsonPath or jsonData must be provided.`);
-        container.innerHTML = `<p style="color:red;">Configuration Error: Data not provided.</p>`;
+        container.innerHTML = `<p style="color:red;">${currentLangPack.errorDataNotProvided}</p>`;
         return;
     }
      if (jsonData && !Array.isArray(jsonData)) {
         console.error(`[DynamicTable] Error: jsonData must be an array.`);
-        container.innerHTML = `<p style="color:red;">Configuration Error: Invalid jsonData.</p>`;
+        container.innerHTML = `<p style="color:red;">${currentLangPack.errorInvalidJsonData}</p>`;
         return;
     }
     if (!Array.isArray(columns) || columns.length === 0) {
@@ -335,7 +338,7 @@ function createDynamicTable(config) {
                             case 'regex':
                                 const input = document.createElement('input');
                                 input.type = 'text';
-                                input.placeholder = `Filter ${colState.header}...`;
+                                input.placeholder = currentLangPack.headerFilterPlaceholder.replace('{columnName}', colState.header);
                                 input.className = 'dt-header-filter-input';
                                 input.dataset.columnKey = colState.key;
                                 input.addEventListener('click', (e) => e.stopPropagation());
@@ -350,7 +353,7 @@ function createDynamicTable(config) {
                                 select.dataset.columnKey = colState.key;
                                 const defaultOption = document.createElement('option');
                                 defaultOption.value = '';
-                                defaultOption.textContent = 'All';
+                                defaultOption.textContent = currentLangPack.allOption;
                                 select.appendChild(defaultOption);
                                 // select.addEventListener('click', (e) => e.stopPropagation());
                                 select.addEventListener('change', () => { 
@@ -368,7 +371,7 @@ function createDynamicTable(config) {
 
                                 const valueSpan = document.createElement('span');
                                 valueSpan.className = 'dt-multiselect-value';
-                                valueSpan.textContent = 'All'; // Default display text
+                                valueSpan.textContent = currentLangPack.allOption; // Default display text
 
                                 const arrowSpan = document.createElement('span');
                                 arrowSpan.className = 'dt-multiselect-arrow';
@@ -419,8 +422,8 @@ function createDynamicTable(config) {
         const selectButton = document.createElement('button');
         selectButton.innerHTML = '&#x2699;'; // Gear icon
         selectButton.className = 'dt-column-selector-button';
-        selectButton.setAttribute('aria-label', 'Select columns to display');
-        selectButton.title = 'Select columns to display'; // Tooltip
+        selectButton.setAttribute('aria-label', currentLangPack.columnSelectorAriaLabel);
+        selectButton.title = currentLangPack.columnSelectorTitle; 
         selectorContainer.appendChild(selectButton);
 
         const dropdown = document.createElement('div');
@@ -496,11 +499,11 @@ function createDynamicTable(config) {
             searchDiv.className = 'dynamic-table-search-control';
             const searchLabel = document.createElement('label');
             searchLabel.htmlFor = `${containerId}-global-search`;
-            searchLabel.textContent = 'Global Search:';
+            searchLabel.textContent = currentLangPack.globalSearchLabel;
             globalSearchInput = document.createElement('input');
             globalSearchInput.type = 'search';
             globalSearchInput.id = `${containerId}-global-search`;
-            globalSearchInput.placeholder = 'Search...';
+            globalSearchInput.placeholder = currentLangPack.globalSearchPlaceholder;
             searchDiv.appendChild(searchLabel);
             searchDiv.appendChild(globalSearchInput);
             controlsWrapper.appendChild(searchDiv);
@@ -516,7 +519,7 @@ function createDynamicTable(config) {
                 // Labels for global filters are fine even if hidden initially
                 const filterLabel = document.createElement('label');
                 filterLabel.htmlFor = `${containerId}-filter-${col.key}`; 
-                filterLabel.textContent = `Filter by ${col.header}:`;
+                filterLabel.textContent = currentLangPack.filterByLabel.replace('{columnName}', col.header);
                 filterDiv.appendChild(filterLabel);
 
                 const gFilterType = col.globalFilterType || 'select';
@@ -531,7 +534,7 @@ function createDynamicTable(config) {
 
                     const valueSpan = document.createElement('span');
                     valueSpan.className = 'dt-custom-select-value'; 
-                    valueSpan.textContent = 'All ' + col.header; 
+                    valueSpan.textContent = currentLangPack.allOptionWithColumn.replace('{columnName}', col.header); 
 
                     const arrowSpan = document.createElement('span');
                     arrowSpan.className = 'dt-custom-arrow'; 
@@ -568,7 +571,7 @@ function createDynamicTable(config) {
                         trigger.className = 'dt-custom-select-trigger';
                         const triggerValue = document.createElement('span');
                         triggerValue.className = 'dt-custom-select-value';
-                        triggerValue.textContent = 'All';
+                        triggerValue.textContent = currentLangPack.allOption;
                         trigger.appendChild(triggerValue);
                         const arrow = document.createElement('span');
                         arrow.className = 'dt-custom-arrow';
@@ -595,7 +598,7 @@ function createDynamicTable(config) {
                         select.classList.add('dt-common-select');
                         const defaultOption = document.createElement('option');
                         defaultOption.value = '';
-                        defaultOption.textContent = `All ${col.header}`;
+                        defaultOption.textContent = currentLangPack.allOptionWithColumn.replace('{columnName}', col.header);
                         select.appendChild(defaultOption);
                         filterDiv.appendChild(select);
                         filterSelects[col.key] = { custom: false, isGlobalMultiSelect: false, element: select }; // Explicitly false
@@ -629,7 +632,13 @@ function createDynamicTable(config) {
              resultsCountSpan = document.createElement('strong');
              resultsCountSpan.textContent = '0';
              resultsDiv.appendChild(resultsCountSpan);
-             resultsDiv.appendChild(document.createTextNode(' result(s)'));
+             // The result(s) text will be handled by updatePaginationControlsInternal or renderTableInternal
+             // For now, let's ensure the number is followed by a space for the text to be appended.
+             // resultsDiv.appendChild(document.createTextNode(currentLangPack.resultsInfo.replace('{count}', ''))); // This might be tricky if {count} is at the start
+             // A better approach is to construct this fully where the count is known.
+             // For now, let's leave a placeholder text that will be overwritten, or handle it in renderTableInternal.
+             const resultsTextNode = document.createTextNode(''); // Placeholder, will be updated
+             resultsDiv.appendChild(resultsTextNode);
              rightControlsGroup.appendChild(resultsDiv); // Append to group
              hasRightControls = true;
         }
@@ -684,7 +693,7 @@ function createDynamicTable(config) {
                 rowsPerPageDiv.className = 'dynamic-table-rows-per-page-control';
                 const rowsLabel = document.createElement('label');
                 rowsLabel.htmlFor = `${containerId}-rows-per-page`;
-                rowsLabel.textContent = 'Rows/page:'; // Translated
+                rowsLabel.textContent = currentLangPack.rowsPerPageLabel; 
                 rowsPerPageSelectElement = document.createElement('select');
                 rowsPerPageSelectElement.id = `${containerId}-rows-per-page`;
                 rowsPerPageSelectElement.classList.add('dt-common-select');
@@ -693,7 +702,8 @@ function createDynamicTable(config) {
                     const option = document.createElement('option');
                     const isCurrentAllOption = isAllString(optionValue);
                     option.value = isCurrentAllOption ? Infinity : optionValue;
-                    option.textContent = String(optionValue); // Display original value (e.g., "All")
+                    // option.textContent = String(optionValue); // Display original value (e.g., "All")
+                    option.textContent = isCurrentAllOption ? currentLangPack.allRowsOptionLabel : String(optionValue);
                     if ((isCurrentAllOption && currentRowsPerPage === Infinity) || 
                         (!isCurrentAllOption && Number(optionValue) === Number(currentRowsPerPage))) {
                         option.selected = true;
@@ -710,16 +720,17 @@ function createDynamicTable(config) {
             mainPaginationControlsDiv.className = 'dynamic-table-main-pagination-controls';
 
             prevButton = document.createElement('button');
-            prevButton.textContent = 'Previous'; // Translated
+            prevButton.textContent = currentLangPack.previousButtonLabel;
             prevButton.disabled = true;
             mainPaginationControlsDiv.appendChild(prevButton);
 
             pageInfoSpan = document.createElement('span');
-            pageInfoSpan.textContent = 'Page 1 / 1'; // Translated
+            // Page info will be updated in updatePaginationControlsInternal
+            pageInfoSpan.textContent = currentLangPack.pageInfo.replace('{currentPage}', '1').replace('{totalPages}', '1');
             mainPaginationControlsDiv.appendChild(pageInfoSpan);
 
             nextButton = document.createElement('button');
-            nextButton.textContent = 'Next'; // Translated
+            nextButton.textContent = currentLangPack.nextButtonLabel;
             nextButton.disabled = true;
             mainPaginationControlsDiv.appendChild(nextButton);
             
@@ -819,11 +830,11 @@ function createDynamicTable(config) {
 
     function showLoadingMessage() {
         const visibleCols = getVisibleColumnsCount();
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row loading">Loading...</td></tr>`; 
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row loading">${currentLangPack.loadingMsg}</td></tr>`; 
     }
     function showNoResultsMessage() {
         const visibleCols = getVisibleColumnsCount();
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row no-results">No results found.</td></tr>`; 
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row no-results">${currentLangPack.noResultsMsg}</td></tr>`; 
     }
     
     function _initTableWithData(data) {
@@ -831,7 +842,7 @@ function createDynamicTable(config) {
         if (!Array.isArray(originalData)) {
             console.error(`[DynamicTable ${containerId}] Error: Provided data is not an array.`);
             const visibleCols = getVisibleColumnsCount();
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error: Invalid data.</td></tr>`; 
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">${currentLangPack.errorInvalidData}</td></tr>`; 
             return;
         }
         populateFilterOptions();
@@ -842,7 +853,7 @@ function createDynamicTable(config) {
         if (!jsonPath) { 
             console.error(`[DynamicTable ${containerId}] Error: jsonPath not defined.`);
             const visibleCols = getVisibleColumnsCount();
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error: JSON path not defined.</td></tr>`; 
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">${currentLangPack.errorJsonPathNotDefined}</td></tr>`; 
             return;
         }
         showLoadingMessage();
@@ -854,7 +865,7 @@ function createDynamicTable(config) {
         } catch (error) {
             console.error(`[DynamicTable ${containerId}] Fetch error:`, error);
             const visibleCols = getVisibleColumnsCount();
-            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">Error loading data.</td></tr>`; 
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${visibleCols > 0 ? visibleCols : 1}" class="message-row error">${currentLangPack.errorLoadingData}</td></tr>`; 
             if (globalSearchInput) globalSearchInput.disabled = true;
             Object.values(filterSelects).forEach(sel => sel.disabled = true);
             if (prevButton) prevButton.disabled = true;
@@ -871,13 +882,15 @@ function createDynamicTable(config) {
         if (!valueSpan) return;
 
         if (checkedCheckboxes.length === 0) {
-            valueSpan.textContent = headerForDefaultAllText ? `All ${headerForDefaultAllText}` : 'All';
+            valueSpan.textContent = headerForDefaultAllText 
+                ? currentLangPack.allOptionWithColumn.replace('{columnName}', headerForDefaultAllText) 
+                : currentLangPack.allOption;
         } else if (checkedCheckboxes.length <= 2) { 
             let selectedTexts = [];
             checkedCheckboxes.forEach(cb => selectedTexts.push(cb.value));
             valueSpan.textContent = selectedTexts.join(', ');
         } else {
-            valueSpan.textContent = `${checkedCheckboxes.length} selected`;
+            valueSpan.textContent = currentLangPack.itemsSelected.replace('{count}', checkedCheckboxes.length);
         }
     }
 
@@ -1031,10 +1044,10 @@ function createDynamicTable(config) {
         // "All" Option
         const allOptionDiv = document.createElement('div');
         allOptionDiv.className = 'dt-custom-option';
-        allOptionDiv.textContent = 'All'; // Changed: Text for "All" option in dropdown
+        allOptionDiv.textContent = currentLangPack.allOption; 
         allOptionDiv.dataset.value = "";
         allOptionDiv.addEventListener('click', () => {
-            triggerValueElement.textContent = 'All'; // Changed: Text for trigger when "All" is selected
+            triggerValueElement.textContent = currentLangPack.allOption; 
             filterSelects[filterKey].value = "";
             optionsContainer.style.display = 'none';
             optionsContainer.closest('.dt-custom-select').classList.remove('open');
@@ -1301,13 +1314,13 @@ function createDynamicTable(config) {
                                 if (chartInstance) { 
                                    activeChartInstances.push(chartInstance);
                                 }
-                            } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = 'Chart Err.'; }
+                            } catch (e) { console.error(`[DynamicTable] Error creating chart ${canvasId}:`, e); cell.textContent = currentLangPack.errorChart; }
                         } else if (typeof PureChart === 'undefined') {
                             console.warn(`[DynamicTable] PureChart is not defined for column ${colConfig.header}. Ensure PureChart.js is loaded.`);
-                            cell.textContent = 'PureChart?';
+                            cell.textContent = currentLangPack.errorPureChartMissing;
                         } else {
                             console.warn(`[DynamicTable] Data for chart not found via dataKey '${colConfig.chartConfig.dataKey}' for column ${colConfig.header}.`);
-                            cell.textContent = 'Data?';
+                            cell.textContent = currentLangPack.errorChartDataMissing;
                         }
                     } else {
                         const formattedValue = formatValue(value, colConfig.format);
@@ -1335,7 +1348,14 @@ function createDynamicTable(config) {
         });
 
         if (showPagination) updatePaginationControlsInternal();
-        if(resultsCountSpan) resultsCountSpan.textContent = displayData.length.toLocaleString('en-US'); // Locale for results count
+        if(resultsCountSpan && resultsCountSpan.parentNode) { // Check if resultsCountSpan and its parent (resultsDiv) exist
+            resultsCountSpan.textContent = displayData.length.toLocaleString(language); // Use selected language for number formatting
+            // Update the accompanying text node, which is the next sibling of resultsCountSpan
+            const textNode = resultsCountSpan.nextSibling;
+            if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                textNode.textContent = ` ${currentLangPack.resultsInfo.replace('{count}', '')}`.trimStart();
+            }
+        }
     }
 
     function updatePaginationControlsInternal() {
@@ -1357,7 +1377,7 @@ function createDynamicTable(config) {
         
          currentPage = Math.max(1, Math.min(currentPage, totalPages)); // Ensure current page is valid
 
-         pageInfoSpan.textContent = `Page ${currentPage} / ${totalPages}`; // Translated
+         pageInfoSpan.textContent = currentLangPack.pageInfo.replace('{currentPage}', currentPage).replace('{totalPages}', totalPages);
          prevButton.disabled = currentPage === 1;
          nextButton.disabled = currentPage === totalPages || totalItems === 0;
 

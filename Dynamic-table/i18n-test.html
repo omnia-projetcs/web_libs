@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dynamic Table i18n Tests</title>
+    <link rel="stylesheet" href="dynamic-table.css"> <!-- Assuming a CSS file exists -->
+    <style>
+        body { font-family: sans-serif; }
+        .test-container { margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; }
+        h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>Dynamic Table Internationalization Tests</h1>
+
+    <div id="test-case-1" class="test-container">
+        <h3>Test Case 1: French Language ('fr-FR')</h3>
+        <div id="table-fr"></div>
+    </div>
+
+    <div id="test-case-2" class="test-container">
+        <h3>Test Case 2: Default Language (English 'en-US')</h3>
+        <div id="table-en-default"></div>
+    </div>
+
+    <div id="test-case-3" class="test-container">
+        <h3>Test Case 3: Invalid Language Code ('xx-XX')</h3>
+        <div id="table-xx"></div>
+    </div>
+
+    <div id="test-case-4" class="test-container">
+        <h3>Test Case 4: Spanish Language ('es-ES')</h3>
+        <div id="table-es"></div>
+    </div>
+
+    <script src="dynamic-table.js"></script>
+    <script>
+        // --- Assertion Function ---
+        function assertEqual(actual, expected, message) {
+            if (actual !== expected) {
+                console.error(`Assertion Failed: ${message}. Expected "${expected}", but got "${actual}".`);
+            } else {
+                console.log(`Assertion Passed: ${message}.`);
+            }
+        }
+
+        // --- Test Data ---
+        const testColumns = [
+            { key: 'id', header: 'ID' },
+            { key: 'name', header: 'Name' }
+        ];
+        const emptyJsonData = []; // For testing initial messages
+
+        // Wait for DOM content to be fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Reference to DT_LANG_PACKS from dynamic-table.js
+            // This is available because dynamic-table.js is loaded before this script block.
+            const LANG_PACKS = window.DT_LANG_PACKS || {}; // Fallback to empty if not found
+
+            // Helper function to run tests after a short delay for table rendering
+            function runTableTest(containerId, config, langPackKey, testName) {
+                console.log(`--- Running Test: ${testName} ---`);
+                const tableInstance = createDynamicTable(config);
+                
+                // Short delay to allow the table to render initial messages (e.g., "Loading..." or "No results...")
+                // For more complex scenarios, MutationObserver or specific table events would be more robust.
+                setTimeout(() => {
+                    const tableElement = document.getElementById(containerId);
+                    if (!tableElement) {
+                        console.error(`Test Error: Container ${containerId} not found for ${testName}.`);
+                        return;
+                    }
+
+                    const currentLang = LANG_PACKS[langPackKey] || LANG_PACKS['en-US'];
+                    if (!currentLang) {
+                         console.error(`Test Error: Language pack for ${langPackKey} not found for ${testName}.`);
+                         return;
+                    }
+
+                    // Test "No results found" message (since jsonData is empty)
+                    const noResultsMsgElement = tableElement.querySelector('.message-row.no-results');
+                    if (noResultsMsgElement) {
+                        assertEqual(noResultsMsgElement.textContent, currentLang.noResultsMsg, `${testName} - "No results" message`);
+                    } else {
+                        // If jsonData was provided, we might check for "Loading..." first, 
+                        // but with emptyJsonData, it often goes straight to "No results".
+                        // For this test setup, we'll assume "No results" is the primary target for empty data.
+                        console.warn(`${testName} - "No results" message element not found. This might be okay if data was expected.`);
+                    }
+                    
+                    // Test Global Search Placeholder (if search control is visible)
+                    const searchInput = tableElement.querySelector(`#${containerId}-global-search`);
+                    if (searchInput) {
+                        assertEqual(searchInput.placeholder, currentLang.globalSearchPlaceholder, `${testName} - Search placeholder`);
+                    }
+                    
+                    // Test Pagination Buttons (if pagination is visible)
+                    const prevButton = tableElement.querySelector('.dynamic-table-main-pagination-controls button:first-child');
+                    if (prevButton) {
+                         assertEqual(prevButton.textContent, currentLang.previousButtonLabel, `${testName} - Previous button label`);
+                    }
+                    const nextButton = tableElement.querySelector('.dynamic-table-main-pagination-controls button:last-child');
+                    if (nextButton) {
+                         assertEqual(nextButton.textContent, currentLang.nextButtonLabel, `${testName} - Next button label`);
+                    }
+
+                    console.log(`--- Finished Test: ${testName} ---`);
+                }, 100); // 100ms delay, adjust if needed
+            }
+
+            // --- Test Case 1: French ---
+            runTableTest('table-fr', {
+                containerId: 'table-fr',
+                columns: testColumns,
+                jsonData: emptyJsonData,
+                language: 'fr-FR',
+                showSearchControl: true, // Ensure search is rendered
+                showPagination: true     // Ensure pagination is rendered
+            }, 'fr-FR', 'French Language');
+
+            // --- Test Case 2: Default Language (English) ---
+            runTableTest('table-en-default', {
+                containerId: 'table-en-default',
+                columns: testColumns,
+                jsonData: emptyJsonData,
+                // No language specified
+                showSearchControl: true,
+                showPagination: true
+            }, 'en-US', 'Default Language (English)');
+
+            // --- Test Case 3: Invalid Language Code ---
+            runTableTest('table-xx', {
+                containerId: 'table-xx',
+                columns: testColumns,
+                jsonData: emptyJsonData,
+                language: 'xx-XX', // Invalid language
+                showSearchControl: true,
+                showPagination: true
+            }, 'en-US', 'Invalid Language (Defaults to English)');
+            
+            // --- Test Case 4: Spanish ---
+            runTableTest('table-es', {
+                containerId: 'table-es',
+                columns: testColumns,
+                jsonData: emptyJsonData,
+                language: 'es-ES',
+                showSearchControl: true,
+                showPagination: true
+            }, 'es-ES', 'Spanish Language');
+
+        });
+    </script>
+</body>
+</html>
