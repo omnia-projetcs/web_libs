@@ -9,20 +9,20 @@
     <h1>PureChart Demonstration - Full Showcase</h1>
 
     <div class="chart-container">
-        <h2>Chart 1: Advanced Mixed Chart</h2>
-        <p>Demonstrates multiple bar and line datasets, dashed lines, legend interaction, and a basic annotation.</p>
+        <h2>Chart 1: Advanced Mixed Chart (Dark Theme)</h2>
+        <p>Demonstrates multiple bar and line datasets, dashed lines, legend interaction, and a basic annotation. Explicitly set to <code>theme: 'dark'</code>.</p>
         <canvas id="advancedMixedChartCanvas" width="700" height="400"></canvas>
     </div>
 
     <div class="chart-container">
-        <h2>Chart 2: Multiple SMAs and Annotations</h2>
-        <p>Demonstrates a primary line series with two Simple Moving Averages (SMAs) and multiple horizontal annotations with varied styling.</p>
+        <h2>Chart 2: Multiple SMAs and Annotations (Light Theme)</h2>
+        <p>Demonstrates a primary line series with two Simple Moving Averages (SMAs) and multiple horizontal annotations with varied styling. Explicitly set to <code>theme: 'light'</code>.</p>
         <canvas id="multipleSmaAnnotationCanvas" width="700" height="400"></canvas>
     </div>
     
     <div class="chart-container">
-        <h2>Chart 3: Loaded from JSON (Mixed, SMA, Annotation)</h2>
-        <p>This chart is configured and loaded entirely from <code>sample-data.json</code>, showcasing mixed types, SMA, and an annotation.</p>
+        <h2>Chart 3: Loaded from JSON (Dark Theme via Override)</h2>
+        <p>This chart is configured from <code>sample-data.json</code> and then <code>theme: 'dark'</code> is applied via overrideOptions.</p>
         <canvas id="jsonLoadedChartCanvas" width="700" height="400"></canvas>
     </div>
 
@@ -246,7 +246,8 @@
                     ]
                 },
                 options: {
-                    title: { text: "Quarterly Product Performance" },
+                    theme: 'dark', // Set dark theme for Chart 1
+                    title: { text: "Quarterly Product Performance (Dark Theme)" },
                     legend: { display: true, position: 'top' },
                     yAxis: { title: "Units Sold" },
                     annotations: [{
@@ -298,7 +299,8 @@
                     ]
                 },
                 options: {
-                    title: { text: "Stock X Price with SMAs and Price Levels" },
+                    theme: 'light', // Explicitly set light theme for Chart 2
+                    title: { text: "Stock X Price with SMAs and Price Levels (Light Theme)" },
                     legend: { display: true },
                     yAxis: { title: "Price ($)" },
                     annotations: [
@@ -356,7 +358,15 @@
                 const jsonData = await response.json();
                 
                 if (jsonData.mixedChartWithSmaAndAnnotation) {
-                     new PureChart('jsonLoadedChartCanvas', jsonData.mixedChartWithSmaAndAnnotation);
+                    // Override theme for the JSON loaded chart
+                    const overrideOptions = {
+                        options: {
+                            theme: 'dark',
+                            title: { text: jsonData.mixedChartWithSmaAndAnnotation.options.title.text + " (Dark Theme Override)" }
+                        }
+                    };
+                    const chartConfigFromJson = PureChart._mergeDeep(jsonData.mixedChartWithSmaAndAnnotation, overrideOptions);
+                    new PureChart('jsonLoadedChartCanvas', chartConfigFromJson);
                 } else {
                     console.error("Chart configuration 'mixedChartWithSmaAndAnnotation' not found in sample-data.json");
                     document.getElementById('jsonLoadedChartCanvas').outerHTML = "<p>Error: Chart configuration not found in sample-data.json.</p>";

@@ -32,8 +32,6 @@ const DT_LANG_PACKS = {
     errorChartDataMissing: 'Chart Data Missing',
     columnSelectorAriaLabel: 'Select columns to display',
     columnSelectorTitle: 'Select columns to display',
-    toggleDarkModeAriaLabel: 'Toggle dark mode',
-    toggleDarkModeTitle: 'Toggle dark mode (light/dark)',
     globalSearchLabel: 'Global Search:',
     globalSearchPlaceholder: 'Search...',
     filterByLabel: 'Filter by {columnName}:',
@@ -61,8 +59,6 @@ const DT_LANG_PACKS = {
     errorChartDataMissing: 'Données de graphique manquantes',
     columnSelectorAriaLabel: 'Sélectionner les colonnes à afficher',
     columnSelectorTitle: 'Afficher/Masquer les colonnes',
-    toggleDarkModeAriaLabel: 'Activer/Désactiver le mode sombre',
-    toggleDarkModeTitle: 'Activer/Désactiver le mode sombre (clair/sombre)',
     globalSearchLabel: 'Recherche globale :',
     globalSearchPlaceholder: 'Rechercher...',
     filterByLabel: 'Filtrer par {columnName} :',
@@ -90,8 +86,6 @@ const DT_LANG_PACKS = {
     errorChartDataMissing: 'Faltan datos del gráfico',
     columnSelectorAriaLabel: 'Seleccionar columnas para mostrar',
     columnSelectorTitle: 'Seleccionar columnas para mostrar',
-    toggleDarkModeAriaLabel: 'Alternar modo oscuro',
-    toggleDarkModeTitle: 'Alternar modo oscuro (claro/oscuro)',
     globalSearchLabel: 'Búsqueda global:',
     globalSearchPlaceholder: 'Buscar...',
     filterByLabel: 'Filtrar por {columnName}:',
@@ -119,8 +113,6 @@ const DT_LANG_PACKS = {
     errorChartDataMissing: 'Dati del grafico mancanti',
     columnSelectorAriaLabel: 'Seleziona colonne da visualizzare',
     columnSelectorTitle: 'Seleziona colonne da visualizzare',
-    toggleDarkModeAriaLabel: 'Attiva/disattiva modalità scura',
-    toggleDarkModeTitle: 'Attiva/disattiva modalità scura (chiaro/scuro)',
     globalSearchLabel: 'Ricerca globale:',
     globalSearchPlaceholder: 'Cerca...',
     filterByLabel: 'Filtra per {columnName}:',
@@ -148,8 +140,6 @@ const DT_LANG_PACKS = {
     errorChartDataMissing: 'Diagrammdaten fehlen',
     columnSelectorAriaLabel: 'Spalten zur Anzeige auswählen',
     columnSelectorTitle: 'Spalten zur Anzeige auswählen',
-    toggleDarkModeAriaLabel: 'Dunkelmodus umschalten',
-    toggleDarkModeTitle: 'Dunkelmodus umschalten (hell/dunkel)',
     globalSearchLabel: 'Globale Suche:',
     globalSearchPlaceholder: 'Suchen...',
     filterByLabel: 'Filtern nach {columnName}:',
@@ -221,12 +211,10 @@ function createDynamicTable(config) {
         tableMaxHeight = null,
         uniformChartHeight = null,
         showColumnVisibilitySelector = true, // New configuration option
-        language = 'en-US', // New language option
-        enableDarkModeToggle = false // New config option for dark mode toggle
+        language = 'en-US' // New language option
         // filterMode is now directly from config or defaults to 'global'
     } = config;
 
-    const DT_DARK_MODE_LS_KEY = 'dynamicTableDarkMode';
     const currentLangPack = DT_LANG_PACKS[language] || DT_LANG_PACKS['en-US'];
 
     const filterMode = config.filterMode || 'global';
@@ -268,11 +256,6 @@ function createDynamicTable(config) {
     if (!Array.isArray(columns) || columns.length === 0) {
         console.error(`[DynamicTable] Error: Columns definition (columns) is invalid.`);
         return;
-    }
-
-    // Apply saved dark mode preference
-    if (localStorage.getItem(DT_DARK_MODE_LS_KEY) === 'true') {
-        container.classList.add('dt-dark-mode');
     }
 
     let originalData = [];
@@ -467,7 +450,6 @@ function createDynamicTable(config) {
                 buildHeaderRow(); // Rebuild the header
                 renderTableInternal(); // Re-render table body
                 // updatePaginationControlsInternal(); // Already called by renderTableInternal if pagination is on
-                populateFilterOptions(); // Repopulate all filter options
             });
 
             const label = document.createElement('label');
@@ -642,7 +624,7 @@ function createDynamicTable(config) {
         // Create a group for right-aligned controls
         const rightControlsGroup = document.createElement('div');
         rightControlsGroup.className = 'dynamic-table-right-controls-group';
-        let localHasRightControls = false; // Use a local variable
+        let hasRightControls = false;
 
         if (showResultsCount) {
              const resultsDiv = document.createElement('div');
@@ -657,38 +639,23 @@ function createDynamicTable(config) {
              // For now, let's leave a placeholder text that will be overwritten, or handle it in renderTableInternal.
              const resultsTextNode = document.createTextNode(''); // Placeholder, will be updated
              resultsDiv.appendChild(resultsTextNode);
-             rightControlsGroup.appendChild(resultsDiv);
-             localHasRightControls = true;
+             rightControlsGroup.appendChild(resultsDiv); // Append to group
+             hasRightControls = true;
         }
+
+        // Always add column selector to the right group
+        // rightControlsGroup.appendChild(columnSelectorWrapper); // Made conditional below
+        // hasRightControls = true; // Will be set if column selector is added
 
         if (showColumnVisibilitySelector) {
-            columnSelectorWrapper = buildColumnSelector(); // buildColumnSelector should be defined
+            columnSelectorWrapper = buildColumnSelector(); // Ensure it's created if shown
             rightControlsGroup.appendChild(columnSelectorWrapper);
-            localHasRightControls = true;
+            hasRightControls = true;
         }
-
-        if (enableDarkModeToggle) {
-            const darkModeToggle = document.createElement('button');
-            darkModeToggle.className = 'dt-dark-mode-toggle'; // Add a class for specific styling if needed
-            
-            const currentIsDark = container.classList.contains('dt-dark-mode');
-            darkModeToggle.innerHTML = currentIsDark ? '☀️' : '🌙'; // Sun for dark, Moon for light
-            darkModeToggle.setAttribute('aria-label', currentLangPack.toggleDarkModeAriaLabel || 'Toggle Dark Mode');
-            darkModeToggle.title = currentLangPack.toggleDarkModeTitle || 'Toggle Dark Mode (light/dark)';
-
-            darkModeToggle.addEventListener('click', () => {
-                container.classList.toggle('dt-dark-mode');
-                const isDark = container.classList.contains('dt-dark-mode');
-                localStorage.setItem(DT_DARK_MODE_LS_KEY, isDark);
-                darkModeToggle.innerHTML = isDark ? '☀️' : '🌙';
-            });
-            rightControlsGroup.appendChild(darkModeToggle);
-            localHasRightControls = true;
-        }
-
-        if (localHasRightControls) { // If the group has any children
+        
+        if (hasRightControls) { // Only append the group if it has children
             controlsWrapper.appendChild(rightControlsGroup);
-            hasVisibleTopControls = true; 
+            hasVisibleTopControls = true; // If right group has controls, then top controls are visible
         }
         
         if (hasVisibleTopControls) {

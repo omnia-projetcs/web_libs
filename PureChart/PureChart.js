@@ -114,9 +114,13 @@ class PureChart {
                             return `<div style="text-align:left;"><strong>${params.item.label}</strong><br/>Value: ${params.item.value.toLocaleString()}<br/>Percentage: ${params.item.percentage.toFixed(1)}%</div>`; // Translated
                         } 
                         let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`; 
-                        (params.datasets || []).forEach(item => { 
-                            if (item && item.dataset) { 
-                                const markerColor = item.dataset.borderColor || (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor) || '#ccc'; 
+                        (params.datasets || []).forEach((item, index) => { 
+                            if (item && item.dataset) {
+                                let markerColor = item.dataset.borderColor || (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor);
+                                if (!markerColor) { // Fallback to theme's default dataset color
+                                    const palette = params.themePalette || PC_LIGHT_THEME_PALETTE; // Default to light if somehow not passed
+                                    markerColor = palette.defaultDatasetColors[index % palette.defaultDatasetColors.length];
+                                }
                                 html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label||'Dataset'}: ${item.value !== undefined ? item.value.toLocaleString() : 'N/A'}</div>`; // Translated "Dataset"
                             } 
                         }); 
@@ -914,16 +918,27 @@ class PureChart {
                 if (rectInGroup.w <= 0) return; // Skip if bar has no width
                 const finalBarX = groupCanvasXStart + rectInGroup.x;
                 const barRect = { x: finalBarX, y: rectInGroup.y, w: rectInGroup.w, h: rectInGroup.h };
-                const backgroundColor = this._resolveColor(dataset.backgroundColor, barRect);
+                
+                // Use themed default dataset color if dataset.backgroundColor is not provided
+                const defaultBgColor = this.activePalette.defaultDatasetColors[originalDatasetIndex % this.activePalette.defaultDatasetColors.length];
+                const backgroundColorOption = dataset.backgroundColor || defaultBgColor;
+                const backgroundColor = this._resolveColor(backgroundColorOption, barRect);
                 this.ctx.fillStyle = backgroundColor;
+
                 let borderWidth = dataset.borderWidth;
                 if (borderWidth === undefined) borderWidth = chartOptions.bar.defaultBorderWidth !== undefined ? chartOptions.bar.defaultBorderWidth : 1;
+                
                 let borderColor = dataset.borderColor;
-                if (!borderColor && borderWidth > 0) { // Auto-darken if no border color
-                    if (typeof backgroundColor === 'string') borderColor = this._darkenColor(backgroundColor, chartOptions.bar.borderDarkenPercent !== undefined ? chartOptions.bar.borderDarkenPercent : 20);
-                    else borderColor = '#333333'; // Fallback for gradients
+                if (!borderColor && borderWidth > 0) { 
+                    if (typeof backgroundColor === 'string') { // Can only darken if it's a solid color string
+                        borderColor = this._darkenColor(backgroundColor, chartOptions.bar.borderDarkenPercent !== undefined ? chartOptions.bar.borderDarkenPercent : 20);
+                    } else { // Fallback for gradients or complex fill functions
+                        borderColor = this.activePalette.axisColor; // Use a theme color as fallback for gradient borders
+                    }
                 }
-                this.ctx.strokeStyle = borderColor || 'transparent'; this.ctx.lineWidth = borderWidth;
+                this.ctx.strokeStyle = borderColor || 'transparent'; 
+                this.ctx.lineWidth = borderWidth;
+
                 if (barRect.h > 0) { // Only draw if height is positive
                     this.ctx.fillRect(barRect.x, barRect.y, barRect.w, barRect.h);
                     if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') this.ctx.strokeRect(barRect.x, barRect.y, barRect.w, barRect.h);
@@ -979,7 +994,11 @@ class PureChart {
                 this.ctx.lineTo(pts[pts.length - 1].x, clampedBaselineY); this.ctx.closePath();
                 const fillRectPtsY = pts.map(p => p.y).concat([clampedBaselineY]);
                 const fillRect = { x: this.drawArea.x, y: Math.min(...fillRectPtsY), w: this.drawArea.width, h: Math.abs(Math.max(...fillRectPtsY) - Math.min(...fillRectPtsY)) };
-                this.ctx.fillStyle = this._resolveColor(ds.backgroundColor, fillRect); this.ctx.fill();
+                // Use themed default dataset color if ds.backgroundColor is not provided for fill
+                const defaultFillColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                const fillBgColorOption = ds.backgroundColor || defaultFillColor;
+                this.ctx.fillStyle = this._resolveColor(fillBgColorOption, fillRect); 
+                this.ctx.fill();
             }
             // Draw the line itself
             if (effectiveLineWidth > 0 && pts.length > 0) {
@@ -987,7 +1006,10 @@ class PureChart {
                 if (userTension > 0 && pts.length > 1) { for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i === 0 ? 0 : i - 1]; const p1 = pts[i]; const p2 = pts[i + 1]; const p3 = pts[(i + 2 < pts.length) ? i + 2 : i + 1]; const { cp1, cp2 } = this._getControlPointsForSegment(p0, p1, p2, p3, bezierTensionFactor * userTension); this.ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y); } }
                 else if (pts.length > 1) { for (let i = 1; i < pts.length; i++) { this.ctx.lineTo(pts[i].x, pts[i].y); } } // Straight lines
                 
-                this.ctx.strokeStyle = this._resolveColor(ds.borderColor, this.drawArea); 
+                // Use themed default dataset color if ds.borderColor is not provided
+                const defaultBorderColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                const borderColorOption = ds.borderColor || defaultBorderColor;
+                this.ctx.strokeStyle = this._resolveColor(borderColorOption, this.drawArea); 
                 this.ctx.lineWidth = effectiveLineWidth;
 
                 let lineDashSet = false;
@@ -1007,15 +1029,30 @@ class PureChart {
             if (pointRadiusToDraw > 0 && pts.length > 0) {
                 pts.forEach((p) => {
                     const pointRect = { x: p.x - pointRadiusToDraw, y: p.y - pointRadiusToDraw, w: pointRadiusToDraw * 2, h: pointRadiusToDraw * 2 };
-                    let pointFillColor = ds.pointColor; // Determine point fill color
-                    if (pointFillColor === undefined) { if (ds.fill && ds.backgroundColor) { pointFillColor = ds.borderColor || lO.pointColor || '#000'; } else { pointFillColor = ds.backgroundColor || ds.borderColor || '#000'; } }
-                    this.ctx.fillStyle = this._resolveColor(pointFillColor, pointRect); this.ctx.beginPath();
+                    
+                    // Determine point fill color, using theme default if necessary
+                    let pointFillColorOption = ds.pointColor;
+                    if (pointFillColorOption === undefined) {
+                        if (ds.fill && ds.backgroundColor) { // If area is filled, point usually matches border
+                            pointFillColorOption = ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                        } else { // Otherwise, point matches line/dataset color
+                            pointFillColorOption = ds.backgroundColor || ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                        }
+                    }
+                    this.ctx.fillStyle = this._resolveColor(pointFillColorOption, pointRect); 
+                    
+                    this.ctx.beginPath();
                     const currentPointStyle = ds.pointStyle || lO.pointStyle || 'circle';
                     if (currentPointStyle === 'square') { this.ctx.rect(pointRect.x, pointRect.y, pointRect.w, pointRect.h); }
                     else { this.ctx.arc(p.x, p.y, pointRadiusToDraw, 0, Math.PI * 2); } // Default to circle
                     this.ctx.fill();
+
                     const pointBorderWidthToDraw = ds.pointBorderWidth !== undefined ? ds.pointBorderWidth : 1; 
-                    if (ds.pointBorderColor && pointBorderWidthToDraw > 0) { this.ctx.strokeStyle = this._resolveColor(ds.pointBorderColor, pointRect); this.ctx.lineWidth = pointBorderWidthToDraw; this.ctx.stroke(); }
+                    if (ds.pointBorderColor && pointBorderWidthToDraw > 0) { 
+                        this.ctx.strokeStyle = this._resolveColor(ds.pointBorderColor, pointRect); 
+                        this.ctx.lineWidth = pointBorderWidthToDraw; 
+                        this.ctx.stroke(); 
+                    }
                 });
             }
             this.ctx.restore();
@@ -1062,13 +1099,31 @@ class PureChart {
             else if (bestMatch.type === 'bar') { anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; anchorY = bestMatch.rect.y + canvasRect.top; 
                 // For grouped bars, find all datasets at this xLabel
                 const groupedDatasets = this.interactiveElements.filter(elem => elem.type === 'bar' && elem.xLabel === bestMatch.xLabel && elem.pointIndex === bestMatch.pointIndex).map(elem => ({ dataset: elem.dataset, value: elem.value })).sort((a,b) => (this.config.data.datasets.indexOf(a.dataset) - this.config.data.datasets.indexOf(b.dataset))); // Ensure original dataset order
-                tooltipContentParams = { type: 'bar', xLabel: bestMatch.xLabel, datasets: groupedDatasets.length > 0 ? groupedDatasets : [{ dataset: bestMatch.dataset, value: bestMatch.value }] };
-            } else if (bestMatch.type === 'percentageDistribution') { anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; anchorY = bestMatch.rect.y + bestMatch.rect.h / 2 + canvasRect.top; tooltipContentParams = { type: 'percentageDistribution', item: bestMatch.item }; }
+                
+                // Pass activePalette to formatter context if needed, or ensure formatter uses themed colors
+                tooltipContentParams = { 
+                    type: 'bar', 
+                    xLabel: bestMatch.xLabel, 
+                    datasets: groupedDatasets.length > 0 ? groupedDatasets : [{ dataset: bestMatch.dataset, value: bestMatch.value }],
+                    themePalette: this.activePalette // Provide palette to formatter
+                };
+            } else if (bestMatch.type === 'percentageDistribution') { 
+                anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; 
+                anchorY = bestMatch.rect.y + bestMatch.rect.h / 2 + canvasRect.top; 
+                tooltipContentParams = { 
+                    type: 'percentageDistribution', 
+                    item: bestMatch.item,
+                    themePalette: this.activePalette // Provide palette to formatter
+                }; 
+            }
             
             if (tooltipContentParams) { 
                 tooltipContentParams.anchorX = anchorX; tooltipContentParams.anchorY = anchorY; // Pass anchor to formatter if needed
                 const currentHoverSignature = JSON.stringify(tooltipContentParams); // To check if hover target changed
-                if (!this.activeTooltipData || this.activeTooltipData.signature !== currentHoverSignature) { this.activeTooltipData = { signature: currentHoverSignature, data: tooltipContentParams }; this._showTooltip(tooltipContentParams); }
+                if (!this.activeTooltipData || this.activeTooltipData.signature !== currentHoverSignature) { 
+                    this.activeTooltipData = { signature: currentHoverSignature, data: tooltipContentParams }; 
+                    this._showTooltip(tooltipContentParams); 
+                }
                 else { this._positionTooltip(anchorX, anchorY); } // Just reposition if same target
                 this.canvas.style.cursor = 'pointer';
             } else { this._onMouseOut(); }
@@ -1077,6 +1132,11 @@ class PureChart {
 
     _showTooltip(tooltipData) {
         if (!this.tooltipElement || !this.config.options.tooltip.enabled) return;
+        
+        // Ensure the activePalette is available to the formatter if it needs it
+        // One way is to pass it as part of tooltipData if the formatter is designed to use it.
+        // Or, the formatter could be a class method and access this.activePalette directly.
+        // For now, assume formatter is self-contained or gets palette via tooltipData.
         this.tooltipElement.innerHTML = this.config.options.tooltip.formatter(tooltipData);
         this.tooltipElement.style.visibility = 'visible';
         this._positionTooltip(tooltipData.anchorX, tooltipData.anchorY); 
@@ -1085,6 +1145,10 @@ class PureChart {
     _positionTooltip(anchorPageX, anchorPageY) { // anchorPageX/Y are viewport-relative
         if (!this.tooltipElement || this.tooltipElement.style.visibility === 'hidden') return;
         
+        // Apply themed tooltip styles (already done in _createTooltipElement)
+        this.tooltipElement.style.backgroundColor = this.activePalette.tooltipBgColor;
+        this.tooltipElement.style.color = this.activePalette.tooltipColor;
+
         const tooltipRect = this.tooltipElement.getBoundingClientRect(); 
         const tooltipWidth = tooltipRect.width; 
         const tooltipHeight = tooltipRect.height; 
@@ -1182,7 +1246,8 @@ class PureChart {
             this.ctx.beginPath();
             this.ctx.moveTo(this.drawArea.x, y);
             this.ctx.lineTo(this.drawArea.x + this.drawArea.width, y);
-            this.ctx.strokeStyle = annotation.borderColor || '#CCC';
+            // Use themed gridColor as a fallback if annotation.borderColor is not provided
+            this.ctx.strokeStyle = annotation.borderColor || this.activePalette.gridColor; 
             this.ctx.lineWidth = annotation.borderWidth || 1;
 
             let lineDashSet = false;
@@ -1200,9 +1265,10 @@ class PureChart {
             if (annotation.label && annotation.label.text) {
                 this.ctx.save();
                 const labelOptions = annotation.label;
-                const defaultFont = this.config.options.font || '10px Arial';
+                const defaultFont = this.config.options.font || '10px Arial'; // Font can also be themed if needed
                 this.ctx.font = labelOptions.font || defaultFont;
-                const defaultColor = annotation.borderColor || '#333';
+                // Use themed axisColor as a fallback for label color if annotation.label.color and annotation.borderColor are not provided
+                const defaultColor = annotation.borderColor || this.activePalette.axisColor; 
                 this.ctx.fillStyle = labelOptions.color || defaultColor;
 
                 let labelX, labelY;
@@ -1285,7 +1351,8 @@ class PureChart {
 
                     this.ctx.fillStyle = labelOptions.backgroundColor;
                     this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-                    this.ctx.fillStyle = labelOptions.color || defaultColor; // Reset for text
+                    // Reset for text, ensure it uses the themed color or specified label color
+                    this.ctx.fillStyle = labelOptions.color || defaultColor; 
                 }
                 this.ctx.fillText(labelOptions.text, labelX, labelY);
                 this.ctx.restore();
