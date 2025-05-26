@@ -22,10 +22,10 @@
 
 const PC_LIGHT_THEME_PALETTE = {
     name: "light",
-    backgroundColor: '#FFFFFF', // General background for the chart area if needed
+    backgroundColor: '#FFFFFF', 
     axisColor: '#666666',
     gridColor: '#E0E0E0',
-    labelColor: '#333333', // General label color (axes, titles)
+    labelColor: '#333333', 
     titleColor: '#333333',
     legendColor: '#333333',
     tooltipBgColor: 'rgba(0,0,0,0.85)',
@@ -34,45 +34,28 @@ const PC_LIGHT_THEME_PALETTE = {
         '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6f42c1', 
         '#e83e8c', '#fd7e14', '#20c997', '#6610f2'
     ],
-    // Colors for specific chart elements if they need to differ from global settings
-    bar: {
-        borderColorDarkenPercent: 20,
-    },
-    line: {
-        // pointColor, pointBorderColor can also be themed if desired
-    },
-    annotations: {
-        // Default colors for annotations if not specified in the annotation itself
-        // lineColor: '#888888', // Example
-        // labelColor: '#555555' // Example
-    }
+    bar: { borderColorDarkenPercent: 20, },
+    line: {},
+    annotations: {}
 };
 
 const PC_DARK_THEME_PALETTE = {
     name: "dark",
-    backgroundColor: '#22272E', // Dark background
-    axisColor: '#ADBAC7',       // Lighter axis lines
-    gridColor: '#444C56',       // Subtle grid lines
-    labelColor: '#F0F6FC',      // Light label text
+    backgroundColor: '#22272E', 
+    axisColor: '#ADBAC7',      
+    gridColor: '#444C56',      
+    labelColor: '#F0F6FC',     
     titleColor: '#F0F6FC',
     legendColor: '#F0F6FC',
-    tooltipBgColor: 'rgba(20,20,25,0.85)', // Darker tooltip with some transparency
+    tooltipBgColor: 'rgba(20,20,25,0.85)', 
     tooltipColor: '#F0F6FC',
-    defaultDatasetColors: [ // Potentially brighter or different colors for dark theme
+    defaultDatasetColors: [ 
         '#58A6FF', '#52D57B', '#F87171', '#FDB863', '#6CBBEB', '#B197FC',
         '#F781BE', '#FFA94D', '#48D2A0', '#A371F7'
     ],
-    bar: {
-        borderColorDarkenPercent: 0, // May not need to darken, or might lighten instead
-        borderColorLightenPercent: 20 // Example: lighten border for dark theme bars
-    },
-    line: {
-        // pointColor, pointBorderColor adjustments for dark theme
-    },
-    annotations: {
-        // lineColor: '#AAAAAA', 
-        // labelColor: '#DDDDDD' 
-    }
+    bar: { borderColorDarkenPercent: 0, borderColorLightenPercent: 20 },
+    line: {},
+    annotations: {}
 };
  
 class PureChart {
@@ -97,7 +80,20 @@ class PureChart {
             data: {},
             options: {
                 padding: { top: 20, right: 20, bottom: 40, left: 20 },
-                yAxis: { display: true, beginAtZero: true, title: '', displayTitle: true, maxTicks: 5, gridLines: true, labelFont: '10px Arial', titleFont: '12px Arial bold', color: '#666', sampleLabelForWidthEstimation: "-9,999.9" },
+                yAxes: [{ 
+                    id: 'left', // Default ID for the first axis
+                    position: 'left', // Default position
+                    display: true, 
+                    beginAtZero: true, 
+                    title: '', 
+                    displayTitle: true, 
+                    maxTicks: 5, 
+                    gridLines: true, 
+                    labelFont: '10px Arial', 
+                    titleFont: '12px Arial bold', 
+                    color: '#666', // This will be themed later
+                    sampleLabelForWidthEstimation: "-9,999.9" 
+                }],
                 xAxis: { display: true, title: '', displayTitle: true, gridLines: false, labelFont: '10px Arial', titleFont: '12px Arial bold', color: '#666' },
                 title: { display: true, text: '', font: '18px Arial bold', color: '#333', padding: 15 },
                 legend: { display: true, position: 'top', font: '12px Arial', color: '#333', padding: 10, markerSize: 12, markerStyle: 'square' },
@@ -188,6 +184,35 @@ class PureChart {
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
 
+        // Handle existing single yAxis user configurations
+        if (this.config.options.yAxis && !this.config.options.yAxes) {
+            // If old yAxis is provided and yAxes is not, convert it
+            this.config.options.yAxes = [PureChart._mergeDeep(defaults.options.yAxes[0], this.config.options.yAxis)];
+            // Ensure the new yAxes[0] has an id and position if the old yAxis didn't explicitly set them.
+            if (!this.config.options.yAxes[0].id) {
+                this.config.options.yAxes[0].id = 'left';
+            }
+            if (!this.config.options.yAxes[0].position) {
+                this.config.options.yAxes[0].position = 'left';
+            }
+            delete this.config.options.yAxis; // Remove the old singular yAxis property
+        } else if (!this.config.options.yAxes) {
+            // If neither is provided, ensure yAxes defaults to at least one axis from 'defaults'
+            // This case should ideally be covered by _mergeDeep, but as a safeguard:
+            this.config.options.yAxes = [PureChart._mergeDeep({}, defaults.options.yAxes[0])];
+        }
+        // Ensure all yAxes have an id and position
+        if (this.config.options.yAxes && Array.isArray(this.config.options.yAxes)) {
+            this.config.options.yAxes.forEach((axis, index) => {
+                if (!axis.id) {
+                    axis.id = index === 0 ? 'left' : `yAxis-${index}`; // Default ID
+                }
+                if (!axis.position) {
+                    axis.position = index === 0 ? 'left' : (index === 1 ? 'right' : 'left'); // Default position
+                }
+            });
+        }
+
         // Initialize activePalette based on the theme
         if (this.config.theme === 'dark') {
             this.activePalette = PC_DARK_THEME_PALETTE;
@@ -200,6 +225,15 @@ class PureChart {
             this.activePalette = PureChart._mergeDeep(basePalette, this.config.theme);
         }
 
+        // Default yAxisID for Datasets
+        if (this.config.data && this.config.data.datasets && this.config.options.yAxes && this.config.options.yAxes.length > 0) {
+            const defaultYAxisID = this.config.options.yAxes[0].id;
+            this.config.data.datasets.forEach(dataset => {
+                if (dataset.yAxisID === undefined) {
+                    dataset.yAxisID = defaultYAxisID;
+                }
+            });
+        }
 
         this._validateConfig();
         if (!this.isValid) return;
@@ -350,7 +384,9 @@ class PureChart {
             if (!this.isValid) return;
             // For percentageDistribution, axes and legend are typically off by default
             this.config.options.xAxis.display = this.config.options.xAxis.display ?? false;
-            this.config.options.yAxis.display = this.config.options.yAxis.display ?? false;
+            if (this.config.options.yAxes && this.config.options.yAxes.length > 0) { // Ensure yAxes exists
+                this.config.options.yAxes[0].display = this.config.options.yAxes[0].display ?? false;
+            }
             this.config.options.legend.display = this.config.options.legend.display ?? false;
         } else { // bar, line
             if (!this.config.data || !this.config.data.labels || !this.config.data.datasets) {
@@ -435,22 +471,90 @@ class PureChart {
     }
 
     _getDrawingArea() {
-        let { top, right, bottom, left } = { ...this.config.options.padding }; const options = this.config.options;
+        let { top: paddingTop, right: paddingRight, bottom: paddingBottom, left: paddingLeft } = { ...this.config.options.padding };
+        const options = this.config.options;
+        let currentTop = paddingTop;
+        let currentRight = paddingRight;
+        let currentBottom = paddingBottom;
+        let currentLeft = paddingLeft;
+
         // Title height
-        if (options.title.display && options.title.text) { this.ctx.font = options.title.font; top += this.ctx.measureText('M').width*1.5 + options.title.padding; } // Approximate text height
+        if (options.title.display && options.title.text) {
+            this.ctx.font = options.title.font;
+            currentTop += (this.ctx.measureText('M').width * 1.5) + options.title.padding; // Approximate text height
+        }
+
         // Legend height (if not percentageDistribution)
-        if (options.legend.display && this.config.type !== 'percentageDistribution') { this.ctx.font = options.legend.font; const legendHeight = this.ctx.measureText('M').width*1.5 + options.legend.padding; if(options.legend.position==='top') top+=legendHeight; else bottom+=legendHeight; }
+        if (options.legend.display && this.config.type !== 'percentageDistribution') {
+            this.ctx.font = options.legend.font;
+            const legendHeight = (this.ctx.measureText('M').width * 1.5) + options.legend.padding;
+            if (options.legend.position === 'top') {
+                currentTop += legendHeight;
+            } else { // bottom
+                currentBottom += legendHeight;
+            }
+        }
+
         // Axes space (if not percentageDistribution)
         if (this.config.type !== 'percentageDistribution') {
-            if (options.yAxis.display) { this.ctx.font = options.yAxis.labelFont; const sampleYLabel = options.yAxis.sampleLabelForWidthEstimation || "-9,999.9"; left += this.ctx.measureText(sampleYLabel).width + 10; if (options.yAxis.displayTitle && options.yAxis.title) { this.ctx.font = options.yAxis.titleFont; left += this.ctx.measureText('M').width*1.5 + 5; } }
-            if (options.xAxis.display) { this.ctx.font = options.xAxis.labelFont; bottom += this.ctx.measureText('M').width*1.5 + 5; if (options.xAxis.displayTitle && options.xAxis.title) { this.ctx.font = options.xAxis.titleFont; bottom += this.ctx.measureText('M').width*1.5 + 5; } }
+            let dynamicLeftPadding = 0;
+            let dynamicRightPadding = 0;
+
+            if (options.yAxes && Array.isArray(options.yAxes)) {
+                options.yAxes.forEach(axisConfig => {
+                    if (axisConfig.display) {
+                        let axisSpace = 0;
+                        this.ctx.font = axisConfig.labelFont;
+                        axisSpace += this.ctx.measureText(axisConfig.sampleLabelForWidthEstimation || "-9,999.9").width + 10; // Label width + spacing
+
+                        if (axisConfig.displayTitle && axisConfig.title) {
+                            const originalFont = this.ctx.font; // Save current font
+                            this.ctx.font = axisConfig.titleFont;
+                            axisSpace += (this.ctx.measureText('M').width * 1.5) + 5; // Title char height + spacing
+                            this.ctx.font = originalFont; // Restore font
+                        }
+
+                        if (axisConfig.position === 'right') {
+                            dynamicRightPadding += axisSpace;
+                        } else { // Default to left
+                            dynamicLeftPadding += axisSpace;
+                        }
+                    }
+                });
+            }
+            currentLeft += dynamicLeftPadding;
+            currentRight += dynamicRightPadding;
+
+            if (options.xAxis.display) {
+                this.ctx.font = options.xAxis.labelFont;
+                currentBottom += (this.ctx.measureText('M').width * 1.5) + 5; // Label height + spacing
+                if (options.xAxis.displayTitle && options.xAxis.title) {
+                    const originalFont = this.ctx.font;
+                    this.ctx.font = options.xAxis.titleFont;
+                    currentBottom += (this.ctx.measureText('M').width * 1.5) + 5; // Title char height + spacing
+                    this.ctx.font = originalFont;
+                }
+            }
         } else { // Specific padding for percentageDistribution labels/values
-            this.ctx.font = options.percentageDistribution.labelFont; if (options.percentageDistribution.labelPosition === 'left') left = Math.max(left, (options.percentageDistribution.maxLabelWidth||0)+10);
-            this.ctx.font = options.percentageDistribution.valueFont; if (options.percentageDistribution.showValueText && options.percentageDistribution.valuePosition === 'right') right = Math.max(right, this.ctx.measureText("100.0%").width + (options.percentageDistribution.valueTextMargin||0) + 5);
+            this.ctx.font = options.percentageDistribution.labelFont;
+            if (options.percentageDistribution.labelPosition === 'left') {
+                currentLeft = Math.max(currentLeft, (options.percentageDistribution.maxLabelWidth || 0) + 10);
+            }
+            this.ctx.font = options.percentageDistribution.valueFont;
+            if (options.percentageDistribution.showValueText && options.percentageDistribution.valuePosition === 'right') {
+                currentRight = Math.max(currentRight, this.ctx.measureText("100.0%").width + (options.percentageDistribution.valueTextMargin || 0) + 5);
+            }
         }
-        top=Math.max(5,top); right=Math.max(5,right); bottom=Math.max(5,bottom); left=Math.max(5,left); // Ensure minimum padding
-        const drawWidth = this.canvas.width - left - right; const drawHeight = this.canvas.height - top - bottom;
-        return { x: left, y: top, width: drawWidth > 0 ? drawWidth : 0, height: drawHeight > 0 ? drawHeight : 0 };
+
+        currentTop = Math.max(5, currentTop);
+        currentRight = Math.max(5, currentRight);
+        currentBottom = Math.max(5, currentBottom);
+        currentLeft = Math.max(5, currentLeft);
+
+        const drawWidth = this.canvas.width - currentLeft - currentRight;
+        const drawHeight = this.canvas.height - currentTop - currentBottom;
+
+        return { x: currentLeft, y: currentTop, width: drawWidth > 0 ? drawWidth : 0, height: drawHeight > 0 ? drawHeight : 0 };
     }
 
     _createTooltipElement() {
@@ -496,10 +600,9 @@ class PureChart {
             if (this.config.options.legend.display) this._drawLegend();
             this._drawAxesAndGrid();
             
-            // Ensure Y axis is displayed and scale is valid before drawing annotations
-            if (this.config.options.yAxis.display && typeof this.minValue !== 'undefined' && typeof this.maxValue !== 'undefined' && 
-                this.drawArea.height > 0 && isFinite(this.yScale) && this.yScale > 0) {
-                 this._drawAnnotations(); 
+            // Draw annotations if there are any yAxes and scales available
+            if (this.config.options.yAxes && this.config.options.yAxes.length > 0 && this.yAxisScales && Object.keys(this.yAxisScales).length > 0) {
+                this._drawAnnotations();
             }
             
             // Call both drawing functions. They will internally filter by type.
@@ -510,12 +613,13 @@ class PureChart {
     }
 
     _drawAverageLines() {
-        if (!this.config.data || !this.config.data.datasets || this.config.type === 'percentageDistribution' || 
-            !this.config.options.yAxis.display || !isFinite(this.yScale) || this.yScale <= 0 ||
-            typeof this.minValue === 'undefined' || typeof this.maxValue === 'undefined') {
+        // Check if essential configurations are present.
+        // Note: this.config.options.yAxis.display is no longer directly relevant for multi-axis.
+        // We'll check for valid yAxisScales later per dataset.
+        if (!this.config.data || !this.config.data.datasets || this.config.type === 'percentageDistribution' || !this.yAxisScales) {
             return;
         }
-
+        
         this.ctx.save();
 
         this.config.data.datasets.forEach(dataset => {
@@ -524,12 +628,23 @@ class PureChart {
                 return;
             }
 
-            const defaultAvgLineConfig = (this.config.options[datasetType] && this.config.options[datasetType].averageLine) 
-                                       ? this.config.options[datasetType].averageLine 
+            const yAxisID = dataset.yAxisID || (this.config.options.yAxes && this.config.options.yAxes.length > 0 ? this.config.options.yAxes[0].id : null);
+            if (!yAxisID) {
+                // console.warn(`PureChart _drawAverageLines: Dataset '${dataset.label}' has no yAxisID.`);
+                return;
+            }
+
+            const yAxisScaleInfo = this.yAxisScales[yAxisID];
+            if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale) || !yAxisScaleInfo.axisConfig.display) {
+                // console.warn(`PureChart _drawAverageLines: Invalid or non-displayed Y-axis scale for dataset '${dataset.label}' on yAxisID '${yAxisID}'.`);
+                return;
+            }
+
+            const defaultAvgLineConfig = (this.config.options[datasetType] && this.config.options[datasetType].averageLine)
+                                       ? this.config.options[datasetType].averageLine
                                        : {};
             const datasetAvgLineConfig = dataset.averageLine || {};
             const avgLineCfg = PureChart._mergeDeep(defaultAvgLineConfig, datasetAvgLineConfig);
-
 
             if (!avgLineCfg.display) {
                 return;
@@ -541,7 +656,7 @@ class PureChart {
                 return;
             }
 
-            let y = this.drawArea.y + this.drawArea.height - ((averageValue - this.minValue) * this.yScale);
+            let y = this.drawArea.y + this.drawArea.height - ((averageValue - (yAxisScaleInfo.min || 0)) * (yAxisScaleInfo.scale || 1));
             y = Math.max(this.drawArea.y, Math.min(y, this.drawArea.y + this.drawArea.height)); // Clamp
 
             // Draw the line
@@ -735,46 +850,269 @@ class PureChart {
     }
 
     _calculateScale() {
-        const { data, options } = this.config; let allValues = [];
-        if (!data.datasets || data.datasets.length === 0) { console.warn("PureChart _calculateScale: No datasets."); this.isValid = false; return; }
-        data.datasets.forEach(dataset => { 
-            if (dataset._hidden) return; // Skip hidden datasets
-            if (dataset.values && Array.isArray(dataset.values) && dataset.values.length > 0) { 
-                allValues = allValues.concat(dataset.values.filter(v => typeof v === 'number' && !isNaN(v))); 
-            } 
-        });
-        if (allValues.length === 0) { 
-            console.warn("PureChart _calculateScale: No valid numeric data (or all datasets hidden). Using [0,1]."); // Translated
-            allValues = [0, 1]; 
+        const { data, options } = this.config;
+        this.yAxisScales = {}; // Initialize a store for scales of each Y-axis
+
+        if (!options.yAxes || !Array.isArray(options.yAxes) || options.yAxes.length === 0) {
+            console.warn("PureChart _calculateScale: No yAxes configured. Chart may not render correctly.");
+            // Provide a default single scale to prevent critical errors downstream before other functions are updated.
+            this.minValue = 0;
+            this.maxValue = 1;
+            this.yScale = this.drawArea.height > 0 ? this.drawArea.height : 1; // Basic fallback
+            this.yAxisScales['default'] = { min: 0, max: 1, scale: this.yScale, axisConfig: { id: 'default', display: true, beginAtZero: true, position: 'left'} };
+            this.isValid = false; // Potentially invalidate the chart if no axes are defined
+            return;
         }
-        this.minValue = options.yAxis.beginAtZero ? 0 : Math.min(...allValues); this.maxValue = Math.max(...allValues);
-        // Adjust if beginAtZero is true
-        if (options.yAxis.beginAtZero) { this.minValue = Math.min(0, this.minValue); this.maxValue = Math.max(0, this.maxValue); }
-        // Handle case where min and max are equal
-        if (this.minValue === this.maxValue) { if (this.minValue === 0) this.maxValue = 1; else { const buffer = Math.abs(this.maxValue*0.1)||1; this.maxValue+=buffer; if(!options.yAxis.beginAtZero)this.minValue-=buffer; else this.minValue=Math.min(0,this.minValue-buffer);}}
-        if (this.minValue === this.maxValue) this.maxValue += 1; // Final safety for equal min/max
-        if (this.drawArea.height === 0 || (this.maxValue - this.minValue === 0)) this.yScale = 1; else this.yScale = this.drawArea.height / (this.maxValue - this.minValue);
-        if (!isFinite(this.yScale) || this.yScale <= 0) { console.error(`PureChart _calculateScale: yScale issue (${this.yScale}).`); this.yScale = 1; this.isValid = false; }
+
+        options.yAxes.forEach(axisConfig => {
+            const currentAxisID = axisConfig.id;
+            let allValuesForCurrentAxis = [];
+
+            if (data.datasets && data.datasets.length > 0) {
+                data.datasets.forEach(dataset => {
+                    if (dataset.yAxisID === currentAxisID && !dataset._hidden) {
+                        if (dataset.values && Array.isArray(dataset.values) && dataset.values.length > 0) {
+                            allValuesForCurrentAxis = allValuesForCurrentAxis.concat(dataset.values.filter(v => typeof v === 'number' && !isNaN(v)));
+                        }
+                    }
+                });
+            }
+
+            let minValue, maxValue;
+
+            if (allValuesForCurrentAxis.length === 0) {
+                // console.warn(`PureChart _calculateScale: No valid data for yAxis ID '${currentAxisID}'. Using default scale [0,1].`);
+                minValue = 0;
+                maxValue = 1;
+            } else {
+                minValue = axisConfig.beginAtZero ? 0 : Math.min(...allValuesForCurrentAxis);
+                maxValue = Math.max(...allValuesForCurrentAxis);
+
+                if (axisConfig.beginAtZero) {
+                    minValue = Math.min(0, minValue);
+                    maxValue = Math.max(0, maxValue);
+                }
+            }
+
+            if (minValue === maxValue) {
+                if (minValue === 0) {
+                    maxValue = 1;
+                } else {
+                    const buffer = Math.abs(maxValue * 0.1) || 1; // Ensure buffer is at least 1
+                    maxValue += buffer;
+                    if (!axisConfig.beginAtZero) {
+                        minValue -= buffer;
+                    } else {
+                        minValue = Math.min(0, minValue - buffer); // Ensure beginAtZero is still respected
+                    }
+                }
+            }
+             // Final safety check if still equal (e.g. if buffer was 0 or values were very small)
+            if (minValue === maxValue) {
+                maxValue += 1;
+            }
+
+
+            let yScale;
+            if (this.drawArea.height === 0 || (maxValue - minValue === 0)) {
+                yScale = 1; // Avoid division by zero or scale based on zero height
+            } else {
+                yScale = this.drawArea.height / (maxValue - minValue);
+            }
+
+            if (!isFinite(yScale) || yScale <= 0) {
+                console.error(`PureChart _calculateScale: Invalid yScale (${yScale}) calculated for yAxis ID '${currentAxisID}'. Defaulting to 1.`);
+                yScale = 1;
+                // Consider if this specific axis failure should invalidate the entire chart:
+                // this.isValid = false; 
+            }
+            
+            this.yAxisScales[currentAxisID] = {
+                min: minValue,
+                max: maxValue,
+                scale: yScale,
+                axisConfig: axisConfig // Store the axis config for reference
+            };
+        });
+
+        // Temporary backward compatibility: Set global scale properties from the first Y-axis
+        // This is for other functions that haven't been updated yet.
+        if (options.yAxes.length > 0) {
+            const firstAxisID = options.yAxes[0].id;
+            const firstAxisScales = this.yAxisScales[firstAxisID];
+            if (firstAxisScales) {
+                this.minValue = firstAxisScales.min;
+                this.maxValue = firstAxisScales.max;
+                this.yScale = firstAxisScales.scale;
+            } else {
+                // Fallback if the first axis scale wasn't successfully calculated (should not happen with current logic)
+                console.error("PureChart _calculateScale: Failed to get scale for the first Y-axis for backward compatibility.");
+                this.minValue = 0;
+                this.maxValue = 1;
+                this.yScale = 1;
+            }
+        } else {
+             // This case is handled at the start, but as a defensive measure for temporary properties:
+            this.minValue = 0;
+            this.maxValue = 1;
+            this.yScale = 1;
+        }
     }
 
     _drawAxesAndGrid() {
-        const { options, data } = this.config; const oY = options.yAxis; const oX = options.xAxis; this.ctx.save();
-        this.ctx.lineWidth = 1; this.ctx.font = options.font; // Global font for context
-        // Y-Axis
-        if (oY.display && this.drawArea.height > 0) {
-            this.ctx.strokeStyle = oY.color; this.ctx.fillStyle = oY.color; this.ctx.beginPath(); this.ctx.moveTo(this.drawArea.x, this.drawArea.y); this.ctx.lineTo(this.drawArea.x, this.drawArea.y + this.drawArea.height); this.ctx.stroke();
-            this.ctx.font = oY.labelFont; this.ctx.textAlign = 'right'; this.ctx.textBaseline = 'middle'; const numTicks = Math.max(2, oY.maxTicks);
-            if (this.maxValue !== undefined && this.minValue !== undefined && (this.maxValue - this.minValue !== 0)) { // Ensure scale is valid
-                for (let i = 0; i <= numTicks; i++) { const value = this.maxValue-(i*(this.maxValue-this.minValue)/numTicks); const yPos=this.drawArea.y+(i*this.drawArea.height/numTicks); if(yPos>=this.drawArea.y-1 && yPos<=this.drawArea.y+this.drawArea.height+1)this.ctx.fillText(value.toLocaleString(),this.drawArea.x-8,yPos); if(oY.gridLines && i>0 && i<numTicks){if(yPos>this.drawArea.y && yPos<this.drawArea.y+this.drawArea.height){this.ctx.save();this.ctx.strokeStyle=options.gridColor;this.ctx.lineWidth=0.5;this.ctx.beginPath();this.ctx.moveTo(this.drawArea.x+1,yPos);this.ctx.lineTo(this.drawArea.x+this.drawArea.width,yPos);this.ctx.stroke();this.ctx.restore();}}}
-            } else if (this.maxValue !== undefined) this.ctx.fillText(this.maxValue.toLocaleString(),this.drawArea.x-8,this.drawArea.y+this.drawArea.height/2); // Fallback if scale is weird
-            if (oY.displayTitle && oY.title) { this.ctx.font=oY.titleFont;this.ctx.textAlign='center';this.ctx.save(); const tempFont=this.ctx.font;this.ctx.font=oY.labelFont; const sampleYLabelForTitle=options.yAxis.sampleLabelForWidthEstimation||String(this.maxValue)||"-9,999.9"; const yLabelWidthEstimate=this.ctx.measureText(sampleYLabelForTitle).width; this.ctx.font=tempFont; const yTitleX=Math.max(10,this.drawArea.x-yLabelWidthEstimate-15-(this.ctx.measureText('M').width*0.5)); this.ctx.translate(yTitleX,this.drawArea.y+this.drawArea.height/2);this.ctx.rotate(-Math.PI/2);this.ctx.fillText(oY.title,0,0);this.ctx.restore(); }
+        const { options, data } = this.config;
+        this.ctx.save();
+        this.ctx.lineWidth = 1;
+        this.ctx.font = options.font; // Global font for context (might be overridden by axis specific)
+
+        // Determine which Y-axis is responsible for drawing the main horizontal grid lines
+        let primaryGridAxisId = null;
+        if (options.yAxes && Array.isArray(options.yAxes)) {
+            for (const axisCfg of options.yAxes) {
+                if (axisCfg.display && axisCfg.gridLines) {
+                    primaryGridAxisId = axisCfg.id;
+                    break; // Found the first one
+                }
+            }
         }
-        // X-Axis
+        
+        // Draw Y-Axes
+        if (this.yAxisScales && typeof this.yAxisScales === 'object') {
+            Object.values(this.yAxisScales).forEach(yAxisData => {
+                const { axisConfig, min: minValue, max: maxValue, scale: yScale } = yAxisData;
+
+                if (!axisConfig.display || this.drawArea.height <= 0 || !isFinite(yScale) || yScale <= 0) {
+                    return; // Skip this axis
+                }
+
+                const isRightPositioned = axisConfig.position === 'right';
+                const axisLineX = isRightPositioned ? this.drawArea.x + this.drawArea.width : this.drawArea.x;
+                const tickLabelPadding = 8;
+
+                this.ctx.strokeStyle = axisConfig.color || this.activePalette.axisColor;
+                this.ctx.fillStyle = axisConfig.color || this.activePalette.axisColor;
+                this.ctx.font = axisConfig.labelFont; // Set for labels and potentially title estimation
+
+                // Draw Y-Axis Line
+                this.ctx.beginPath();
+                this.ctx.moveTo(axisLineX, this.drawArea.y);
+                this.ctx.lineTo(axisLineX, this.drawArea.y + this.drawArea.height);
+                this.ctx.stroke();
+
+                // Draw Y-Axis Labels and Grid Lines
+                this.ctx.textAlign = isRightPositioned ? 'left' : 'right';
+                this.ctx.textBaseline = 'middle';
+                const numTicks = Math.max(2, axisConfig.maxTicks || 5);
+
+                if (maxValue !== undefined && minValue !== undefined && (maxValue - minValue !== 0)) {
+                    for (let i = 0; i <= numTicks; i++) {
+                        const value = maxValue - (i * (maxValue - minValue) / numTicks);
+                        const yPos = this.drawArea.y + (i * this.drawArea.height / numTicks);
+
+                        if (yPos >= this.drawArea.y - 1 && yPos <= this.drawArea.y + this.drawArea.height + 1) { // Clamp to drawable area
+                            const labelTextX = isRightPositioned ? axisLineX + tickLabelPadding : axisLineX - tickLabelPadding;
+                            this.ctx.fillText(value.toLocaleString(), labelTextX, yPos);
+                        }
+
+                        // Draw Grid Lines only for the primary grid axis
+                        if (axisConfig.id === primaryGridAxisId && i > 0 && i < numTicks) {
+                            if (yPos > this.drawArea.y && yPos < this.drawArea.y + this.drawArea.height) { // Ensure grid line is within bounds
+                                this.ctx.save();
+                                this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor;
+                                this.ctx.lineWidth = 0.5;
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(this.drawArea.x + 1, yPos); // From left of draw area
+                                this.ctx.lineTo(this.drawArea.x + this.drawArea.width, yPos); // To right of draw area
+                                this.ctx.stroke();
+                                this.ctx.restore();
+                            }
+                        }
+                    }
+                } else if (maxValue !== undefined) { // Fallback if scale is weird (e.g. min=max=0)
+                    const labelTextX = isRightPositioned ? axisLineX + tickLabelPadding : axisLineX - tickLabelPadding;
+                    this.ctx.fillText(maxValue.toLocaleString(), labelTextX, this.drawArea.y + this.drawArea.height / 2);
+                }
+
+                // Draw Y-Axis Title
+                if (axisConfig.displayTitle && axisConfig.title) {
+                    this.ctx.save();
+                    this.ctx.font = axisConfig.titleFont; // Ensure title font is set
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle'; // Consistent baseline for rotation
+                    
+                    // Estimate label width for title offset calculation
+                    const tempLabelFont = this.ctx.font; // Save current (title) font
+                    this.ctx.font = axisConfig.labelFont; // Temporarily set to label font for estimation
+                    const sampleYLabelText = axisConfig.sampleLabelForWidthEstimation || (maxValue !== undefined ? maxValue.toLocaleString() : "-9,999.9");
+                    const yLabelWidthEstimate = this.ctx.measureText(sampleYLabelText).width;
+                    this.ctx.font = tempLabelFont; // Restore title font
+
+                    const titleCharHeightApproximation = (this.ctx.measureText('M').width * 1.5); // Approximate height of a char for title offset
+                    
+                    let yTitleX;
+                    if (isRightPositioned) {
+                        yTitleX = axisLineX + yLabelWidthEstimate + tickLabelPadding + (titleCharHeightApproximation / 2) + 5; // Add some more padding
+                        this.ctx.translate(yTitleX, this.drawArea.y + this.drawArea.height / 2);
+                        this.ctx.rotate(Math.PI / 2);
+                    } else { // Left positioned
+                        yTitleX = axisLineX - yLabelWidthEstimate - tickLabelPadding - (titleCharHeightApproximation / 2) - 5; // Add some more padding
+                        this.ctx.translate(yTitleX, this.drawArea.y + this.drawArea.height / 2);
+                        this.ctx.rotate(-Math.PI / 2);
+                    }
+                    this.ctx.fillText(axisConfig.title, 0, 0);
+                    this.ctx.restore();
+                }
+            });
+        }
+
+        // X-Axis (largely unchanged, but ensure it uses themed colors if oX.color not present)
+        const oX = options.xAxis;
         if (oX.display && this.drawArea.width > 0) {
-            this.ctx.strokeStyle = oX.color; this.ctx.fillStyle = oX.color; this.ctx.beginPath(); this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height); this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height); this.ctx.stroke();
-            this.ctx.font = oX.labelFont; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'top';
-            if (data.labels && data.labels.length > 0) { const xLabelWidth=this.drawArea.width/data.labels.length; data.labels.forEach((label,i)=>{const xPos=this.drawArea.x+(i*xLabelWidth)+(xLabelWidth/2);this.ctx.fillText(String(label),xPos,this.drawArea.y+this.drawArea.height+8);}); if(oX.gridLines){for(let i=1;i<data.labels.length;i++){const xPosGrid=this.drawArea.x+(i*xLabelWidth);if(xPosGrid>this.drawArea.x && xPosGrid<this.drawArea.x+this.drawArea.width){this.ctx.save();this.ctx.strokeStyle=options.gridColor;this.ctx.lineWidth=0.5;this.ctx.beginPath();this.ctx.moveTo(xPosGrid,this.drawArea.y);this.ctx.lineTo(xPosGrid,this.drawArea.y+this.drawArea.height-1);this.ctx.stroke();this.ctx.restore();}}}}
-            if (oX.displayTitle && oX.title) { this.ctx.font=oX.titleFont;this.ctx.textAlign='center';this.ctx.textBaseline='bottom'; this.ctx.fillText(oX.title,this.drawArea.x+this.drawArea.width/2,this.canvas.height-5); }
+            this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
+            this.ctx.fillStyle = oX.color || this.activePalette.axisColor;
+            this.ctx.font = oX.labelFont;
+
+            // Draw X-Axis Line
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height);
+            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
+            this.ctx.stroke();
+
+            // Draw X-Axis Labels and Vertical Grid Lines
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'top';
+            if (data.labels && data.labels.length > 0) {
+                const xLabelWidth = this.drawArea.width / data.labels.length;
+                data.labels.forEach((label, i) => {
+                    const xPos = this.drawArea.x + (i * xLabelWidth) + (xLabelWidth / 2);
+                    this.ctx.fillText(String(label), xPos, this.drawArea.y + this.drawArea.height + 8);
+
+                    // Vertical Grid Lines for X-Axis
+                    if (oX.gridLines && i > 0) { // Don't draw for the first label (it's the Y-axis line)
+                        const xPosGrid = this.drawArea.x + (i * xLabelWidth);
+                        if (xPosGrid > this.drawArea.x && xPosGrid < this.drawArea.x + this.drawArea.width) {
+                            this.ctx.save();
+                            this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor;
+                            this.ctx.lineWidth = 0.5;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(xPosGrid, this.drawArea.y);
+                            this.ctx.lineTo(xPosGrid, this.drawArea.y + this.drawArea.height -1); // -1 to avoid overdraw on x-axis line
+                            this.ctx.stroke();
+                            this.ctx.restore();
+                        }
+                    }
+                });
+            }
+
+            // Draw X-Axis Title
+            if (oX.displayTitle && oX.title) {
+                this.ctx.font = oX.titleFont;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'bottom'; // Place it below the labels
+                 // Ensure title is placed at the very bottom of the canvas padding area
+                const titleY = this.canvas.height - (options.padding.bottom || 5) + ((this.ctx.measureText('M').width * 1.5)/2); // Adjust if paddingBottom is small
+                this.ctx.fillText(oX.title, this.drawArea.x + this.drawArea.width / 2, this.canvas.height - (options.padding.bottom / 2) ); // Centered at bottom padding
+            }
         }
         this.ctx.restore();
     }
@@ -931,21 +1269,37 @@ class PureChart {
         });
     }
 
-    _getBarRect(value, barIndex, groupIndex, numInGroup, groupDrawableWidth) {
+    _getBarRect(value, barIndex, groupIndex, numInGroup, groupDrawableWidth, yAxisScaleInfo) {
         const options = this.config.options.bar;
-        const totalItemSpacingFactor = options.itemSpacingFactor * (numInGroup > 1 ? numInGroup -1 : 0); 
+        const totalItemSpacingFactor = options.itemSpacingFactor * (numInGroup > 1 ? numInGroup - 1 : 0);
         const barActualWidth = (groupDrawableWidth * (1 - totalItemSpacingFactor)) / numInGroup;
         const xInGroup = barIndex * (barActualWidth + barActualWidth * options.itemSpacingFactor); // Position within the group
         const val = parseFloat(value) || 0; // Ensure numeric value
-        // Calculate Y position and height based on scale
-        const zeroLevelY = this.drawArea.y + this.drawArea.height - ((0 - (this.minValue || 0)) * (this.yScale || 1));
-        let barHeight = Math.abs(val * (this.yScale || 1));
+
+        // Calculate Y position and height based on the specific Y-axis scale
+        const scaleMin = yAxisScaleInfo.min || 0;
+        const scale = yAxisScaleInfo.scale || 1;
+
+        const zeroLevelY = this.drawArea.y + this.drawArea.height - ((0 - scaleMin) * scale);
+        let barHeight = Math.abs(val * scale);
         let y;
-        if (val >= 0) { y = zeroLevelY - barHeight; } else { y = zeroLevelY; }
+
+        if (val >= 0) {
+            y = zeroLevelY - barHeight;
+        } else {
+            y = zeroLevelY;
+        }
+
         // Clamp to drawing area
-        if (y < this.drawArea.y) { barHeight -= (this.drawArea.y - y); y = this.drawArea.y; }
-        if (y + barHeight > this.drawArea.y + this.drawArea.height) { barHeight = (this.drawArea.y + this.drawArea.height) - y; }
+        if (y < this.drawArea.y) {
+            barHeight -= (this.drawArea.y - y);
+            y = this.drawArea.y;
+        }
+        if (y + barHeight > this.drawArea.y + this.drawArea.height) {
+            barHeight = (this.drawArea.y + this.drawArea.height) - y;
+        }
         if (barHeight < 0) barHeight = 0; // Ensure non-negative height
+
         return { x: xInGroup, y, w: barActualWidth > 0 ? barActualWidth : 0, h: barHeight };
     }
 
@@ -979,12 +1333,23 @@ class PureChart {
         data.labels.forEach((labelX, i) => { // For each label on X-axis
             const groupCanvasXStart = this.drawArea.x + (i * groupTotalWidth) + (actualGroupSpacing / 2); // Start X for this group
             barDatasets.forEach((dataset, j) => { // For each VISIBLE BAR dataset
+                const yAxisID = dataset.yAxisID || (chartOptions.yAxes && chartOptions.yAxes.length > 0 ? chartOptions.yAxes[0].id : null);
+                if (!yAxisID) {
+                    console.warn(`PureChart _drawBarChart: Dataset '${dataset.label}' has no yAxisID.`);
+                    return; // Skip this dataset
+                }
+
+                const yAxisScaleInfo = this.yAxisScales[yAxisID];
+                if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale) || !yAxisScaleInfo.axisConfig.display) {
+                    console.warn(`PureChart _drawBarChart: Invalid or non-displayed Y-axis scale for dataset '${dataset.label}' on yAxisID '${yAxisID}'. Skipping bar.`);
+                    return; // Skip drawing this bar if its Y-axis scale is invalid or not displayed
+                }
+
                 // 'j' is the index within barDatasets, used for positioning bars within the group.
                 const originalDatasetIndex = data.datasets.indexOf(dataset); // Get original index for tooltips etc.
 
                 const value = (dataset.values && dataset.values.length > i && typeof dataset.values[i] === 'number' && !isNaN(dataset.values[i])) ? dataset.values[i] : 0;
-                // Pass numBarDatasets to _getBarRect for correct width calculation within the group
-                const rectInGroup = this._getBarRect(value, j, i, numBarDatasets, groupDrawableWidth); 
+                const rectInGroup = this._getBarRect(value, j, i, numBarDatasets, groupDrawableWidth, yAxisScaleInfo);
                 if (rectInGroup.w <= 0) return; // Skip if bar has no width
                 const finalBarX = groupCanvasXStart + rectInGroup.x;
                 const barRect = { x: finalBarX, y: rectInGroup.y, w: rectInGroup.w, h: rectInGroup.h };
@@ -1042,21 +1407,35 @@ class PureChart {
             
             if (!ds.values || !Array.isArray(ds.values) || ds.values.length < 1) return; // Skip if no values
             this.ctx.save();
+            const yAxisID = ds.yAxisID || (o.yAxes && o.yAxes.length > 0 ? o.yAxes[0].id : null);
+            if (!yAxisID) {
+                console.warn(`PureChart _drawLineChart: Dataset '${ds.label}' has no yAxisID.`);
+                this.ctx.restore(); return;
+            }
+
+            const yAxisScaleInfo = this.yAxisScales[yAxisID];
+            if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale) || !yAxisScaleInfo.axisConfig.display) {
+                console.warn(`PureChart _drawLineChart: Invalid or non-displayed Y-axis scale for dataset '${ds.label}' on yAxisID '${yAxisID}'. Skipping line.`);
+                this.ctx.restore(); return;
+            }
+            
             // Map values to X/Y points
             const pts = ds.values.map((v, i) => {
-                const p = this._getPointPosition(v, i);
+                const p = this._getPointPosition(v, i, yAxisScaleInfo);
                 // Add point to interactive elements for tooltip, using originalDsIndex
                 this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: originalDsIndex, pointIndex: i }); // Translated "Index"
                 return p;
             });
+
             if (pts.length === 0) { this.ctx.restore(); return; } // No points to draw
             const userTension = ds.tension !== undefined ? ds.tension : lO.tension; // Line tension
             const effectiveLineWidth = ds.lineWidth !== undefined ? ds.lineWidth : lO.lineWidth;
             const bezierTensionFactor = 0.2; // Factor for Catmull-Rom to Bezier conversion
+            
             // Draw filled area under line if enabled
             if (ds.fill && pts.length > 1) {
                 this.ctx.beginPath();
-                const baselineY = this.drawArea.y + this.drawArea.height - ((0 - (this.minValue || 0)) * (this.yScale || 1)); // Y for 0-value
+                const baselineY = this.drawArea.y + this.drawArea.height - ((0 - (yAxisScaleInfo.min || 0)) * (yAxisScaleInfo.scale || 1));
                 const clampedBaselineY = Math.max(this.drawArea.y, Math.min(this.drawArea.y + this.drawArea.height, baselineY)); // Clamp to draw area
                 this.ctx.moveTo(pts[0].x, clampedBaselineY); this.ctx.lineTo(pts[0].x, pts[0].y);
                 if (userTension > 0) { for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i === 0 ? 0 : i - 1]; const p1 = pts[i]; const p2 = pts[i + 1]; const p3 = pts[(i + 2 < pts.length) ? i + 2 : i + 1]; const { cp1, cp2 } = this._getControlPointsForSegment(p0, p1, p2, p3, bezierTensionFactor * userTension); this.ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y); } }
@@ -1129,14 +1508,26 @@ class PureChart {
         });
     }
 
-    _getPointPosition(value, index) {
+    _getPointPosition(value, index, yAxisScaleInfo) {
         const numLabels = this.config.data.labels ? this.config.data.labels.length : 0;
-        if (numLabels === 0 || this.drawArea.width === 0) { return { x: this.drawArea.x + this.drawArea.width / 2, y: this.drawArea.y + this.drawArea.height / 2 }; } // Fallback
+        if (numLabels === 0 || this.drawArea.width === 0) { 
+            return { x: this.drawArea.x + this.drawArea.width / 2, y: this.drawArea.y + this.drawArea.height / 2 }; // Fallback
+        }
         const xSpacing = (numLabels > 1) ? this.drawArea.width / (numLabels - 1) : this.drawArea.width / 2; // Avoid div by zero for single label
-        const x = this.drawArea.x + (index * xSpacing); const yValue = parseFloat(value);
-        if (isNaN(yValue)) { return { x: x, y: this.drawArea.y + this.drawArea.height / 2 }; } // Center Y if value is not number
-        let y = this.drawArea.y + this.drawArea.height - ((yValue - (this.minValue || 0)) * (this.yScale || 1));
-        if (!isFinite(y)) { y = this.drawArea.y + this.drawArea.height / 2; } // Fallback for non-finite Y
+        const x = this.drawArea.x + (index * xSpacing);
+        const yValue = parseFloat(value);
+
+        if (isNaN(yValue)) {
+            return { x: x, y: this.drawArea.y + this.drawArea.height / 2 }; // Center Y if value is not number
+        }
+
+        const scaleMin = yAxisScaleInfo.min || 0;
+        const scale = yAxisScaleInfo.scale || 1;
+        let y = this.drawArea.y + this.drawArea.height - ((yValue - scaleMin) * scale);
+
+        if (!isFinite(y)) {
+            y = this.drawArea.y + this.drawArea.height / 2; // Fallback for non-finite Y
+        }
         // Clamp Y to drawing area
         y = Math.max(this.drawArea.y, Math.min(y, this.drawArea.y + this.drawArea.height));
         return { x, y };
@@ -1164,18 +1555,40 @@ class PureChart {
             }
         }
         if (bestMatch) {
-            let tooltipContentParams; let anchorX, anchorY; // Anchor for tooltip position
-            if (bestMatch.type === 'point') { anchorX = bestMatch.pos.x + canvasRect.left; anchorY = bestMatch.pos.y + canvasRect.top; tooltipContentParams = { type: 'point', xLabel: bestMatch.xLabel, datasets: [{ dataset: bestMatch.dataset, value: bestMatch.value }] }; }
-            else if (bestMatch.type === 'bar') { anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; anchorY = bestMatch.rect.y + canvasRect.top; 
+            let tooltipContentParams; 
+            let anchorX, anchorY; // Anchor for tooltip position
+            let yAxisScaleInfo = null; // Initialize for potential use
+
+            // For points and bars, try to get their Y-axis scale information
+            if (bestMatch.dataset && bestMatch.dataset.yAxisID && this.yAxisScales) {
+                yAxisScaleInfo = this.yAxisScales[bestMatch.dataset.yAxisID] || null;
+            }
+
+            if (bestMatch.type === 'point') { 
+                anchorX = bestMatch.pos.x + canvasRect.left; 
+                anchorY = bestMatch.pos.y + canvasRect.top; 
+                tooltipContentParams = { 
+                    type: 'point', 
+                    xLabel: bestMatch.xLabel, 
+                    datasets: [{ dataset: bestMatch.dataset, value: bestMatch.value }], 
+                    yAxisScaleInfo: yAxisScaleInfo,
+                    themePalette: this.activePalette 
+                }; 
+            } else if (bestMatch.type === 'bar') { 
+                anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; 
+                anchorY = bestMatch.rect.y + canvasRect.top; 
                 // For grouped bars, find all datasets at this xLabel
-                const groupedDatasets = this.interactiveElements.filter(elem => elem.type === 'bar' && elem.xLabel === bestMatch.xLabel && elem.pointIndex === bestMatch.pointIndex).map(elem => ({ dataset: elem.dataset, value: elem.value })).sort((a,b) => (this.config.data.datasets.indexOf(a.dataset) - this.config.data.datasets.indexOf(b.dataset))); // Ensure original dataset order
+                const groupedDatasets = this.interactiveElements
+                    .filter(elem => elem.type === 'bar' && elem.xLabel === bestMatch.xLabel && elem.pointIndex === bestMatch.pointIndex)
+                    .map(elem => ({ dataset: elem.dataset, value: elem.value }))
+                    .sort((a,b) => (this.config.data.datasets.indexOf(a.dataset) - this.config.data.datasets.indexOf(b.dataset))); // Ensure original dataset order
                 
-                // Pass activePalette to formatter context if needed, or ensure formatter uses themed colors
                 tooltipContentParams = { 
                     type: 'bar', 
                     xLabel: bestMatch.xLabel, 
                     datasets: groupedDatasets.length > 0 ? groupedDatasets : [{ dataset: bestMatch.dataset, value: bestMatch.value }],
-                    themePalette: this.activePalette // Provide palette to formatter
+                    yAxisScaleInfo: yAxisScaleInfo, // yAxisScaleInfo of the primarily hovered bar
+                    themePalette: this.activePalette
                 };
             } else if (bestMatch.type === 'percentageDistribution') { 
                 anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; 
@@ -1277,35 +1690,49 @@ class PureChart {
     }
 
     _drawAnnotations() {
-        const annotations = this.config.options.annotations;
-        if (!annotations || !Array.isArray(annotations) || annotations.length === 0 || 
-            !this.config.options.yAxis.display || !isFinite(this.yScale) || this.yScale <= 0) {
+        const allAnnotations = this.config.options.annotations;
+
+        if (!allAnnotations || !Array.isArray(allAnnotations) || allAnnotations.length === 0 ||
+            !this.config.options.yAxes || this.config.options.yAxes.length === 0 || 
+            !this.yAxisScales || Object.keys(this.yAxisScales).length === 0) {
             return;
         }
 
+        const defaultYAxisId = this.config.options.yAxes[0].id;
         this.ctx.save(); // Save context for all annotations
 
-        annotations.forEach(annotation => {
+        allAnnotations.forEach(annotation => {
             if (annotation.type !== 'line' || annotation.mode !== 'horizontal') {
                 return; // Skip non-horizontal line annotations
             }
 
+            const targetYAxisId = annotation.yAxisID || defaultYAxisId;
+            const currentAxisScale = this.yAxisScales[targetYAxisId];
+
+            if (!currentAxisScale || !currentAxisScale.scale || currentAxisScale.scale <= 0 || !isFinite(currentAxisScale.scale) ||
+                !currentAxisScale.axisConfig || !currentAxisScale.axisConfig.display) {
+                // console.warn(`PureChart Annotation: Skipping annotation for Y-axis ID '${targetYAxisId}' due to invalid/hidden target Y-axis or scale.`, annotation);
+                return; // Skip this annotation
+            }
+            
+            const { min: axisMin, max: axisMax, scale: axisScale } = currentAxisScale;
+
             let y = null;
             if (annotation.value !== undefined) {
-                y = this.drawArea.y + this.drawArea.height - ((annotation.value - (this.minValue || 0)) * this.yScale);
+                y = this.drawArea.y + this.drawArea.height - ((annotation.value - axisMin) * axisScale);
             } else if (annotation.percentage !== undefined && typeof annotation.percentage === 'number') {
-                const yRange = (this.maxValue || 0) - (this.minValue || 0);
-                if (yRange === 0 && (this.minValue || 0) === 0) { // Handle case where min/max are both 0
-                     y = this.drawArea.y + this.drawArea.height; // Bottom of draw area
-                } else if (yRange === 0) { // Min/max are equal but not 0
-                     y = this.drawArea.y + this.drawArea.height / 2; // Middle of draw area if range is 0 but value is not
+                const yRange = axisMax - axisMin;
+                let yValueForPercentage;
+                if (yRange === 0) { // Handle case where axis min and max are the same
+                    yValueForPercentage = axisMin; // Plot at the single value of the axis
                 } else {
-                     y = this.drawArea.y + this.drawArea.height - (((annotation.percentage / 100) * yRange) * this.yScale);
+                    yValueForPercentage = axisMin + (annotation.percentage / 100) * yRange;
                 }
+                y = this.drawArea.y + this.drawArea.height - ((yValueForPercentage - axisMin) * axisScale);
             }
 
             if (y === null || isNaN(y) || !isFinite(y)) {
-                console.warn("PureChart Annotation: Could not determine Y position for annotation", annotation);
+                console.warn(`PureChart Annotation: Could not determine Y position for annotation on Y-axis ID '${targetYAxisId}'.`, annotation);
                 return;
             }
 
@@ -1317,7 +1744,7 @@ class PureChart {
             this.ctx.moveTo(this.drawArea.x, y);
             this.ctx.lineTo(this.drawArea.x + this.drawArea.width, y);
             // Use themed gridColor as a fallback if annotation.borderColor is not provided
-            this.ctx.strokeStyle = annotation.borderColor || this.activePalette.gridColor; 
+            this.ctx.strokeStyle = annotation.borderColor || this.activePalette.gridColor;
             this.ctx.lineWidth = annotation.borderWidth || 1;
 
             let lineDashSet = false;
@@ -1335,11 +1762,12 @@ class PureChart {
             if (annotation.label && annotation.label.text) {
                 this.ctx.save();
                 const labelOptions = annotation.label;
-                const defaultFont = this.config.options.font || '10px Arial'; // Font can also be themed if needed
+                const defaultFont = this.config.options.font || '10px Arial';
                 this.ctx.font = labelOptions.font || defaultFont;
-                // Use themed axisColor as a fallback for label color if annotation.label.color and annotation.borderColor are not provided
-                const defaultColor = annotation.borderColor || this.activePalette.axisColor; 
-                this.ctx.fillStyle = labelOptions.color || defaultColor;
+                
+                // Themed label color: specific annotation color -> axis color -> palette axis color
+                const labelColor = labelOptions.color || currentAxisScale.axisConfig.color || this.activePalette.axisColor;
+                this.ctx.fillStyle = labelColor;
 
                 let labelX, labelY;
                 let textAlign = 'right';
@@ -1421,8 +1849,8 @@ class PureChart {
 
                     this.ctx.fillStyle = labelOptions.backgroundColor;
                     this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-                    // Reset for text, ensure it uses the themed color or specified label color
-                    this.ctx.fillStyle = labelOptions.color || defaultColor; 
+                    // Reset for text
+                    this.ctx.fillStyle = labelColor;
                 }
                 this.ctx.fillText(labelOptions.text, labelX, labelY);
                 this.ctx.restore();

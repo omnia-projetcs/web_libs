@@ -52,6 +52,12 @@
         <canvas id="calculatedLinesChartCanvas" width="700" height="400"></canvas>
     </div>
 
+    <div class="chart-container">
+        <h2>Chart 9: Multi-Axis Chart (Temperature & Humidity)</h2>
+        <p>Demonstrates two Y-axes. Temperature (Bar) is on the left Y-axis, and Humidity (Line) is on the right Y-axis.</p>
+        <canvas id="multiAxisChartCanvas" width="700" height="400"></canvas>
+    </div>
+
     <h2>Original Demo Charts (for reference)</h2>
 
     <div class="chart-container">
@@ -188,6 +194,125 @@
             };
             new PureChart('calculatedLinesChartCanvas', calculatedLinesChartConfig);
 
+
+            // Chart 9: Multi-Axis Chart
+            const multiAxisChartConfig = {
+                type: 'bar', // Default type, can be overridden by datasets
+                data: {
+                    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
+                    datasets: [
+                        {
+                            label: "Temperature (°C)",
+                            type: 'bar', // Explicitly bar
+                            values: [10, 12, 15, 18, 22, 25, 23],
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            yAxisID: 'yAxis-temp' // Assign to the temperature axis
+                        },
+                        {
+                            label: "Humidity (%)",
+                            type: 'line', // Explicitly line
+                            values: [60, 65, 70, 75, 72, 68, 70],
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            yAxisID: 'yAxis-humidity' // Assign to the humidity axis
+                        }
+                    ]
+                },
+                options: {
+                    theme: 'light', // Or 'dark', as preferred for demo
+                    title: { 
+                        display: true,
+                        text: "Monthly Average Temperature and Humidity" 
+                    },
+                    legend: { 
+                        display: true, 
+                        position: 'top' 
+                    },
+                    yAxes: [ // Define the two Y-axes
+                        {
+                            id: 'yAxis-temp',
+                            position: 'left',
+                            display: true,
+                            title: 'Temperature (°C)',
+                            displayTitle: true,
+                            beginAtZero: false, // Temperature can go below zero
+                            gridLines: true, // Primary grid lines from this axis
+                            sampleLabelForWidthEstimation: "-10.0" 
+                        },
+                        {
+                            id: 'yAxis-humidity',
+                            position: 'right',
+                            display: true,
+                            title: 'Humidity (%)',
+                            displayTitle: true,
+                            beginAtZero: true, // Humidity typically 0-100
+                            gridLines: false, // No duplicate grid lines from this axis
+                            maxTicks: 6, // Example of different tick count
+                            sampleLabelForWidthEstimation: "100.0%" 
+                        }
+                    ],
+                    xAxis: {
+                        display: true,
+                        title: 'Month',
+                        displayTitle: true
+                    },
+                    tooltip: {
+                        formatter: function(params) { // Use a regular function to access bound `this`
+                            if (!params) return '';
+                            let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`;
+                            
+                            // Access chart's yAxes configuration (assuming 'this' is bound to an object containing chart.config.options.yAxes)
+                            // For this demo, we'll use the bound 'this.chartConfigData' for dataset properties,
+                            // and params.yAxisScaleInfo for the hovered element's axis.
+                            
+                            (params.datasets || []).forEach((item) => {
+                                if (item && item.dataset) {
+                                    const datasetYAxisID = item.dataset.yAxisID;
+                                    let axisLabel = ` (${datasetYAxisID})`; // Default to ID
+                                    
+                                    // If the current item's dataset is associated with the primary yAxisScaleInfo passed to the tooltip
+                                    if (params.yAxisScaleInfo && params.yAxisScaleInfo.axisConfig && params.yAxisScaleInfo.axisConfig.id === datasetYAxisID) {
+                                        axisLabel = ` (${params.yAxisScaleInfo.axisConfig.title || datasetYAxisID})`;
+                                    } else if (this.chartYAxesConfig) { 
+                                        // Fallback for other datasets in the tooltip (e.g. grouped bars on different axes)
+                                        // This requires chartYAxesConfig to be bound to 'this'
+                                        const axisConf = this.chartYAxesConfig.find(ax => ax.id === datasetYAxisID);
+                                        if (axisConf && axisConf.title) {
+                                            axisLabel = ` (${axisConf.title})`;
+                                        }
+                                    }
+
+                                    let markerColor = item.dataset.borderColor || (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor);
+                                    if (!markerColor) {
+                                        const palette = params.themePalette || PC_LIGHT_THEME_PALETTE; // PC_LIGHT_THEME_PALETTE should be globally available
+                                        // Find original dataset index to get color. 'this.chartConfigData' is bound.
+                                        const originalDatasetIndex = this.chartConfigData.datasets.findIndex(ds => ds.label === item.dataset.label);
+                                        if (originalDatasetIndex !== -1) {
+                                            markerColor = palette.defaultDatasetColors[originalDatasetIndex % palette.defaultDatasetColors.length];
+                                        } else {
+                                            markerColor = '#ccc'; // Fallback
+                                        }
+                                    }
+                                    html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label || 'Dataset'}: ${item.value !== undefined ? item.value.toLocaleString() : 'N/A'}${axisLabel}</div>`;
+                                }
+                            });
+                            return html;
+                        }
+                    }
+                }
+            };
+            // Bind necessary context to the formatter.
+            // Store yAxes config from options for the formatter to access.
+            const formatterContext = { 
+                chartConfigData: multiAxisChartConfig.data, 
+                chartYAxesConfig: multiAxisChartConfig.options.yAxes 
+            };
+            multiAxisChartConfig.options.tooltip.formatter = multiAxisChartConfig.options.tooltip.formatter.bind(formatterContext);
+            
+            new PureChart('multiAxisChartCanvas', multiAxisChartConfig);
             // Chart 1: Advanced Mixed Chart
             const advancedMixedConfig = {
                 type: 'bar', // Default global type
