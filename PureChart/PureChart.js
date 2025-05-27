@@ -114,7 +114,12 @@ class PureChart {
                             position: 'above-right',
                             padding: 2,
                             backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                            formatter: (value) => `Avg: ${value !== null && value !== undefined ? value.toFixed(2) : 'N/A'}`
+                            formatter: (value) => {
+                                if (value === null || value === undefined) return 'Avg: N/A';
+                                let avgStr = value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                avgStr = avgStr.replace(/,/g, ' ');
+                                return `Avg: ${avgStr}`;
+                            }
                         }
                     }
                 },
@@ -135,7 +140,12 @@ class PureChart {
                             position: 'above-right',
                             padding: 2,
                             backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                            formatter: (value) => `Avg: ${value !== null && value !== undefined ? value.toFixed(2) : 'N/A'}`
+                            formatter: (value) => {
+                                if (value === null || value === undefined) return 'Avg: N/A';
+                                let avgStr = value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                avgStr = avgStr.replace(/,/g, ' ');
+                                return `Avg: ${avgStr}`;
+                            }
                         }
                     }
                 },
@@ -163,7 +173,10 @@ class PureChart {
                     formatter: (params) => { // Default tooltip formatter
                         if (!params) return ''; 
                         if (params.type === 'percentageDistribution' && params.item) { 
-                            return `<div style="text-align:left;"><strong>${params.item.label}</strong><br/>Value: ${params.item.value.toLocaleString()}<br/>Percentage: ${params.item.percentage.toFixed(1)}%</div>`; // Translated
+                            let itemValueStr = params.item.value.toLocaleString('en-US');
+                            itemValueStr = itemValueStr.replace(/,/g, ' ');
+                            // percentage.toFixed(1) already uses a period and is unlikely to need thousands separators.
+                            return `<div style="text-align:left;"><strong>${params.item.label}</strong><br/>Value: ${itemValueStr}<br/>Percentage: ${params.item.percentage.toFixed(1)}%</div>`;
                         } 
                         let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`; 
                         (params.datasets || []).forEach((item, index) => { 
@@ -173,7 +186,11 @@ class PureChart {
                                     const palette = params.themePalette || PC_LIGHT_THEME_PALETTE; // Default to light if somehow not passed
                                     markerColor = palette.defaultDatasetColors[index % palette.defaultDatasetColors.length];
                                 }
-                                html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label||'Dataset'}: ${item.value !== undefined ? item.value.toLocaleString() : 'N/A'}</div>`; // Translated "Dataset"
+                                let valStr = item.value !== undefined ? item.value.toLocaleString('en-US') : 'N/A';
+                                if (item.value !== undefined) { // Only replace if it's a number-derived string
+                                    valStr = valStr.replace(/,/g, ' ');
+                                }
+                                html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label||'Dataset'}: ${valStr}</div>`; // Translated "Dataset"
                             } 
                         }); 
                         return html; 
@@ -1007,7 +1024,9 @@ class PureChart {
 
                         if (yPos >= this.drawArea.y - 1 && yPos <= this.drawArea.y + this.drawArea.height + 1) { // Clamp to drawable area
                             const labelTextX = isRightPositioned ? axisLineX + tickLabelPadding : axisLineX - tickLabelPadding;
-                            this.ctx.fillText(value.toLocaleString(), labelTextX, yPos);
+                            let labelStr = value.toLocaleString('en-US');
+                            labelStr = labelStr.replace(/,/g, ' '); // Replace comma thousands with space
+                            this.ctx.fillText(labelStr, labelTextX, yPos);
                         }
 
                         // Draw Grid Lines only for the primary grid axis
@@ -1026,7 +1045,9 @@ class PureChart {
                     }
                 } else if (maxValue !== undefined) { // Fallback if scale is weird (e.g. min=max=0)
                     const labelTextX = isRightPositioned ? axisLineX + tickLabelPadding : axisLineX - tickLabelPadding;
-                    this.ctx.fillText(maxValue.toLocaleString(), labelTextX, this.drawArea.y + this.drawArea.height / 2);
+                    let maxLabelStr = maxValue.toLocaleString('en-US');
+                    maxLabelStr = maxLabelStr.replace(/,/g, ' ');
+                    this.ctx.fillText(maxLabelStr, labelTextX, this.drawArea.y + this.drawArea.height / 2);
                 }
 
                 // Draw Y-Axis Title
