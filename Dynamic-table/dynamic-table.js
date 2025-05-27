@@ -774,12 +774,14 @@ function createDynamicTable(config) {
             if (formatType.startsWith('currency:')) {
                 const parts = formatType.split(':');
                 const currencyCode = parts[1] ? parts[1].toUpperCase() : 'EUR'; // Default to EUR if not specified
-                let locale = (currencyCode === 'USD') ? 'en-US' : 'en-GB'; // Changed default non-USD locale to en-GB for wider understanding
-                if (parts[2]) locale = parts[2]; // Allow specific locale override
+                let locale = (currencyCode === 'USD') ? 'en-US' : 'en-GB'; // This line is no longer strictly needed for 'en-US' but kept for potential future locale strategies.
+                if (parts[2]) locale = parts[2]; // User-specified locale could override 'en-US' if logic was different.
                 try {
-                    return value.toLocaleString(locale, { style: 'currency', currency: currencyCode });
+                    // Use 'en-US' for consistent decimal and initial thousands separator, then replace comma with space.
+                    let formattedCurrency = value.toLocaleString('en-US', { style: 'currency', currency: currencyCode, useGrouping: true });
+                    return formattedCurrency.replace(/,/g, ' ');
                 } catch (e) {
-                    console.warn(`[DynamicTable] Currency formatting error for ${currencyCode} with locale ${locale}:`, e);
+                    console.warn(`[DynamicTable] Currency formatting error for ${currencyCode} with locale 'en-US':`, e);
                     return value; // Fallback to raw value
                 }
             }
@@ -793,9 +795,11 @@ function createDynamicTable(config) {
                 const decimals = parts[1] ? parseInt(parts[1], 10) : 0;
 
                 if (isNaN(decimals) || decimals < 0) {
-                    return (value * 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '%';
+                    let percentStr = (value * 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                    return percentStr.replace(/,/g, ' ') + '%';
                 }
-                return (value * 100).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + '%';
+                let percentStr = (value * 100).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+                return percentStr.replace(/,/g, ' ') + '%';
             }
             if (formatType === 'date:YYYY/MM/DD') {
                 const date = new Date(value);
@@ -1349,7 +1353,9 @@ function createDynamicTable(config) {
 
         if (showPagination) updatePaginationControlsInternal();
         if(resultsCountSpan && resultsCountSpan.parentNode) { // Check if resultsCountSpan and its parent (resultsDiv) exist
-            resultsCountSpan.textContent = displayData.length.toLocaleString(language); // Use selected language for number formatting
+            let countStr = displayData.length.toLocaleString('en-US'); 
+            countStr = countStr.replace(/,/g, ' '); 
+            resultsCountSpan.textContent = countStr;
             // Update the accompanying text node, which is the next sibling of resultsCountSpan
             const textNode = resultsCountSpan.nextSibling;
             if (textNode && textNode.nodeType === Node.TEXT_NODE) {

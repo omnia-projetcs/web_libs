@@ -231,7 +231,13 @@
                             type: 'bar',
                             dataKey: 'popularityChart',
                             width: 120,
-                            options: { padding: {top:2, right:2,bottom:2,left:2}, legend: {display:false}, xAxis:{display:false}, yAxis:{display:false}}
+                            options: { 
+                                padding: {top:2, right:2,bottom:2,left:2}, 
+                                legend: {display:false}, 
+                                xAxis:{display:false}, 
+                                yAxis:{display:false},
+                                tooltip:{enabled:false}
+                            }
                         }
                     },
                     { key: 'price', header: 'Price', format: 'currency:EUR' } 
