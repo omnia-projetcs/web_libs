@@ -448,6 +448,7 @@ function createDynamicTable(config) {
                     stateToUpdate.visible = this.checked;
                 }
                 buildHeaderRow(); // Rebuild the header
+                populateFilterOptions(); // Repopulate filter options
                 renderTableInternal(); // Re-render table body
                 // updatePaginationControlsInternal(); // Already called by renderTableInternal if pagination is on
             });
