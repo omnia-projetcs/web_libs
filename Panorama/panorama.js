@@ -241,36 +241,94 @@ class Panorama {
         contentContainer.textContent = `Unknown item type: ${item.type}`;
     }
 
-    // Add Edit and Delete buttons.
-    const controlsContainer = document.createElement('div');
-    controlsContainer.className = 'panorama-item-controls';
+    // Create or reuse the controls container
+    let controlsContainer = itemElement.querySelector('.panorama-item-controls');
+    if (!controlsContainer) {
+        controlsContainer = document.createElement('div');
+        controlsContainer.className = 'panorama-item-controls';
+        // Prepend controls to the content container for better visibility/access
+        contentContainer.insertBefore(controlsContainer, contentContainer.firstChild);
+    } else {
+        controlsContainer.innerHTML = ''; // Clear old buttons
+    }
 
-    const editButton = document.createElement('button');
-    editButton.textContent = 'Edit';
-    editButton.className = 'panorama-edit-button';
-    editButton.dataset.itemId = item.id;
-    // TODO: Add event listener for edit functionality:
-    editButton.addEventListener('click', (event) => {
+    // Create the menu button
+    const menuButton = document.createElement('button');
+    menuButton.className = 'panorama-item-menu-btn';
+    menuButton.innerHTML = '⋮'; // Vertical ellipsis
+    menuButton.dataset.itemId = item.id;
+    menuButton.setAttribute('aria-haspopup', 'true');
+    menuButton.setAttribute('aria-expanded', 'false');
+    // Event listener for menu button will be added later to toggle popup
+
+    // Create the popup menu
+    const popupMenu = document.createElement('div');
+    popupMenu.className = 'panorama-item-menu-popup';
+    popupMenu.style.display = 'none'; // Initially hidden
+    popupMenu.dataset.itemId = item.id;
+
+    // Create "Edit" action
+    const editAction = document.createElement('a');
+    editAction.href = '#';
+    editAction.className = 'panorama-edit-action';
+    editAction.textContent = 'Edit';
+    editAction.dataset.itemId = item.id;
+    editAction.addEventListener('click', (event) => {
+      event.preventDefault();
       const itemIdToEdit = parseInt(event.target.dataset.itemId);
       const itemToEdit = this.items.find(i => i.id === itemIdToEdit);
       if (itemToEdit) {
         this._showEditModal(itemToEdit);
       }
+      popupMenu.style.display = 'none'; // Hide menu after action
+      menuButton.setAttribute('aria-expanded', 'false');
     });
-    controlsContainer.appendChild(editButton);
+    popupMenu.appendChild(editAction);
 
-    const deleteButton = document.createElement('button');
-    deleteButton.textContent = 'Delete';
-    deleteButton.className = 'panorama-delete-button';
-    deleteButton.dataset.itemId = item.id;
-    deleteButton.addEventListener('click', (event) => {
+    // Create "Delete" action
+    const deleteAction = document.createElement('a');
+    deleteAction.href = '#';
+    deleteAction.className = 'panorama-delete-action';
+    deleteAction.textContent = 'Delete';
+    deleteAction.dataset.itemId = item.id;
+    deleteAction.addEventListener('click', (event) => {
+      event.preventDefault();
       const itemIdToRemove = parseInt(event.target.dataset.itemId);
       this.removeItem(itemIdToRemove);
+      // Popup will be removed with the item, so no need to explicitly hide it
     });
-    controlsContainer.appendChild(deleteButton);
-    
-    // Prepend controls to the content container for better visibility/access
-    contentContainer.insertBefore(controlsContainer, contentContainer.firstChild);
+    popupMenu.appendChild(deleteAction);
+
+    // Append new controls
+    controlsContainer.appendChild(menuButton);
+    controlsContainer.appendChild(popupMenu);
+
+    // Add event listener to menu button to toggle popup
+    menuButton.addEventListener('click', (event) => {
+      event.stopPropagation(); // Prevent click from bubbling to document listener immediately
+      const currentlyVisible = popupMenu.style.display === 'block';
+      // Hide all other popups
+      document.querySelectorAll('.panorama-item-menu-popup').forEach(p => p.style.display = 'none');
+      document.querySelectorAll('.panorama-item-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+      
+      if (!currentlyVisible) {
+        popupMenu.style.display = 'block';
+        menuButton.setAttribute('aria-expanded', 'true');
+      } else {
+        popupMenu.style.display = 'none';
+        menuButton.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Global click listener to close popups
+    // Ensure this listener is added only once or managed to avoid duplicates
+    if (!this.constructor._globalClickListenerAdded) {
+      document.addEventListener('click', () => {
+        document.querySelectorAll('.panorama-item-menu-popup').forEach(p => p.style.display = 'none');
+        document.querySelectorAll('.panorama-item-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+      });
+      this.constructor._globalClickListenerAdded = true;
+    }
 
     // Add the item to the grid.
     this.grid.makeWidget(itemElement);

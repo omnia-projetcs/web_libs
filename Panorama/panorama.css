@@ -45,23 +45,20 @@ html, body {
 }
 
 /* Panorama Component Specific Styles */
-#panorama-container { /* This is the main container passed to the Panorama class constructor in demo.html, but #panorama-grid-container is the actual grid */
-  /* This rule might be redundant if #dashboard-container is used as the main flex child for the dashboard area */
-  /* For now, keeping it as it was, but it might need review based on HTML structure changes */
-  padding: 20px; /* This was the original style, might conflict with new layout */
-  flex-grow: 1; /* If this is meant to be the scrollable dashboard area */
-  display: flex; /* If it's meant to contain the grid and make it grow */
+#panorama-container { 
+  padding: 20px; 
+  flex-grow: 1; 
+  display: flex; 
   flex-direction: column;
 }
 
 /* Grid Container Styling */
 #panorama-grid-container {
-  flex-grow: 1; /* Allows the grid to take up available space in #dashboard-container */
-  width: 100%;  /* Ensure it takes full width of #dashboard-container */
+  flex-grow: 1; 
+  width: 100%;  
   background-color: #e9ecef; 
   border: 1px solid #ced4da; 
   border-radius: 4px;
-  /* overflow: auto; /* Gridstack manages its own internal scroll/overflow typically */
 }
 
 /* Grid Item Styling */
@@ -70,51 +67,77 @@ html, body {
 }
 
 .grid-stack-item-content {
-  background-color: #ffffff; /* White background for items */
-  border: 1px solid #dee2e6; /* Light grey border for items */
-  border-radius: 4px; /* Rounded corners for card-like appearance */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Subtle shadow */
-  padding: 15px; /* Padding within items */
+  background-color: #ffffff; 
+  border: 1px solid #dee2e6; 
+  border-radius: 4px; 
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); 
+  padding: 15px; 
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Pushes controls to bottom if content is short */
-  overflow: auto; /* Allow scrolling for content that's too big */
-  color: #495057; /* Default text color for items */
-  text-align: left; /* Default text alignment */
+  justify-content: space-between; 
+  overflow: auto; 
+  color: #495057; 
+  text-align: left; 
 }
 
-/* Item Controls (Edit/Delete buttons) */
+/* Item Controls Styling (Menu Button and Popup) */
 .panorama-item-controls {
-  padding: 8px 0 0 0; /* Padding above buttons */
-  background-color: transparent; /* No separate background for the controls div itself */
-  border-top: none; /* Remove previous border if any */
+  position: relative; /* For positioning popup */
   display: flex;
-  justify-content: flex-end; /* Align buttons to the right */
-  gap: 8px; /* Space between buttons */
+  justify-content: flex-end; 
+  padding-top: 8px; /* Space above the menu button */
+  background-color: transparent; 
+  border-top: none; 
+  /* Removed gap as menu button is now the primary direct child managing its own spacing/look */
 }
 
-.panorama-item-controls button {
-  background-color: #6c757d; /* Secondary button color */
-  color: white;
-  border: none;
+.panorama-item-menu-btn {
+  background-color: #f8f9fa; /* Light background */
+  border: 1px solid #ced4da; /* Subtle border */
+  color: #495057; /* Icon color */
+  padding: 4px 8px; /* Adjust padding for icon size */
+  font-size: 1.2em; /* Adjust for icon character '⋮' */
+  line-height: 1; /* Ensure tight fit for icon */
   border-radius: 4px;
-  padding: 5px 10px;
   cursor: pointer;
-  font-size: 0.85em;
-  transition: background-color 0.2s ease-in-out;
+  /* margin-left: auto; /* This might not be needed if justify-content: flex-end on parent is enough */
 }
 
-.panorama-item-controls button:hover {
-  background-color: #5a6268; /* Darken on hover */
+.panorama-item-menu-btn:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
 }
 
-.panorama-item-controls .panorama-delete-button {
-  background-color: #dc3545; /* Red for delete */
+.panorama-item-menu-popup {
+  display: none; /* Initially hidden - JS will toggle this */
+  position: absolute;
+  top: 100%; /* Position below the button */
+  right: 0; /* Align to the right of the controls container */
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  z-index: 100; /* Ensure it's above other item content */
+  min-width: 120px; 
+  padding: 5px 0; /* Padding for items inside */
 }
 
-.panorama-item-controls .panorama-delete-button:hover {
-  background-color: #c82333; /* Darker red on hover */
+.panorama-item-menu-popup a { /* Styles for .panorama-edit-action, .panorama-delete-action */
+  display: block;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: #343a40;
+  font-size: 0.9em;
+  white-space: nowrap; /* Prevent wrapping */
 }
+
+.panorama-item-menu-popup a:hover {
+  background-color: #f8f9fa;
+}
+
+/* Old .panorama-item-controls button styles are removed as they are now superseded by menu styles */
+/* Old .panorama-delete-button specific style is also removed, handled by .panorama-item-menu-popup a */
+
 
 /* Specific Item Types Styling */
 .grid-stack-item-content h1,
@@ -127,7 +150,7 @@ html, body {
   margin-bottom: 0.5rem;
   font-weight: 500;
   line-height: 1.2;
-  color: #343a40; /* Darker color for titles */
+  color: #343a40; 
 }
 
 .grid-stack-item-content p {
@@ -139,29 +162,29 @@ html, body {
 .grid-stack-item-content img {
   max-width: 100%;
   height: auto;
-  border-radius: 3px; /* Slight rounding for embedded images */
+  border-radius: 3px; 
 }
 
-/* Modal Styling */
+/* Modal Styling (remains unchanged) */
 .panorama-modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 1050; /* Higher z-index for modals */
+  display: none; 
+  position: fixed; 
+  z-index: 1050; 
   left: 0;
   top: 0;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
-  overflow: auto; /* Enable scroll if needed */
-  background-color: rgba(0,0,0,0.5); /* Darker overlay */
+  width: 100%; 
+  height: 100%; 
+  overflow: auto; 
+  background-color: rgba(0,0,0,0.5); 
 }
 
 .panorama-modal-content {
   background-color: #fefefe;
-  margin: 5% auto; /* More top margin for better centering */
+  margin: 5% auto; 
   padding: 25px;
   border: 1px solid #adb5bd;
-  width: 50%; /* Narrower for a more focused modal */
-  max-width: 700px; /* Max width for larger screens */
+  width: 50%; 
+  max-width: 700px; 
   border-radius: 5px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   display: flex;
@@ -171,7 +194,7 @@ html, body {
 .panorama-modal-header {
   padding-bottom: 15px;
   border-bottom: 1px solid #e9ecef;
-  margin-bottom: 20px; /* Space between header and form area */
+  margin-bottom: 20px; 
 }
 
 .panorama-modal-header h2 {
@@ -181,15 +204,15 @@ html, body {
 }
 
 .panorama-modal-form-area {
-  padding: 0; /* Remove default padding if not needed, rely on label/input margins */
+  padding: 0; 
   flex-grow: 1;
-  margin-bottom: 20px; /* Space before footer */
+  margin-bottom: 20px; 
 }
 
 .panorama-modal-form-area label {
   display: block;
   margin-top: 15px;
-  margin-bottom: 5px; /* Space between label and input */
+  margin-bottom: 5px; 
   font-weight: 600;
   color: #495057;
 }
@@ -197,11 +220,11 @@ html, body {
 .panorama-modal-form-area input[type="text"],
 .panorama-modal-form-area input[type="number"],
 .panorama-modal-form-area textarea,
-.panorama-modal-input, /* Generic class for inputs if added in JS */
-.panorama-modal-textarea { /* Generic class for textareas */
-  width: 100%; /* Full width */
+.panorama-modal-input, 
+.panorama-modal-textarea { 
+  width: 100%; 
   padding: 10px;
-  margin-top: 0; /* Remove top margin as label provides it */
+  margin-top: 0; 
   border: 1px solid #ced4da;
   border-radius: 4px;
   box-sizing: border-box;
@@ -231,7 +254,7 @@ html, body {
   text-align: right;
   display: flex;
   justify-content: flex-end;
-  gap: 10px; /* Space between footer buttons */
+  gap: 10px; 
 }
 
 .panorama-modal-footer button {
@@ -248,27 +271,27 @@ html, body {
 }
 
 .panorama-modal-save {
-  background-color: #28a745; /* Green */
+  background-color: #28a745; 
   color: white;
   border: none;
 }
 
 .panorama-modal-cancel {
-  background-color: #6c757d; /* Secondary/grey for cancel */
+  background-color: #6c757d; 
   color: white;
   border: none;
 }
 
 /* Ensure GridStack resize handles are visible if needed */
 .ui-resizable-handle {
-  z-index: 20; /* Ensure handles are above content but below modal */
+  z-index: 20; 
 }
 
 /* Helper class for JSON text in modal */
 .panorama-modal-form-area textarea#editJsonConfig {
   font-family: "Courier New", Courier, monospace;
   font-size: 0.9em;
-  background-color: #f8f9fa; /* Slightly different background for code */
+  background-color: #f8f9fa; 
   color: #212529;
 }
 
@@ -282,15 +305,15 @@ html, body {
     content: "Empty chart item";
     color: #adb5bd;
     font-style: italic;
-    display: block; /* Ensure it takes space */
+    display: block; 
     text-align: center;
-    padding-top: 20px; /* Some spacing */
+    padding-top: 20px; 
 }
 .grid-stack-item-content > div[id^="table-container-"]:empty::before {
     content: "Empty table item";
     color: #adb5bd;
     font-style: italic;
-    display: block; /* Ensure it takes space */
+    display: block; 
     text-align: center;
-    padding-top: 20px; /* Some spacing */
+    padding-top: 20px; 
 }
