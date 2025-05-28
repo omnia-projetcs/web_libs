@@ -39,9 +39,15 @@
     </div>
 
     <div class="chart-container">
-        <h2>Chart 6: Vertical Bar Chart (Multi-line Legend Test)</h2>
-        <p>A standard vertical bar chart example, modified for multi-line legend testing.</p>
+        <h2>Chart 6: Vertical Bar Chart (topCornerRadius: 8 Test)</h2>
+        <p>Tests rounded top corners for positive bars. Negative and zero bars should remain sharp.</p>
         <canvas id="verticalBarChartCanvas" width="700" height="400"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Chart 6b: Vertical Bar Chart (topCornerRadius: 0 Control)</h2>
+        <p>Control test for rounded corners. All corners should be sharp.</p>
+        <canvas id="verticalBarChartControlCanvas" width="700" height="400"></canvas>
     </div>
 
     <div class="chart-container">
@@ -115,35 +121,56 @@
             };
             new PureChart('multiLineChartCanvas', multiLineChartConfig);
 
-            // Chart 6: Vertical Bar Chart (Multi-line Legend Test)
+            // Chart 6: Vertical Bar Chart (topCornerRadius: 8 Test)
             const verticalBarChartConfig = {
                 type: 'bar',
                 data: {
-                    labels: ["Category A", "Category B"], // Simplified labels
+                    labels: ["Val A", "Val B", "Val C", "Val D", "Val E", "Val F"],
                     datasets: [
-                        { label: "Dataset 1", values: [10], borderColor: '#FF0000' },
-                        { label: "Dataset 2", values: [10], borderColor: '#FF7F00' },
-                        { label: "Dataset 3", values: [10], borderColor: '#FFFF00' },
-                        { label: "Dataset 4", values: [10], borderColor: '#7FFF00' },
-                        { label: "Dataset 5", values: [10], borderColor: '#00FF00' },
-                        { label: "Dataset 6", values: [10], borderColor: '#00FF7F' },
-                        { label: "Dataset 7", values: [10], borderColor: '#00FFFF' },
-                        { label: "Dataset 8", values: [10], borderColor: '#007FFF' },
-                        { label: "Dataset 9", values: [10], borderColor: '#0000FF' },
-                        { label: "Dataset 10", values: [10], borderColor: '#7F00FF' },
-                        { label: "Dataset 11", values: [10], borderColor: '#FF00FF' },
-                        { label: "Dataset 12", values: [10], borderColor: '#FF007F' },
-                        { label: "Dataset 13", values: [10], borderColor: '#A0A0A0' },
-                        { label: "Dataset 14", values: [10], borderColor: '#606060' }
+                        {
+                            label: "Test Series with topCornerRadius: 8",
+                            values: [10, 15, -5, 8, -12, 0],
+                            backgroundColor: 'rgba(86, 160, 211, 0.7)', // #56A0D3 with alpha
+                            borderColor: 'rgba(42, 78, 122, 1)'     // #2A4E7A
+                        }
                     ]
                 },
                 options: {
-                    title: { display: true, text: "Multi-line Legend Test Chart" },
+                    title: { display: true, text: "Bar Chart (topCornerRadius: 8)" },
                     legend: { display: true, position: 'top' },
-                    yAxis: { title: "Value", beginAtZero: true }
+                    yAxis: { title: "Value", beginAtZero: true }, // beginAtZero for this test is fine, negative bars will extend downwards
+                    bar: {
+                        topCornerRadius: 8
+                    }
                 }
             };
             new PureChart('verticalBarChartCanvas', verticalBarChartConfig);
+
+            // Chart 6b: Vertical Bar Chart (topCornerRadius: 0 Control)
+            const verticalBarChartControlConfig = {
+                type: 'bar',
+                data: {
+                    labels: ["Val A", "Val B", "Val C", "Val D", "Val E", "Val F"],
+                    datasets: [
+                        {
+                            label: "Test Series with topCornerRadius: 0",
+                            values: [10, 15, -5, 8, -12, 0],
+                            backgroundColor: 'rgba(211, 86, 86, 0.7)', // Different color for visual distinction
+                            borderColor: 'rgba(122, 42, 42, 1)'
+                        }
+                    ]
+                },
+                options: {
+                    title: { display: true, text: "Bar Chart (topCornerRadius: 0 Control)" },
+                    legend: { display: true, position: 'top' },
+                    yAxis: { title: "Value", beginAtZero: true },
+                    bar: {
+                        topCornerRadius: 0
+                    }
+                }
+            };
+            new PureChart('verticalBarChartControlCanvas', verticalBarChartControlConfig);
+
 
             // Chart 7: Horizontal Bar Chart (Implemented as Vertical)
             // Note: PureChart does not currently support true horizontal bar charts. This is a vertical bar chart.
@@ -266,21 +293,14 @@
                             if (!params) return '';
                             let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`;
                             
-                            // Access chart's yAxes configuration (assuming 'this' is bound to an object containing chart.config.options.yAxes)
-                            // For this demo, we'll use the bound 'this.chartConfigData' for dataset properties,
-                            // and params.yAxisScaleInfo for the hovered element's axis.
-                            
                             (params.datasets || []).forEach((item) => {
                                 if (item && item.dataset) {
                                     const datasetYAxisID = item.dataset.yAxisID;
                                     let axisLabel = ` (${datasetYAxisID})`; // Default to ID
                                     
-                                    // If the current item's dataset is associated with the primary yAxisScaleInfo passed to the tooltip
                                     if (params.yAxisScaleInfo && params.yAxisScaleInfo.axisConfig && params.yAxisScaleInfo.axisConfig.id === datasetYAxisID) {
                                         axisLabel = ` (${params.yAxisScaleInfo.axisConfig.title || datasetYAxisID})`;
                                     } else if (this.chartYAxesConfig) { 
-                                        // Fallback for other datasets in the tooltip (e.g. grouped bars on different axes)
-                                        // This requires chartYAxesConfig to be bound to 'this'
                                         const axisConf = this.chartYAxesConfig.find(ax => ax.id === datasetYAxisID);
                                         if (axisConf && axisConf.title) {
                                             axisLabel = ` (${axisConf.title})`;
@@ -289,13 +309,12 @@
 
                                     let markerColor = item.dataset.borderColor || (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor);
                                     if (!markerColor) {
-                                        const palette = params.themePalette || PC_LIGHT_THEME_PALETTE; // PC_LIGHT_THEME_PALETTE should be globally available
-                                        // Find original dataset index to get color. 'this.chartConfigData' is bound.
+                                        const palette = params.themePalette || PC_LIGHT_THEME_PALETTE; 
                                         const originalDatasetIndex = this.chartConfigData.datasets.findIndex(ds => ds.label === item.dataset.label);
                                         if (originalDatasetIndex !== -1) {
                                             markerColor = palette.defaultDatasetColors[originalDatasetIndex % palette.defaultDatasetColors.length];
                                         } else {
-                                            markerColor = '#ccc'; // Fallback
+                                            markerColor = '#ccc'; 
                                         }
                                     }
                                     html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label || 'Dataset'}: ${item.value !== undefined ? item.value.toLocaleString() : 'N/A'}${axisLabel}</div>`;
@@ -306,8 +325,6 @@
                     }
                 }
             };
-            // Bind necessary context to the formatter.
-            // Store yAxes config from options for the formatter to access.
             const formatterContext = { 
                 chartConfigData: multiAxisChartConfig.data, 
                 chartYAxesConfig: multiAxisChartConfig.options.yAxes 
@@ -315,9 +332,9 @@
             multiAxisChartConfig.options.tooltip.formatter = multiAxisChartConfig.options.tooltip.formatter.bind(formatterContext);
             
             new PureChart('multiAxisChartCanvas', multiAxisChartConfig);
-            // Chart 1: Advanced Mixed Chart
+            
             const advancedMixedConfig = {
-                type: 'bar', // Default global type
+                type: 'bar', 
                 data: {
                     labels: ["Q1", "Q2", "Q3", "Q4"],
                     datasets: [
@@ -330,14 +347,14 @@
                             borderWidth: 1,
                             averageLine: {
                                 display: true,
-                                color: 'rgba(200, 0, 0, 0.8)', // A distinct color
+                                color: 'rgba(200, 0, 0, 0.8)', 
                                 lineWidth: 2,
                                 dashPattern: [4, 4],
                                 label: {
                                     display: true,
                                     color: 'rgb(150,0,0)',
                                     font: 'bold 10px Arial',
-                                    position: 'above-center', // Different position for variety
+                                    position: 'above-center', 
                                     backgroundColor: 'rgba(255, 255, 255, 0.7)',
                                     formatter: (avg) => `Avg Sales A: ${avg.toFixed(1)}`
                                 }
@@ -365,7 +382,7 @@
                             type: 'line',
                             values: [110, 130, 140, 120],
                             borderColor: 'rgba(153, 102, 255, 1)',
-                            borderDash: [10, 5], // Dashed line
+                            borderDash: [10, 5], 
                             fill: false,
                             pointRadius: 2,
                             pointStyle: 'square'
@@ -373,7 +390,7 @@
                     ]
                 },
                 options: {
-                    theme: 'dark', // Set dark theme for Chart 1
+                    theme: 'dark', 
                     title: { text: "Quarterly Product Performance (Dark Theme)" },
                     legend: { display: true, position: 'top' },
                     yAxis: { title: "Units Sold" },
@@ -389,7 +406,6 @@
             };
             new PureChart('advancedMixedChartCanvas', advancedMixedConfig);
 
-            // Chart 2: Multiple SMAs and Annotations
             const multipleSmaAnnotationConfig = {
                 type: 'line',
                 data: {
@@ -426,7 +442,7 @@
                     ]
                 },
                 options: {
-                    theme: 'light', // Explicitly set light theme for Chart 2
+                    theme: 'light', 
                     title: { text: "Stock X Price with SMAs and Price Levels (Light Theme)" },
                     legend: { display: true },
                     yAxis: { title: "Price ($)" },
@@ -449,7 +465,7 @@
                         {
                             type: 'line',
                             mode: 'horizontal',
-                            percentage: 75, // 75th percentile
+                            percentage: 75, 
                             borderColor: 'purple',
                             borderDash: [4,4],
                             label: { 
@@ -478,14 +494,12 @@
             };
             new PureChart('multipleSmaAnnotationCanvas', multipleSmaAnnotationConfig);
 
-            // Chart 3: Loaded from JSON
             try {
                 const response = await fetch('sample-data.json');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const jsonData = await response.json();
                 
                 if (jsonData.mixedChartWithSmaAndAnnotation) {
-                    // Override theme for the JSON loaded chart
                     const overrideOptions = {
                         options: {
                             theme: 'dark',
@@ -503,17 +517,14 @@
                 document.getElementById('jsonLoadedChartCanvas').outerHTML = `<p style="color:red;">Could not load chart from JSON (Chart 3): ${e.message}</p>`;
             }
 
-            // Chart 4: Example of PureChart.fromJSON()
-            PureChart.fromJSON('fromJsonDemoCanvas', 'single_chart_example.json', {}, null /* csrfToken if needed */)
+            PureChart.fromJSON('fromJsonDemoCanvas', 'single_chart_example.json', {}, null )
                 .then(chart => {
                     if (chart && chart.isValid) {
                         console.log("Chart 'fromJsonDemoCanvas' loaded successfully via PureChart.fromJSON().");
                     } else {
-                        // This path (chart is null or !chart.isValid) might occur if fromJSON itself handles an error internally
-                        // and returns null or an invalidated chart instance, instead of throwing.
                         console.error("Failed to load or chart is invalid from 'single_chart_example.json' via PureChart.fromJSON().");
                         const canvas = document.getElementById('fromJsonDemoCanvas');
-                        if (canvas && canvas.getContext) { // Display error on canvas
+                        if (canvas && canvas.getContext) { 
                             const ctx = canvas.getContext('2d');
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
                             ctx.font = '12px Arial'; ctx.fillStyle = 'orange'; ctx.textAlign = 'center';
@@ -524,7 +535,7 @@
                 .catch(error => {
                     console.error("Error loading chart 'fromJsonDemoCanvas' via PureChart.fromJSON():", error);
                     const canvas = document.getElementById('fromJsonDemoCanvas');
-                    if (canvas && canvas.getContext) { // Display error on canvas
+                    if (canvas && canvas.getContext) { 
                         const ctx = canvas.getContext('2d');
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.font = '12px Arial'; ctx.fillStyle = 'red'; ctx.textAlign = 'center';
@@ -532,9 +543,7 @@
                     }
                 });
             
-
-            // Config for Bar Chart (Original Demo)
-            const barChartConfig = {
+            const barChartConfigOriginal = {
                 type: "bar",
                 data: {
                     labels: ["Apples", "Oranges", "Bananas", "Pears", "Grapes"], 
@@ -556,10 +565,9 @@
                     bar: { defaultBorderWidth: 2, borderDarkenPercent: 25 }
                 }
             };
-            new PureChart('barChartCanvasAutonome', barChartConfig);
+            new PureChart('barChartCanvasAutonome', barChartConfigOriginal);
 
-            // Config for Line Chart (Original Demo)
-            const lineChartConfig = {
+            const lineChartConfigOriginal = {
                 type: "line",
                 data: {
                     labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], 
@@ -583,9 +591,8 @@
                     xAxis: { title: "Month", gridLines: true } 
                 }
             };
-            new PureChart('lineChartCanvasAutonome', lineChartConfig);
+            new PureChart('lineChartCanvasAutonome', lineChartConfigOriginal);
             
-            // Config for Percentage Distribution (New "Gauge" Style - Original Demo)
             const percentageChartNewStyleConfig = {
                 type: "percentageDistribution",
                 data: {
@@ -614,7 +621,6 @@
             };
             new PureChart('percentageChartNewStyleAutonome', percentageChartNewStyleConfig);
 
-            // Config for Percentage Distribution (Classic Style - Original Demo)
             const percentageChartOldStyleConfig = {
                 type: "percentageDistribution",
                 data: {
