@@ -33,14 +33,14 @@
     </div>
 
     <div class="chart-container">
-        <h2>Chart 5: Multi-Line Chart</h2>
-        <p>Demonstrates a chart with two distinct line series.</p>
+        <h2>Chart 5: Multi-Line Chart (Few-Items Legend Control)</h2>
+        <p>Demonstrates a chart with two distinct line series. Used as a control for legend spacing.</p>
         <canvas id="multiLineChartCanvas" width="700" height="400"></canvas>
     </div>
 
     <div class="chart-container">
-        <h2>Chart 6: Vertical Bar Chart</h2>
-        <p>A standard vertical bar chart example.</p>
+        <h2>Chart 6: Vertical Bar Chart (Multi-line Legend Test)</h2>
+        <p>A standard vertical bar chart example, modified for multi-line legend testing.</p>
         <canvas id="verticalBarChartCanvas" width="700" height="400"></canvas>
     </div>
 
@@ -87,7 +87,7 @@
     <script src="PureChart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // Chart 5: Multi-Line Chart
+            // Chart 5: Multi-Line Chart (Few-Items Legend Control)
             const multiLineChartConfig = {
                 type: 'line',
                 data: {
@@ -108,34 +108,38 @@
                     ]
                 },
                 options: {
-                    title: { text: "Weekly Website Traffic" },
+                    title: { display: true, text: "Few-Items Legend Control Chart" },
+                    legend: { display: true, position: 'top' },
                     yAxis: { title: "Count" }
                 }
             };
             new PureChart('multiLineChartCanvas', multiLineChartConfig);
 
-            // Chart 6: Vertical Bar Chart
+            // Chart 6: Vertical Bar Chart (Multi-line Legend Test)
             const verticalBarChartConfig = {
                 type: 'bar',
                 data: {
-                    labels: ["Category A", "Category B", "Category C", "Category D"],
+                    labels: ["Category A", "Category B"], // Simplified labels
                     datasets: [
-                        {
-                            label: "Dataset 1",
-                            values: [10, 20, 30, 40],
-                            backgroundColor: 'rgba(255, 159, 64, 0.5)',
-                            borderColor: 'rgba(255, 159, 64, 1)'
-                        },
-                        {
-                            label: "Dataset 2",
-                            values: [15, 25, 35, 45],
-                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                            borderColor: 'rgba(75, 192, 192, 1)'
-                        }
+                        { label: "Dataset 1", values: [10], borderColor: '#FF0000' },
+                        { label: "Dataset 2", values: [10], borderColor: '#FF7F00' },
+                        { label: "Dataset 3", values: [10], borderColor: '#FFFF00' },
+                        { label: "Dataset 4", values: [10], borderColor: '#7FFF00' },
+                        { label: "Dataset 5", values: [10], borderColor: '#00FF00' },
+                        { label: "Dataset 6", values: [10], borderColor: '#00FF7F' },
+                        { label: "Dataset 7", values: [10], borderColor: '#00FFFF' },
+                        { label: "Dataset 8", values: [10], borderColor: '#007FFF' },
+                        { label: "Dataset 9", values: [10], borderColor: '#0000FF' },
+                        { label: "Dataset 10", values: [10], borderColor: '#7F00FF' },
+                        { label: "Dataset 11", values: [10], borderColor: '#FF00FF' },
+                        { label: "Dataset 12", values: [10], borderColor: '#FF007F' },
+                        { label: "Dataset 13", values: [10], borderColor: '#A0A0A0' },
+                        { label: "Dataset 14", values: [10], borderColor: '#606060' }
                     ]
                 },
                 options: {
-                    title: { text: "Vertical Bar Chart Example" },
+                    title: { display: true, text: "Multi-line Legend Test Chart" },
+                    legend: { display: true, position: 'top' },
                     yAxis: { title: "Value", beginAtZero: true }
                 }
             };
