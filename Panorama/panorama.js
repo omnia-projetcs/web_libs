@@ -42,11 +42,34 @@ class Panorama {
       const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
       const cellHeightApproximation = 50 + gridGap;
 
-      let potentialGridX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
-      let potentialGridY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
+      let mouseGridX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
+      let mouseGridY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
       
-      potentialGridX = Math.max(1, Math.min(potentialGridX, numColumns - this.draggedItem.layout.w + 1));
-      potentialGridY = Math.max(1, potentialGridY);
+      // --- Define Maximum Offset ---
+      const maxPlaceholderOffset = 3; // Max 3 grid cells away
+
+      // --- Get Dragged Item's Current Position ---
+      const draggedItemCurrentX = this.draggedItem.layout.x;
+      const draggedItemCurrentY = this.draggedItem.layout.y;
+
+      // --- Calculate Target Placeholder Position (Initial) ---
+      let targetX = mouseGridX;
+      let targetY = mouseGridY;
+
+      // --- Constrain Placeholder Position ---
+      const diffX = targetX - draggedItemCurrentX;
+      const diffY = targetY - draggedItemCurrentY;
+
+      if (Math.abs(diffX) > maxPlaceholderOffset) {
+        targetX = draggedItemCurrentX + (maxPlaceholderOffset * Math.sign(diffX));
+      }
+      if (Math.abs(diffY) > maxPlaceholderOffset) {
+        targetY = draggedItemCurrentY + (maxPlaceholderOffset * Math.sign(diffY));
+      }
+
+      // --- Apply Constraints and Boundaries (similar to existing logic) ---
+      targetX = Math.max(1, Math.min(targetX, numColumns - this.draggedItem.layout.w + 1));
+      targetY = Math.max(1, targetY); // Y can grow, but not less than 1
 
       // Create or update placeholder
       if (!this.dropPlaceholder) {
@@ -55,15 +78,15 @@ class Panorama {
         this.gridContainer.appendChild(this.dropPlaceholder);
       }
 
-      this.dropPlaceholder.style.gridColumnStart = potentialGridX;
-      this.dropPlaceholder.style.gridRowStart = potentialGridY;
+      this.dropPlaceholder.style.gridColumnStart = targetX;
+      this.dropPlaceholder.style.gridRowStart = targetY;
       this.dropPlaceholder.style.gridColumnEnd = `span ${this.draggedItem.layout.w}`;
       this.dropPlaceholder.style.gridRowEnd = `span ${this.draggedItem.layout.h}`;
 
-      // --- Collision Detection for Placeholder ---
+      // --- Collision Detection for Placeholder (using constrained targetX, targetY) ---
       const potentialLayout = { 
-        x: potentialGridX, 
-        y: potentialGridY, 
+        x: targetX, 
+        y: targetY, 
         w: this.draggedItem.layout.w, 
         h: this.draggedItem.layout.h 
       };
