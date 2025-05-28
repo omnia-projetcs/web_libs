@@ -16,102 +16,87 @@ class Panorama {
     this.editingItemId = null; // To store the ID of the item being edited
     this.draggedItem = null; // To store the item being dragged
     this.dropPlaceholder = null; // To store the placeholder element
+    this.maxGridRows = 100;
 
     // Create the edit modal structure
     this._createEditModal();
 
-    // NOTE: GridStack 'change' event listener has been removed.
-
     // --- Native Drag and Drop Listeners for Grid Container ---
     this.gridContainer.addEventListener('dragover', (event) => {
-      event.preventDefault(); // Necessary to allow dropping
-      event.dataTransfer.dropEffect = 'move';
-
-      if (!this.draggedItem) return;
-
-      // --- Calculate potential drop position (gridX, gridY) ---
-      const rect = this.gridContainer.getBoundingClientRect();
-      const dropX = event.clientX - rect.left;
-      const dropY = event.clientY - rect.top;
-
-      const gridStyle = window.getComputedStyle(this.gridContainer);
-      const gridPaddingLeft = parseFloat(gridStyle.paddingLeft);
-      const gridPaddingTop = parseFloat(gridStyle.paddingTop);
-      const gridGap = parseFloat(gridStyle.gap) || 10;
-      const numColumns = 12;
-      const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
-      const cellHeightApproximation = 50 + gridGap;
-
-      // --- Define Offsets ---
-      const verticalOffset = 1; // In grid cells, for "slightly below"
-      const maxHorizontalDeviation = 1; // In grid cells
-
-      // --- Get Dragged Item's Current Layout ---
-      const draggedItemLayout = this.draggedItem.layout;
-
-      // --- Calculate Mouse Grid Position (for X-coordinate) ---
-      let mouseGridX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
-
-      // --- Determine Target Placeholder Position ---
-      let placeholderY = draggedItemLayout.y + verticalOffset;
-      let placeholderX = mouseGridX;
-
-      // Constrain placeholderX relative to draggedItemLayout.x
-      const diffX = placeholderX - draggedItemLayout.x;
-      if (Math.abs(diffX) > maxHorizontalDeviation) {
-        placeholderX = draggedItemLayout.x + (maxHorizontalDeviation * Math.sign(diffX));
-      }
-
-      // --- Apply Grid Boundary Checks ---
-      // Placeholder width and height are the same as the dragged item
-      const placeholderW = draggedItemLayout.w;
-      const placeholderH = draggedItemLayout.h;
-    console.log('[DragOver] Position:', { dropX, dropY, mouseGridX });
-    console.log('[DragOver] Placeholder:', { placeholderX, placeholderY, placeholderW, placeholderH });
-
-      // Ensure placeholderX is within grid horizontal boundaries
-      placeholderX = Math.max(1, Math.min(placeholderX, numColumns - placeholderW + 1));
-      // Ensure placeholderY is within grid vertical boundaries (min 1, no explicit max row yet)
-      placeholderY = Math.max(1, placeholderY);
-      // If there was a max row concept:
-      // placeholderY = Math.min(placeholderY, maxGridRows - placeholderH + 1);
-
-      // Create or update placeholder
-      if (!this.dropPlaceholder) {
-        this.dropPlaceholder = document.createElement('div');
-        this.dropPlaceholder.className = 'drop-placeholder';
-        this.gridContainer.appendChild(this.dropPlaceholder);
-      }
-
-      this.dropPlaceholder.style.gridColumnStart = placeholderX;
-      this.dropPlaceholder.style.gridRowStart = placeholderY;
-      this.dropPlaceholder.style.gridColumnEnd = `span ${placeholderW}`;
-      this.dropPlaceholder.style.gridRowEnd = `span ${placeholderH}`;
-
-      // --- Collision Detection for Placeholder ---
-      const potentialLayout = { 
-        x: placeholderX, 
-        y: placeholderY, 
-        w: placeholderW, 
-        h: placeholderH 
-      };
-      let collisionDetected = false;
-      for (const otherItem of this.items) {
-        if (otherItem.id === this.draggedItem.id) continue; // Skip self
-        if (this._isCollision(potentialLayout, otherItem.layout)) {
-          collisionDetected = true;
-          break;
-        }
-      }
-
-      if (collisionDetected) {
-        this.dropPlaceholder.classList.add('drop-placeholder-invalid');
-        event.dataTransfer.dropEffect = 'none'; // Indicate invalid drop
-      } else {
-        this.dropPlaceholder.classList.remove('drop-placeholder-invalid');
+        event.preventDefault(); // Necessary to allow dropping
         event.dataTransfer.dropEffect = 'move';
-      }
-    console.log('[DragOver] Collision:', { collisionDetected, dropEffect: event.dataTransfer.dropEffect });
+
+        if (!this.draggedItem) return;
+
+        // --- Calculate mouse position relative to grid container ---
+        const rect = this.gridContainer.getBoundingClientRect();
+        const dropX = event.clientX - rect.left;
+        const dropY = event.clientY - rect.top;
+
+        const gridStyle = window.getComputedStyle(this.gridContainer);
+        const gridPaddingLeft = parseFloat(gridStyle.paddingLeft);
+        const gridPaddingTop = parseFloat(gridStyle.paddingTop);
+        const gridGap = parseFloat(gridStyle.gap) || 10;
+        const numColumns = 12;
+        
+        const clientWidth = this.gridContainer.clientWidth;
+        const cellWidth = (clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
+        const cellHeightApproximation = 50 + (gridGap/2);
+
+        // --- Get Dragged Item's Layout for width and height of placeholder ---
+        const draggedItemLayout = this.draggedItem.layout;
+        const placeholderW = draggedItemLayout.w;
+        const placeholderH = draggedItemLayout.h;
+        
+        // --- Determine Target Placeholder Position based on mouse grid position ---
+        let placeholderX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
+        let placeholderY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
+        
+        // --- Apply Grid Boundary Checks ---
+        placeholderX = Math.max(1, Math.min(placeholderX, numColumns - placeholderW + 1));
+        placeholderY = Math.max(1, placeholderY);
+
+        // --- Debugging Logs ---
+        console.log('[DragOver] MousePos:', { dropX, dropY });
+        console.log('[DragOver] GridParams:', { gridPaddingLeft, gridPaddingTop, gridGap, cellWidth, cellHeightApproximation });
+        console.log('[DragOver] Placeholder Attempt:', { x: placeholderX, y: placeholderY, w: placeholderW, h: placeholderH });
+        console.log('[DragOver] Dragged Item Layout:', { w: draggedItemLayout.w, h: draggedItemLayout.h }); // Added this to check draggedItem's current W/H
+
+        // --- Create or update placeholder div ---
+        if (!this.dropPlaceholder) {
+          this.dropPlaceholder = document.createElement('div');
+          this.dropPlaceholder.className = 'drop-placeholder';
+          this.gridContainer.appendChild(this.dropPlaceholder);
+        }
+        this.dropPlaceholder.style.gridColumnStart = placeholderX;
+        this.dropPlaceholder.style.gridRowStart = placeholderY;
+        this.dropPlaceholder.style.gridColumnEnd = `span ${placeholderW}`;
+        this.dropPlaceholder.style.gridRowEnd = `span ${placeholderH}`;
+
+        // --- Collision Detection for Placeholder ---
+        const potentialLayout = { x: placeholderX, y: placeholderY, w: placeholderW, h: placeholderH };
+        let collisionDetected = false;
+        let collidingItemId = null;
+        for (const otherItem of this.items) {
+          if (otherItem.id === this.draggedItem.id) continue; // Skip self
+          if (this._isCollision(potentialLayout, otherItem.layout)) {
+            collisionDetected = true;
+            collidingItemId = otherItem.id;
+            break;
+          }
+        }
+
+        if (collisionDetected) {
+          this.dropPlaceholder.classList.add('drop-placeholder-invalid');
+          event.dataTransfer.dropEffect = 'none';
+        } else {
+          this.dropPlaceholder.classList.remove('drop-placeholder-invalid');
+          event.dataTransfer.dropEffect = 'move';
+        }
+        console.log('[DragOver] Collision Status:', { collisionDetected, dropEffect: event.dataTransfer.dropEffect, collidingWithItemId: collidingItemId });      
+
+
+
     });
 
     this.gridContainer.addEventListener('dragleave', (event) => {
@@ -146,7 +131,7 @@ class Panorama {
       const gridGap = parseFloat(gridStyle.gap) || 10;
       const numColumns = 12;
       const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
-      const cellHeightApproximation = 50 + gridGap; // Based on minmax(50px, auto) and gap
+      const cellHeightApproximation = 50 + (gridGap/2); // Based on minmax(50px, auto) and gap
 
       // Adjust calculation to better snap to grid cells considering their full span including gap
       // The idea is to find which cell's "center" (or a point within it) the drop point is closest to.
@@ -341,64 +326,110 @@ class Panorama {
    * @returns {boolean} - True if loading and rendering were successful, false otherwise.
    */
   loadDashboard(jsonData) {
-    try {
-      const loadedState = JSON.parse(jsonData);
+      try {
+          const loadedState = JSON.parse(jsonData);
 
-      // Basic validation
-      if (!loadedState || typeof loadedState !== 'object') {
-        console.error("Load failed: Invalid data format (not an object).");
-        alert("Failed to load dashboard: Invalid data format.");
-        return false;
-      }
-      if (!Array.isArray(loadedState.items)) {
-        console.error("Load failed: 'items' property is not an array.");
-        alert("Failed to load dashboard: 'items' property is missing or not an array.");
-        return false;
-      }
-      if (typeof loadedState.itemIdCounter !== 'number' || loadedState.itemIdCounter < 0) {
-        console.error("Load failed: 'itemIdCounter' is invalid.");
-        alert("Failed to load dashboard: 'itemIdCounter' is missing or invalid.");
-        return false;
-      }
+          // Basic validation for loadedState and its properties
+          if (!loadedState || typeof loadedState !== 'object') {
+              console.error("[LoadDashboard] Load failed: Invalid data format (not an object).");
+              alert("Failed to load dashboard: Invalid data format.");
+              return false;
+          }
+          if (!Array.isArray(loadedState.items)) {
+              console.error("[LoadDashboard] Load failed: 'items' property is not an array.");
+              alert("Failed to load dashboard: 'items' property is missing or not an array.");
+              return false;
+          }
+          if (typeof loadedState.itemIdCounter !== 'number' || loadedState.itemIdCounter < 0) {
+              console.error("[LoadDashboard] Load failed: 'itemIdCounter' is invalid.");
+              alert("Failed to load dashboard: 'itemIdCounter' is missing or invalid.");
+              return false;
+          }
 
-      // Validate each item (basic)
-      for (const item of loadedState.items) {
-        if (typeof item.id !== 'number' ||
-            typeof item.type !== 'string' ||
-            typeof item.config !== 'object' ||
-            typeof item.layout !== 'object' ||
-            typeof item.layout.x !== 'number' ||
-            typeof item.layout.y !== 'number' ||
-            typeof item.layout.w !== 'number' ||
-            typeof item.layout.h !== 'number') {
-          console.error("Load failed: Invalid item structure.", item);
-          alert(`Failed to load dashboard: An item has an invalid structure (e.g., item ID ${item.id || 'unknown'}).`);
+          const tempLoadedItems = loadedState.items;
+          this.items = []; // Clear current items before loading new ones
+          // this.itemIdCounter will be set later based on max ID and loadedState.itemIdCounter
+
+          const numColumns = 12; 
+          const maxRowsToTry = 50; 
+
+          for (const item of tempLoadedItems) {
+              if (!item.layout || typeof item.layout.x !== 'number' || typeof item.layout.y !== 'number' || 
+                  typeof item.layout.w !== 'number' || typeof item.layout.h !== 'number') {
+                  console.warn(`[LoadDashboard] Item ID ${item.id || 'unknown'} has invalid or missing layout. Skipping.`);
+                  continue;
+              }
+
+              let currentLayout = { ...item.layout };
+
+              // 1. Initial Layout Correction (1-based indexing and horizontal fit)
+              if (currentLayout.x < 1) {
+                  console.log(`[LoadDashboard] Item ID ${item.id}: layout.x ${currentLayout.x} < 1, adjusting to 1.`);
+                  currentLayout.x = 1;
+              }
+              if (currentLayout.y < 1) { // Should not happen if saved correctly
+                  console.log(`[LoadDashboard] Item ID ${item.id}: layout.y ${currentLayout.y} < 1, adjusting to 1.`);
+                  currentLayout.y = 1;
+              }
+
+              if (currentLayout.x + currentLayout.w - 1 > numColumns) {
+                  if (currentLayout.w <= numColumns) {
+                      currentLayout.x = numColumns - currentLayout.w + 1;
+                  } else {
+                      currentLayout.w = numColumns;
+                      currentLayout.x = 1;
+                  }
+              }
+              if (currentLayout.x < 1) { // Re-check after width adjustment
+                  currentLayout.x = 1;
+              }
+
+              // 2. Collision Avoidance against already processed items in this.items
+              let collision = false;
+              let attempts = 0;
+              let originalY = currentLayout.y; // Store original Y for more controlled searching
+
+              do {
+                  collision = false;
+                  for (const existingItem of this.items) { 
+                      if (this._isCollision(currentLayout, existingItem.layout)) {
+                          collision = true;
+                          break;
+                      }
+                  }
+
+                  if (collision) {
+                      currentLayout.y++;
+                      attempts++;
+                      if (currentLayout.y >= originalY + maxRowsToTry) { // Limit search relative to original Y
+                          console.warn(`[LoadDashboard] Could not find a non-colliding position for loaded item ID ${item.id} near y=${originalY} after ${attempts} attempts. Placing at y=${currentLayout.y}.`);
+                          break; 
+                      }
+                  }
+              } while (collision && attempts < maxRowsToTry); // Ensure attempts limit is part of loop
+
+              this.items.push({
+                  ...item,
+                  layout: currentLayout 
+              });
+          }
+
+          // Update itemIdCounter based on loaded items and/or the loaded counter value
+          let maxIdInLoadedItems = 0;
+          if (this.items.length > 0) {
+              maxIdInLoadedItems = this.items.reduce((max, itm) => Math.max(max, itm.id), 0);
+          }
+          this.itemIdCounter = Math.max(loadedState.itemIdCounter, maxIdInLoadedItems);
+          
+          this.renderDashboard();
+          console.log("[LoadDashboard] Dashboard loaded successfully with layout adjustments.");
+          return true;
+
+      } catch (error) {
+          console.error("[LoadDashboard] Failed to load dashboard:", error);
+          alert(`Failed to load dashboard: ${error.message}`);
           return false;
-        }
       }
-
-      this.items = loadedState.items;
-      this.itemIdCounter = loadedState.itemIdCounter;
-
-      // It's also good practice to re-calculate itemIdCounter based on loaded items
-      // to prevent potential future ID clashes if the saved counter was incorrect.
-      if (this.items.length > 0) {
-        const maxId = this.items.reduce((max, item) => Math.max(max, item.id), 0);
-        this.itemIdCounter = Math.max(this.itemIdCounter, maxId); // Ensure counter is at least maxId
-      } else {
-        // If no items, itemIdCounter could be reset, but using the loaded value is fine
-        // or reset to 0 if strict reset is preferred when dashboard is empty.
-        // this.itemIdCounter = 0; // Optional: reset if no items
-      }
-      
-      this.renderDashboard();
-      console.log("Dashboard loaded successfully.");
-      return true;
-    } catch (error) {
-      console.error("Failed to load dashboard:", error);
-      alert(`Failed to load dashboard: ${error.message}`);
-      return false;
-    }
   }
 
   /**
@@ -471,7 +502,7 @@ class Panorama {
         controlsContainer = document.createElement('div');
         controlsContainer.className = 'panorama-item-controls';
         // Prepend controls to the content container for better visibility/access
-        contentContainer.insertBefore(controlsContainer, contentContainer.firstChild);
+        itemElement.insertBefore(controlsContainer, contentContainer);
     } else {
         controlsContainer.innerHTML = ''; // Clear old buttons
     }
@@ -590,6 +621,8 @@ class Panorama {
 
     // Add a class to the item being resized for visual feedback (optional)
     this.resizeItemElement.classList.add('resizing-active');
+    console.log('[Resize Start]', { itemId: this.resizeItem.id, direction: this.resizeDirection, originalLayout: this.originalLayout });
+
   }
 
   _handleResizeMove(event) {
@@ -631,6 +664,19 @@ class Panorama {
       newLayout.h = this.originalLayout.h - deltaGridY;
     }
 
+    // Clamp to maxGridRows if resizing downwards or item starts too low and gets too tall
+    if (newLayout.y + newLayout.h - 1 > this.maxGridRows) {
+        if (newLayout.y <= this.maxGridRows) { // Item starts within max rows
+            newLayout.h = this.maxGridRows - newLayout.y + 1;
+        } else { // Item starts already beyond max rows (should ideally not happen)
+            newLayout.h = 1; // Or some other minimum sensible height
+            newLayout.y = this.maxGridRows; // Pull it back to the last valid row
+        }
+    }
+
+    console.log('[Resize Move] Deltas:', { deltaX, deltaY, deltaGridX, deltaGridY });
+    console.log('[Resize Move] Initial newLayout:', JSON.parse(JSON.stringify(newLayout))); // Log deep copy
+
     // Boundary and Minimum Size Checks
     if (newLayout.w < 1) {
         if (this.resizeDirection.includes('w')) { // Resizing from west, width became < 1
@@ -638,6 +684,7 @@ class Panorama {
         }
         newLayout.w = 1;
     }
+
     if (newLayout.h < 1) {
         if (this.resizeDirection.includes('n')) { // Resizing from north, height became < 1
             newLayout.y = this.originalLayout.y + this.originalLayout.h - 1; // Snap y to original bottom edge
@@ -657,7 +704,7 @@ class Panorama {
         }
         newLayout.y = 1;
     }
-    
+
     // Max boundary checks
     if (newLayout.x + newLayout.w > numColumns + 1) {
       if (this.resizeDirection.includes('e')) { // Resizing eastwards
@@ -687,6 +734,12 @@ class Panorama {
     } else {
       this.resizeItemElement.style.outline = ''; // Clear collision feedback
     }
+    console.log('[Resize Move] Collision Check:', { collision, newLayoutAfterBounds: JSON.parse(JSON.stringify(newLayout)) });
+    if (collision) {
+        console.warn('[Resize Move] Resize attempt would collide.');
+    }
+    console.log('[Resize Move] Pending Layout Set:', this.pendingLayout ? JSON.parse(JSON.stringify(this.pendingLayout)) : null);
+
 
     // Live Style Update
     this.resizeItemElement.style.gridColumnStart = newLayout.x;
@@ -722,6 +775,12 @@ class Panorama {
       } else {
          console.warn(`Resize for item ${this.resizeItem.id} reverted due to collision on mouseup.`);
       }
+      console.log('[Resize End]', { editingItemId: this.resizeItem?.id, pendingLayout: this.pendingLayout ? JSON.parse(JSON.stringify(this.pendingLayout)) : null, collisionOnFinal });
+      if (collisionOnFinal) {
+          console.warn('[Resize End] Final layout collided, reverting to original or last valid pending.');
+      }
+      console.log('[Resize End] Applying layout:', JSON.parse(JSON.stringify(finalLayoutToApply)));
+
     }
     
     this.resizeItem.layout = { ...finalLayoutToApply };
@@ -780,6 +839,7 @@ class Panorama {
     // Basic styling for responsiveness, can be moved to CSS
     imageElement.style.maxWidth = '100%';
     imageElement.style.maxHeight = '100%';
+    imageElement.style.objectFit = 'contain'; // Added this line
     contentContainer.appendChild(imageElement);
   }
 
@@ -796,86 +856,119 @@ _renderChart(item, contentContainer) {
     
     contentContainer.appendChild(canvas);
 
-   const checkCanvas = document.getElementById(canvas.id);
-   if (!checkCanvas) {
-       console.error(`PANORAMA DEBUG: Canvas ${canvas.id} was NOT found in DOM immediately after appendChild! Item ID: ${item.id}`);
-       // Optionally, you could try to force a reflow or use requestAnimationFrame here,
-       // but for now, just logging is fine.
-   } else {
-       console.log(`PANORAMA DEBUG: Canvas ${canvas.id} was found in DOM. Item ID: ${item.id}`);
-   }
+    // Original debug check (keep this)
+    const checkCanvas = document.getElementById(canvas.id);
+    if (!checkCanvas) {
+        console.error(`PANORAMA DEBUG (pre-rAF): Canvas ${canvas.id} was NOT found in DOM immediately after appendChild! Item ID: ${item.id}`);
+    } else {
+        console.log(`PANORAMA DEBUG (pre-rAF): Canvas ${canvas.id} was found in DOM. Item ID: ${item.id}`);
+    }
 
-    try {
-      const chartConfig = {
-        type: item.config.chartType,                 // e.g., 'line', 'bar'
-        data: item.config.chartData || { labels: [], datasets: [] }, // e.g., { labels: [...], datasets: [{ values: [...] }] }
-        options: item.config.chartOptions || {}      // Chart.js compatible options
-      };
+    const chartConfig = { // Define chartConfig outside rAF if it doesn't depend on things inside it
+        type: item.config.chartType,
+        data: item.config.chartData || { labels: [], datasets: [] },
+        options: item.config.chartOptions || {}
+    };
 
-      if (!chartConfig.type || !chartConfig.data.datasets || chartConfig.data.datasets.length === 0) {
-         console.error(`Chart item ${item.id} is missing 'chartType' or 'chartData.datasets'.`);
+    // Check for valid chartType and data *before* rAF, to avoid rAF if config is bad
+    if (!chartConfig.type || !chartConfig.data.datasets || chartConfig.data.datasets.length === 0) {
+        console.error(`Chart item ${item.id} is missing 'chartType' or 'chartData.datasets'. Cannot render.`);
         contentContainer.innerHTML = "<p style='color:red;'>Error: Chart type or data is missing.</p>";
         return;
-      }
-
-      if (typeof PureChart === 'function') { // PureChart is a constructor
-        new PureChart(canvas.id, chartConfig);
-        console.log(`Rendering chart on canvas ${canvas.id} for item ${item.id}.`);
-      } else {
-        console.error("Error: PureChart is not defined. Ensure PureChart.js is loaded.");
-        contentContainer.innerHTML = "<p style='color:red;'>Error: Chart library function not found.</p>";
-      }
-    } catch (e) {
-      console.error(`Error rendering chart for item ${item.id}:`, e);
-      // Attempt to show error on the canvas itself or in the container
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-      ctx.font = '12px Arial';
-      ctx.fillStyle = 'red';
-      ctx.textAlign = 'center';
-      ctx.fillText('Error rendering chart. Check console.', canvas.width / 2, canvas.height / 2);
     }
+
+    requestAnimationFrame(() => {
+        try {
+            // New check inside rAF
+            const canvasInRAF = document.getElementById(canvas.id);
+            if (!canvasInRAF) {
+                console.error(`PANORAMA DEBUG (in-rAF): Canvas ${canvas.id} NOT found for item ${item.id} even in rAF.`);
+                // Attempt to provide a more helpful error message in the UI
+                if (contentContainer) { // Ensure contentContainer is still valid
+                     contentContainer.innerHTML = `<p style='color:red;'>Error: Chart canvas (ID: ${canvas.id}) not found in DOM for item ${item.id} during rAF. Chart cannot be rendered.</p>`;
+                }
+                return; // Don't proceed if canvas is still not found
+            }
+
+            if (typeof PureChart === 'function') {
+                new PureChart(canvas.id, chartConfig);
+                console.log(`Rendering chart on canvas ${canvas.id} for item ${item.id} (via rAF).`);
+            } else {
+                console.error("Error: PureChart is not defined (rAF). Ensure PureChart.js is loaded.");
+                if (contentContainer) {
+                    contentContainer.innerHTML = "<p style='color:red;'>Error: Chart library (PureChart) not found (rAF).</p>";
+                }
+            }
+        } catch (e) {
+            console.error(`Error rendering chart for item ${item.id} (via rAF):`, e);
+            if (contentContainer) {
+                // Display error in the item content area
+                contentContainer.innerHTML = `<p style='color:red;'>Error rendering chart (ID: ${item.id}) via rAF: ${e.message}. Check console.</p>`;
+            }
+        }
+    });
   }
   _renderTable(item, contentContainer) {
-    // Ensure contentContainer has a unique ID if createDynamicTable requires it for the container,
-    // though often such functions take the element itself.
-    // If createDynamicTable uses the ID, make sure it's set.
     if (!contentContainer.id) {
       contentContainer.id = `table-container-${item.id}`;
     }
+    const containerId = contentContainer.id; // Store for use in rAF
 
-    try {
-      // Construct the configuration object for createDynamicTable
-      // Adjust this based on the exact requirements of your createDynamicTable function
-      const tableConfig = {
-        containerId: contentContainer.id, // Or pass contentContainer directly if API allows
-        jsonData: item.config.tableData,    // Assuming item.config.tableData is the array of objects
-        columns: item.config.tableColumns,  // Assuming item.config.tableColumns defines column headers and data keys
-        // Add any other options from item.config.tableOptions that createDynamicTable expects
+    // Define tableConfig outside rAF if its parts don't depend on things inside rAF
+    const tableConfig = {
+        containerId: containerId, // Use the stored ID
+        jsonData: item.config.tableData,
+        columns: item.config.tableColumns,
         ...(item.config.tableOptions || {})
-      };
+    };
 
-      // Verify that item.config.tableColumns is provided, as it's often essential
-      if (!tableConfig.columns || tableConfig.columns.length === 0) {
-        console.error(`Table item ${item.id} is missing 'tableColumns' in its configuration.`);
-        contentContainer.textContent = "Error: Table column configuration is missing.";
-        return;
-      }
-      
-      // Ensure the container is empty before rendering table
-      contentContainer.innerHTML = ''; 
-
-      if (typeof createDynamicTable === 'function') {
-        createDynamicTable(tableConfig); // Call the global function
-        console.log(`Rendering table in container ${contentContainer.id} for item ${item.id} with config:`, item.config);
-      } else {
-        console.error("Error: createDynamicTable function is not defined globally. Check Dynamic-table.js.");
-        contentContainer.textContent = "Error: Table library function not found.";
-      }
-    } catch (e) {
-      console.error(`Error rendering table for item ${item.id}:`, e);
-      contentContainer.textContent = "Error rendering table. Check console.";
+    // Preliminary checks before rAF
+    if (!tableConfig.columns || tableConfig.columns.length === 0) {
+      console.error(`Table item ${item.id} is missing 'tableColumns' in its configuration. Cannot render.`);
+      contentContainer.textContent = "Error: Table column configuration is missing.";
+      return;
     }
+    if (!tableConfig.jsonData) { // Or other essential checks for tableData
+        console.error(`Table item ${item.id} is missing 'tableData'. Cannot render.`);
+        contentContainer.textContent = "Error: Table data is missing.";
+        return;
+    }
+    
+    // Ensure contentContainer is empty before rAF might populate it
+    contentContainer.innerHTML = ''; 
+
+    requestAnimationFrame(() => {
+        try {
+            const tableContainerInRAF = document.getElementById(containerId);
+            if (!tableContainerInRAF) {
+                console.error(`PANORAMA DEBUG (in-rAF): Table container ${containerId} NOT found for item ${item.id} even in rAF.`);
+                // contentContainer might be the one that's supposed to be found.
+                // If contentContainer itself is the target, and it's passed to _renderTable,
+                // it should exist. The issue is whether getElementById can find it by its NEW ID.
+                // Let's assume contentContainer is the element that should have containerId.
+                if (contentContainer) { // Check if the original contentContainer reference is still valid
+                     contentContainer.innerHTML = `<p style='color:red;'>Error: Table container (ID: ${containerId}) not found in DOM for item ${item.id} during rAF. Table cannot be rendered.</p>`;
+                }
+                return; 
+            }
+
+            if (typeof createDynamicTable === 'function') {
+                // Pass the config, ensuring containerId within it is correct
+                createDynamicTable(tableConfig); 
+                console.log(`Rendering table in container ${containerId} for item ${item.id} (via rAF) with config:`, item.config);
+            } else {
+                console.error("Error: createDynamicTable function is not defined globally (rAF). Check Dynamic-table.js.");
+                if (contentContainer) {
+                    contentContainer.textContent = "Error: Table library function not found (rAF).";
+                }
+            }
+        } catch (e) {
+            console.error(`Error rendering table for item ${item.id} (via rAF):`, e);
+            if (contentContainer) {
+                 contentContainer.textContent = `Error rendering table (ID: ${item.id}) via rAF: ${e.message}. Check console.`;
+            }
+        }
+    });
   }
 
 

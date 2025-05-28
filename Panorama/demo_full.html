@@ -87,8 +87,8 @@
         items: [
           { id: 1, type: 'title', config: { text: 'Auto-Loaded Dashboard!', level: 1 }, layout: { x: 0, y: 0, w: 12, h: 1 } }, // GridStack uses w/h
           { id: 2, type: 'text', config: { content: 'This dashboard demonstrates the auto-load feature with embedded sample data and external JS/CSS (PureChart, Dynamic-Table, Panorama).' }, layout: { x: 0, y: 1, w: 7, h: 2 } },
-          { id: 3, type: 'image', config: { url: 'https://via.placeholder.com/300x150/28a745/ffffff?Text=Sample+Image', alt: 'Sample Img' }, layout: { x: 7, y: 1, w: 5, h: 2 } },
-          { id: 4, type: 'chart', config: { chartType: 'bar', chartData: [{label: 'Alpha', value: 15}, {label: 'Beta', value: 25},{label: 'Gamma', value: 10}], chartOptions: {title: 'Sales Chart'} }, layout: {x:0, y:3, w:6, h:3}},
+          { id: 3, type: 'image', config: { url: 'https://raw.githubusercontent.com/omnia-projetcs/web_libs/refs/heads/main/graph.jpg', alt: 'Sample Img' }, layout: { x: 7, y: 1, w: 5, h: 2 } },
+          { id: 4, type: 'chart', config: { chartType: 'bar', chartData: { labels: ['Alpha', 'Beta', 'Gamma'], datasets: [{ label: 'Values', values: [15, 25, 10] }] }, chartOptions: {title: 'Sales Chart'} }, layout: {x:0, y:3, w:6, h:3}},
           { id: 5, type: 'table', config: { tableData: [{item: 'Gizmo', qty: 120},{item: 'Widget', qty: 210}, {item: 'Thingamajig', qty: 150}], tableColumns: [{key: 'item', header: 'Item', sortable: true, filterable: true}, {key: 'qty', header: 'Quantity', sortable: true, filterable: true}], tableOptions: {caption: 'Inventory'} }, layout: {x:6, y:3, w:6, h:3}}
         ],
         itemIdCounter: 5 // Ensure itemIdCounter is correctly set
@@ -119,10 +119,15 @@
           case 'chart':
             defaultConfig = {
               chartType: 'bar',
-              chartData: [
-                { label: 'Jan', value: 120 }, { label: 'Feb', value: 180 },
-                { label: 'Mar', value: 220 }, { label: 'Apr', value: 150 }
-              ],
+              chartData: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr'],
+                datasets: [
+                  {
+                    label: 'Sample Series',
+                    values: [120, 180, 220, 150]
+                  }
+                ]
+              },
               chartOptions: { title: 'Sample Sales Chart', responsive: true, height: "100%", width: "100%" }
             };
             defaultLayout.w = 6;
