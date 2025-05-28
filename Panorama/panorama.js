@@ -14,6 +14,8 @@ class Panorama {
     // Initialize an itemIdCounter to 0, which will be used to generate unique IDs for items.
     this.itemIdCounter = 0;
     this.editingItemId = null; // To store the ID of the item being edited
+    this.draggedItem = null; // To store the item being dragged
+    this.dropPlaceholder = null; // To store the placeholder element
 
     // Create the edit modal structure
     this._createEditModal();
@@ -24,11 +26,56 @@ class Panorama {
     this.gridContainer.addEventListener('dragover', (event) => {
       event.preventDefault(); // Necessary to allow dropping
       event.dataTransfer.dropEffect = 'move';
-      // Optional: Visual feedback for drop target
+
+      if (!this.draggedItem) return;
+
+      // --- Calculate potential drop position (gridX, gridY) ---
+      const rect = this.gridContainer.getBoundingClientRect();
+      const dropX = event.clientX - rect.left;
+      const dropY = event.clientY - rect.top;
+
+      const gridStyle = window.getComputedStyle(this.gridContainer);
+      const gridPaddingLeft = parseFloat(gridStyle.paddingLeft);
+      const gridPaddingTop = parseFloat(gridStyle.paddingTop);
+      const gridGap = parseFloat(gridStyle.gap) || 10;
+      const numColumns = 12;
+      const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
+      const cellHeightApproximation = 50 + gridGap;
+
+      let potentialGridX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
+      let potentialGridY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
+      
+      potentialGridX = Math.max(1, Math.min(potentialGridX, numColumns - this.draggedItem.layout.w + 1));
+      potentialGridY = Math.max(1, potentialGridY);
+
+      // Create or update placeholder
+      if (!this.dropPlaceholder) {
+        this.dropPlaceholder = document.createElement('div');
+        this.dropPlaceholder.className = 'drop-placeholder';
+        this.gridContainer.appendChild(this.dropPlaceholder);
+      }
+
+      this.dropPlaceholder.style.gridColumnStart = potentialGridX;
+      this.dropPlaceholder.style.gridRowStart = potentialGridY;
+      this.dropPlaceholder.style.gridColumnEnd = `span ${this.draggedItem.layout.w}`;
+      this.dropPlaceholder.style.gridRowEnd = `span ${this.draggedItem.layout.h}`;
+    });
+
+    this.gridContainer.addEventListener('dragleave', (event) => {
+      // Remove placeholder if mouse leaves grid container
+      if (this.dropPlaceholder && event.target === this.gridContainer) {
+        this.gridContainer.removeChild(this.dropPlaceholder);
+        this.dropPlaceholder = null;
+      }
     });
 
     this.gridContainer.addEventListener('drop', (event) => {
       event.preventDefault();
+      if (this.dropPlaceholder) {
+        this.gridContainer.removeChild(this.dropPlaceholder);
+        this.dropPlaceholder = null;
+      }
+
       const itemId = parseInt(event.dataTransfer.getData('text/plain'));
       const itemToMove = this.items.find(i => i.id === itemId);
 
@@ -38,35 +85,31 @@ class Panorama {
       const rect = this.gridContainer.getBoundingClientRect();
       const dropX = event.clientX - rect.left;
       const dropY = event.clientY - rect.top;
-      
-      // Get computed style for the grid container to read CSS properties
+
       const gridStyle = window.getComputedStyle(this.gridContainer);
       const gridPaddingLeft = parseFloat(gridStyle.paddingLeft);
       const gridPaddingTop = parseFloat(gridStyle.paddingTop);
-      const gridGap = parseFloat(gridStyle.gap) || 10; // Fallback to 10 if gap is not set or 0
+      const gridGap = parseFloat(gridStyle.gap) || 10;
+      const numColumns = 12;
+      const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
+      const cellHeightApproximation = 50 + gridGap; // Based on minmax(50px, auto) and gap
 
-      // Calculate total number of columns (could be dynamic if CSS changes)
-      const numColumns = 12; // As defined in CSS: grid-template-columns: repeat(12, 1fr);
-
-      // Calculate cell width based on available space, columns, and gaps
-      const totalGapWidth = (numColumns - 1) * gridGap;
-      const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - totalGapWidth) / numColumns;
+      // Adjust calculation to better snap to grid cells considering their full span including gap
+      // The idea is to find which cell's "center" (or a point within it) the drop point is closest to.
+      let newGridX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
+      let newGridY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
       
-      // Approximate cell height (this remains a simplification due to grid-auto-rows)
-      // Using 50px as the min-height specified in grid-auto-rows in CSS
-      const cellHeightApproximation = 50 + gridGap; 
-
-      let newGridX = Math.floor((dropX - gridPaddingLeft) / (cellWidth + gridGap)) + 1;
-      let newGridY = Math.floor((dropY - gridPaddingTop) / cellHeightApproximation) + 1;
-
       // Ensure newGridX/Y are within bounds
+      // For X: cannot start beyond where it would exceed numColumns
       newGridX = Math.max(1, Math.min(newGridX, numColumns - itemToMove.layout.w + 1));
-      newGridY = Math.max(1, newGridY); // Y can grow, but not less than 1
+      // For Y: cannot start below 1. If grid has max rows, add upper bound.
+      newGridY = Math.max(1, newGridY); 
       
       itemToMove.layout.x = newGridX;
       itemToMove.layout.y = newGridY;
 
       this.updateItemLayout(itemToMove.id, itemToMove.layout, true); // true to re-render
+      this.draggedItem = null; // Clear dragged item reference
     });
   }
 
@@ -245,11 +288,17 @@ class Panorama {
     itemElement.addEventListener('dragstart', (event) => {
         event.dataTransfer.setData('text/plain', item.id.toString());
         event.dataTransfer.effectAllowed = 'move';
-        event.target.classList.add('dragging-item'); // Optional: for styling
+        event.target.classList.add('dragging-item');
+        this.draggedItem = item; // Store reference to the dragged item
     });
 
     itemElement.addEventListener('dragend', (event) => {
-        event.target.classList.remove('dragging-item'); // Optional: for styling
+        event.target.classList.remove('dragging-item');
+        if (this.dropPlaceholder && this.dropPlaceholder.parentNode === this.gridContainer) {
+            this.gridContainer.removeChild(this.dropPlaceholder);
+            this.dropPlaceholder = null;
+        }
+        this.draggedItem = null; // Clear reference
     });
 
     // Apply CSS Grid positioning styles. 
