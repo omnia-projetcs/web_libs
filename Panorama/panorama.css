@@ -62,7 +62,7 @@ html, body {
   display: grid;
   grid-template-columns: repeat(12, 1fr); /* 12-column grid */
   grid-auto-rows: minmax(50px, auto); /* Default row height, min 50px, auto-sizing */
-  gap: 10px; /* Space between grid cells */
+  gap: 15px; /* Space between grid cells */
   padding: 10px; /* Padding inside the grid container */
 }
 
@@ -399,7 +399,7 @@ html, body {
     color: #adb5bd;
     font-style: italic;
 }
-.panorama-item-content > div[id^="chart-container-"]:empty::before { 
+.panorama-item-content > canvas[id^="chart-canvas-"]:empty::before { 
     content: "Empty chart item";
     color: #adb5bd;
     font-style: italic;

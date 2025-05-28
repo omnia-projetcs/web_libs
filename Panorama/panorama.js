@@ -66,6 +66,8 @@ class Panorama {
       // Placeholder width and height are the same as the dragged item
       const placeholderW = draggedItemLayout.w;
       const placeholderH = draggedItemLayout.h;
+    console.log('[DragOver] Position:', { dropX, dropY, mouseGridX });
+    console.log('[DragOver] Placeholder:', { placeholderX, placeholderY, placeholderW, placeholderH });
 
       // Ensure placeholderX is within grid horizontal boundaries
       placeholderX = Math.max(1, Math.min(placeholderX, numColumns - placeholderW + 1));
@@ -109,6 +111,7 @@ class Panorama {
         this.dropPlaceholder.classList.remove('drop-placeholder-invalid');
         event.dataTransfer.dropEffect = 'move';
       }
+    console.log('[DragOver] Collision:', { collisionDetected, dropEffect: event.dataTransfer.dropEffect });
     });
 
     this.gridContainer.addEventListener('dragleave', (event) => {
@@ -130,6 +133,7 @@ class Panorama {
       const itemToMove = this.items.find(i => i.id === itemId);
 
       if (!itemToMove) return;
+    console.log('[Drop] Item:', { itemId, itemToMove });
 
       // --- Calculate new grid position (x, y) ---
       const rect = this.gridContainer.getBoundingClientRect();
@@ -154,6 +158,7 @@ class Panorama {
       newGridX = Math.max(1, Math.min(newGridX, numColumns - itemToMove.layout.w + 1));
       // For Y: cannot start below 1. If grid has max rows, add upper bound.
       newGridY = Math.max(1, newGridY); 
+    console.log('[Drop] Calculated:', { dropX, dropY, newGridX, newGridY, cellWidth, cellHeightApproximation });
       
       // --- Collision Detection before committing drop ---
       const finalLayout = { 
@@ -172,15 +177,17 @@ class Panorama {
       }
 
       if (dropCollision) {
-        console.warn(`Drop prevented for item ${itemToMove.id} due to collision.`);
+        console.warn(`[Drop] Collision detected for item ${itemToMove.id}. Reverting.`);
         // Item remains in its original position as its layout is not updated.
         // Re-render to ensure it snaps back visually if placeholder was different.
         this.renderDashboard(); 
       } else {
+        console.log(`[Drop] Applying new layout for item ${itemToMove.id}:`, {newGridX, newGridY});
         itemToMove.layout.x = newGridX;
         itemToMove.layout.y = newGridY;
         this.updateItemLayout(itemToMove.id, itemToMove.layout, true); // true to re-render
       }
+    console.log('[Drop] Final Layout & Collision:', { finalLayout, dropCollision });
       
       this.draggedItem = null; // Clear dragged item reference
     });
@@ -206,11 +213,59 @@ class Panorama {
    * @param {object} layout - The layout information for the item (x, y, w, h).
    */
   addItem(type, config, layout) {
+    let currentLayout = { ...layout }; // Operate on a copy
+    const maxRowsToTry = 50; // Max Y value to try
+    let collision = false;
+    let attempts = 0;
+    const numColumns = 12; // Assuming 12 columns
+
+    // Ensure initial x is at least 1
+    if (currentLayout.x < 1) {
+        console.log(`[AddItem] Original layout.x ${currentLayout.x} < 1, adjusting to 1.`);
+        currentLayout.x = 1;
+    }
+
+    // Ensure item fits horizontally
+    if (currentLayout.x + currentLayout.w - 1 > numColumns) {
+        if (currentLayout.w <= numColumns) { // If width itself is fine, try to shift x
+             console.log(`[AddItem] Item (type: ${type}, w: ${currentLayout.w}) overflows at x: ${currentLayout.x}. Shifting x.`);
+             currentLayout.x = numColumns - currentLayout.w + 1;
+        } else { // Width is too large for the grid
+            console.warn(`[AddItem] New item (type: ${type}) is too wide for the grid (w: ${currentLayout.w}). Clamping width to ${numColumns}.`);
+            currentLayout.w = numColumns;
+            currentLayout.x = 1; // Place at start if clamped
+        }
+    }
+     // After potential adjustments, ensure x is still at least 1 (e.g. if w was clamped making original x invalid)
+    if (currentLayout.x < 1) {
+        currentLayout.x = 1;
+    }
+
+
+    do {
+        collision = false;
+        for (const existingItem of this.items) {
+            if (this._isCollision(currentLayout, existingItem.layout)) {
+                collision = true;
+                break;
+            }
+        }
+
+        if (collision) {
+            currentLayout.y++;
+            attempts++;
+            if (currentLayout.y >= maxRowsToTry) {
+                console.warn(`[AddItem] Could not find a non-colliding position for new item (type: ${type}) after ${attempts} attempts. Placing at y=${currentLayout.y}.`);
+                break; 
+            }
+        }
+    } while (collision && attempts < maxRowsToTry); // Ensure attempts limit is also part of the loop condition
+
     const newItem = {
       id: ++this.itemIdCounter, // Generate unique ID
       type,
       config,
-      layout, // Should include x, y, w, h
+      layout: currentLayout, // Use the potentially adjusted layout
     };
     this.items.push(newItem); // Add to items array
     this.renderDashboard(); // Re-render the entire dashboard
@@ -363,6 +418,7 @@ class Panorama {
         event.dataTransfer.effectAllowed = 'move';
         event.target.classList.add('dragging-item');
         this.draggedItem = item; // Store reference to the dragged item
+    console.log('[DragStart]', { itemId: item.id, draggedItem: this.draggedItem });
     });
 
     itemElement.addEventListener('dragend', (event) => {
@@ -739,6 +795,15 @@ _renderChart(item, contentContainer) {
     canvas.style.height = '100%'; 
     
     contentContainer.appendChild(canvas);
+
+   const checkCanvas = document.getElementById(canvas.id);
+   if (!checkCanvas) {
+       console.error(`PANORAMA DEBUG: Canvas ${canvas.id} was NOT found in DOM immediately after appendChild! Item ID: ${item.id}`);
+       // Optionally, you could try to force a reflow or use requestAnimationFrame here,
+       // but for now, just logging is fine.
+   } else {
+       console.log(`PANORAMA DEBUG: Canvas ${canvas.id} was found in DOM. Item ID: ${item.id}`);
+   }
 
     try {
       const chartConfig = {

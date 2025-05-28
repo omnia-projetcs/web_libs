@@ -127,6 +127,12 @@
                 { id: 2, name: 'Product B', price: 49.50, stock: 80 },
                 { id: 3, name: 'Service C', price: 199.00, stock: 'N/A' }
               ],
+              tableColumns: [
+                { key: 'id', header: 'ID', sortable: true, filterable: true },
+                { key: 'name', header: 'Name', sortable: true, filterable: true },
+                { key: 'price', header: 'Price', sortable: true, filterable: false, format: 'currency:USD' },
+                { key: 'stock', header: 'Stock', sortable: true, filterable: false }
+              ],
               tableOptions: { caption: 'Sample Inventory Table' }
             };
             defaultLayout.w = 6; // Tables can be wide
