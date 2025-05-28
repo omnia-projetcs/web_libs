@@ -42,34 +42,37 @@ class Panorama {
       const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
       const cellHeightApproximation = 50 + gridGap;
 
+      // --- Define Offsets ---
+      const verticalOffset = 1; // In grid cells, for "slightly below"
+      const maxHorizontalDeviation = 1; // In grid cells
+
+      // --- Get Dragged Item's Current Layout ---
+      const draggedItemLayout = this.draggedItem.layout;
+
+      // --- Calculate Mouse Grid Position (for X-coordinate) ---
       let mouseGridX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
-      let mouseGridY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
-      
-      // --- Define Maximum Offset ---
-      const maxPlaceholderOffset = 3; // Max 3 grid cells away
 
-      // --- Get Dragged Item's Current Position ---
-      const draggedItemCurrentX = this.draggedItem.layout.x;
-      const draggedItemCurrentY = this.draggedItem.layout.y;
+      // --- Determine Target Placeholder Position ---
+      let placeholderY = draggedItemLayout.y + verticalOffset;
+      let placeholderX = mouseGridX;
 
-      // --- Calculate Target Placeholder Position (Initial) ---
-      let targetX = mouseGridX;
-      let targetY = mouseGridY;
-
-      // --- Constrain Placeholder Position ---
-      const diffX = targetX - draggedItemCurrentX;
-      const diffY = targetY - draggedItemCurrentY;
-
-      if (Math.abs(diffX) > maxPlaceholderOffset) {
-        targetX = draggedItemCurrentX + (maxPlaceholderOffset * Math.sign(diffX));
-      }
-      if (Math.abs(diffY) > maxPlaceholderOffset) {
-        targetY = draggedItemCurrentY + (maxPlaceholderOffset * Math.sign(diffY));
+      // Constrain placeholderX relative to draggedItemLayout.x
+      const diffX = placeholderX - draggedItemLayout.x;
+      if (Math.abs(diffX) > maxHorizontalDeviation) {
+        placeholderX = draggedItemLayout.x + (maxHorizontalDeviation * Math.sign(diffX));
       }
 
-      // --- Apply Constraints and Boundaries (similar to existing logic) ---
-      targetX = Math.max(1, Math.min(targetX, numColumns - this.draggedItem.layout.w + 1));
-      targetY = Math.max(1, targetY); // Y can grow, but not less than 1
+      // --- Apply Grid Boundary Checks ---
+      // Placeholder width and height are the same as the dragged item
+      const placeholderW = draggedItemLayout.w;
+      const placeholderH = draggedItemLayout.h;
+
+      // Ensure placeholderX is within grid horizontal boundaries
+      placeholderX = Math.max(1, Math.min(placeholderX, numColumns - placeholderW + 1));
+      // Ensure placeholderY is within grid vertical boundaries (min 1, no explicit max row yet)
+      placeholderY = Math.max(1, placeholderY);
+      // If there was a max row concept:
+      // placeholderY = Math.min(placeholderY, maxGridRows - placeholderH + 1);
 
       // Create or update placeholder
       if (!this.dropPlaceholder) {
@@ -78,17 +81,17 @@ class Panorama {
         this.gridContainer.appendChild(this.dropPlaceholder);
       }
 
-      this.dropPlaceholder.style.gridColumnStart = targetX;
-      this.dropPlaceholder.style.gridRowStart = targetY;
-      this.dropPlaceholder.style.gridColumnEnd = `span ${this.draggedItem.layout.w}`;
-      this.dropPlaceholder.style.gridRowEnd = `span ${this.draggedItem.layout.h}`;
+      this.dropPlaceholder.style.gridColumnStart = placeholderX;
+      this.dropPlaceholder.style.gridRowStart = placeholderY;
+      this.dropPlaceholder.style.gridColumnEnd = `span ${placeholderW}`;
+      this.dropPlaceholder.style.gridRowEnd = `span ${placeholderH}`;
 
-      // --- Collision Detection for Placeholder (using constrained targetX, targetY) ---
+      // --- Collision Detection for Placeholder ---
       const potentialLayout = { 
-        x: targetX, 
-        y: targetY, 
-        w: this.draggedItem.layout.w, 
-        h: this.draggedItem.layout.h 
+        x: placeholderX, 
+        y: placeholderY, 
+        w: placeholderW, 
+        h: placeholderH 
       };
       let collisionDetected = false;
       for (const otherItem of this.items) {
@@ -729,21 +732,31 @@ class Panorama {
     if (!contentContainer.id) {
       contentContainer.id = `chart-container-${item.id}`;
     }
-    // Placeholder for PureChart.js integration
-    // Example: new PureChart(contentContainer.id, item.config.chartType, item.config.chartData, item.config.chartOptions);
-    contentContainer.textContent = `Chart: ${item.config.chartType}`; // Placeholder content
-    console.log(`Rendering chart in ${contentContainer.id} with config:`, item.config);
+    try {
+      // Assuming PureChart API: new PureChart(containerId, chartType, data, options)
+      // item.config should contain chartType, chartData, chartOptions
+      new PureChart(contentContainer.id, item.config.chartType, item.config.chartData, item.config.chartOptions || {});
+      console.log(`Rendering chart in ${contentContainer.id} with config:`, item.config);
+    } catch (e) {
+      console.error("Error rendering chart:", e);
+      contentContainer.textContent = "Error rendering chart. Check console.";
+    }
   }
 
   _renderTable(item, contentContainer) {
     // Ensure contentContainer has a unique ID for table rendering if needed
-    if (!contentContainer.id) {
-      contentContainer.id = `table-container-${item.id}`;
+    // if (!contentContainer.id) { // DynamicTable might not need an ID if it takes the element directly
+    //   contentContainer.id = `table-container-${item.id}`;
+    // }
+    try {
+      // Assuming DynamicTable API: new DynamicTable(containerElement, data, options)
+      // item.config should contain tableData, tableOptions
+      new DynamicTable(contentContainer, item.config.tableData, item.config.tableOptions || {});
+      console.log(`Rendering table in container for item ${item.id} with config:`, item.config);
+    } catch (e) {
+      console.error("Error rendering table:", e);
+      contentContainer.textContent = "Error rendering table. Check console.";
     }
-    // Placeholder for dynamic-table.js integration
-    // Example: new DynamicTable(contentContainer, item.config.tableData, item.config.tableOptions);
-    contentContainer.textContent = 'Table Placeholder'; // Placeholder content
-    console.log(`Rendering table in ${contentContainer.id} with config:`, item.config);
   }
 
   _createEditModal() {
