@@ -59,6 +59,30 @@ class Panorama {
       this.dropPlaceholder.style.gridRowStart = potentialGridY;
       this.dropPlaceholder.style.gridColumnEnd = `span ${this.draggedItem.layout.w}`;
       this.dropPlaceholder.style.gridRowEnd = `span ${this.draggedItem.layout.h}`;
+
+      // --- Collision Detection for Placeholder ---
+      const potentialLayout = { 
+        x: potentialGridX, 
+        y: potentialGridY, 
+        w: this.draggedItem.layout.w, 
+        h: this.draggedItem.layout.h 
+      };
+      let collisionDetected = false;
+      for (const otherItem of this.items) {
+        if (otherItem.id === this.draggedItem.id) continue; // Skip self
+        if (this._isCollision(potentialLayout, otherItem.layout)) {
+          collisionDetected = true;
+          break;
+        }
+      }
+
+      if (collisionDetected) {
+        this.dropPlaceholder.classList.add('drop-placeholder-invalid');
+        event.dataTransfer.dropEffect = 'none'; // Indicate invalid drop
+      } else {
+        this.dropPlaceholder.classList.remove('drop-placeholder-invalid');
+        event.dataTransfer.dropEffect = 'move';
+      }
     });
 
     this.gridContainer.addEventListener('dragleave', (event) => {
@@ -105,10 +129,33 @@ class Panorama {
       // For Y: cannot start below 1. If grid has max rows, add upper bound.
       newGridY = Math.max(1, newGridY); 
       
-      itemToMove.layout.x = newGridX;
-      itemToMove.layout.y = newGridY;
+      // --- Collision Detection before committing drop ---
+      const finalLayout = { 
+        x: newGridX, 
+        y: newGridY, 
+        w: itemToMove.layout.w, 
+        h: itemToMove.layout.h 
+      };
+      let dropCollision = false;
+      for (const otherItem of this.items) {
+        if (otherItem.id === itemToMove.id) continue; // Skip self
+        if (this._isCollision(finalLayout, otherItem.layout)) {
+          dropCollision = true;
+          break;
+        }
+      }
 
-      this.updateItemLayout(itemToMove.id, itemToMove.layout, true); // true to re-render
+      if (dropCollision) {
+        console.warn(`Drop prevented for item ${itemToMove.id} due to collision.`);
+        // Item remains in its original position as its layout is not updated.
+        // Re-render to ensure it snaps back visually if placeholder was different.
+        this.renderDashboard(); 
+      } else {
+        itemToMove.layout.x = newGridX;
+        itemToMove.layout.y = newGridY;
+        this.updateItemLayout(itemToMove.id, itemToMove.layout, true); // true to re-render
+      }
+      
       this.draggedItem = null; // Clear dragged item reference
     });
   }
@@ -425,79 +472,210 @@ class Panorama {
       this.constructor._globalClickListenerAdded = true;
     }
 
-    // Add resize handle
-    const resizeHandle = document.createElement('div');
-    resizeHandle.className = 'resize-handle';
-    itemElement.appendChild(resizeHandle);
-
-    resizeHandle.addEventListener('mousedown', (e_mousedown) => {
-      e_mousedown.preventDefault();
-      e_mousedown.stopPropagation(); // Prevent item drag
-
-      const initialMouseX = e_mousedown.clientX;
-      const initialMouseY = e_mousedown.clientY;
-      const initialWidthPx = itemElement.offsetWidth;
-      const initialHeightPx = itemElement.offsetHeight;
-      const currentItem = this.items.find(i => i.id === item.id);
-
-      const mouseMoveHandler = (e_mousemove) => {
-        const deltaX = e_mousemove.clientX - initialMouseX;
-        const deltaY = e_mousemove.clientY - initialMouseY;
-        let newWidthPx = initialWidthPx + deltaX;
-        let newHeightPx = initialHeightPx + deltaY;
-
-        // Calculate grid properties (consistent with drop handler)
-        const gridStyle = window.getComputedStyle(this.gridContainer);
-        const gridPaddingLeft = parseFloat(gridStyle.paddingLeft) || 0;
-        // const gridPaddingTop = parseFloat(gridStyle.paddingTop) || 0; // Not directly needed for width/height span calc
-        const gridGap = parseFloat(gridStyle.gap) || 10;
-        const numColumns = 12;
-
-        const trackWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
-        const trackHeight = 50; // Min height from grid-auto-rows
-
-        let newW = Math.max(1, Math.round((newWidthPx + gridGap) / (trackWidth + gridGap)));
-        let newH = Math.max(1, Math.round((newHeightPx + gridGap) / (trackHeight + gridGap)));
-        
-        // Apply live visual update using grid spans
-        itemElement.style.gridColumnEnd = `span ${newW}`;
-        itemElement.style.gridRowEnd = `span ${newH}`;
-      };
-
-      const mouseUpHandler = () => {
-        document.removeEventListener('mousemove', mouseMoveHandler);
-        document.removeEventListener('mouseup', mouseUpHandler);
-
-        const finalWidthPx = itemElement.offsetWidth;
-        const finalHeightPx = itemElement.offsetHeight;
-
-        const gridStyle = window.getComputedStyle(this.gridContainer);
-        const gridPaddingLeft = parseFloat(gridStyle.paddingLeft) || 0;
-        // const gridPaddingTop = parseFloat(gridStyle.paddingTop) || 0;
-        const gridGap = parseFloat(gridStyle.gap) || 10;
-        const numColumns = 12;
-
-        const trackWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
-        const trackHeight = 50; // Min height from grid-auto-rows
-
-        let finalW = Math.max(1, Math.round((finalWidthPx + gridGap) / (trackWidth + gridGap)));
-        let finalH = Math.max(1, Math.round((finalHeightPx + gridGap) / (trackHeight + gridGap)));
-
-        // Boundary checks
-        finalW = Math.min(finalW, numColumns - currentItem.layout.x + 1);
-        // Add similar check for finalH if there's a max row constraint, for now it's unbounded
-
-        if (currentItem) {
-          const newLayout = { ...currentItem.layout, w: finalW, h: finalH };
-          this.updateItemLayout(currentItem.id, newLayout, true); // Re-render to apply final state
-        }
-      };
-
-      document.addEventListener('mousemove', mouseMoveHandler);
-      document.addEventListener('mouseup', mouseUpHandler);
+    // Add new 8-directional resize handles
+    const handleDirections = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
+    handleDirections.forEach(direction => {
+      const handle = document.createElement('div');
+      handle.className = `resize-handle-base resize-handle-${direction}`;
+      handle.dataset.direction = direction;
+      handle.addEventListener('mousedown', this._initiateResize.bind(this, item, itemElement));
+      itemElement.appendChild(handle);
     });
     
     return itemElement; // Return the created element
+  }
+
+  _initiateResize(item, itemElement, event) {
+    event.preventDefault();
+    event.stopPropagation(); // Prevent item drag or other interactions
+
+    const direction = event.target.dataset.direction;
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.isResizing = true;
+    this.resizeItem = item;
+    this.resizeItemElement = itemElement;
+    this.resizeDirection = event.target.dataset.direction;
+    this.originalMouseX = event.clientX;
+    this.originalMouseY = event.clientY;
+    this.originalLayout = { ...item.layout }; // Shallow copy is fine here
+
+    this._handleResizeMoveListener = this._handleResizeMove.bind(this);
+    this._handleResizeUpListener = this._handleResizeUp.bind(this);
+    document.addEventListener('mousemove', this._handleResizeMoveListener);
+    document.addEventListener('mouseup', this._handleResizeUpListener);
+
+    // Add a class to the item being resized for visual feedback (optional)
+    this.resizeItemElement.classList.add('resizing-active');
+  }
+
+  _handleResizeMove(event) {
+    if (!this.isResizing) return;
+    event.preventDefault();
+
+    const deltaX = event.clientX - this.originalMouseX;
+    const deltaY = event.clientY - this.originalMouseY;
+
+    const gridStyle = window.getComputedStyle(this.gridContainer);
+    const gridGap = parseFloat(gridStyle.gap) || 10;
+    const numColumns = 12; // Assuming 12 columns as per current CSS
+    // Calculate cellWidth based on the clientWidth of the grid container, its padding, and the gaps between columns.
+    const cellWidth = (this.gridContainer.clientWidth - parseFloat(gridStyle.paddingLeft) - parseFloat(gridStyle.paddingRight) - (numColumns - 1) * gridGap) / numColumns;
+    // Use a fixed basis for cell height or derive from grid-auto-rows if possible and needed.
+    // For `grid-auto-rows: minmax(50px, auto)`, 50px is the minimum.
+    // A more robust solution might involve inspecting actual row heights if they are truly dynamic beyond minmax.
+    const cellHeight = parseFloat(gridStyle.gridAutoRows) || 50; // Approx. from minmax(50px, auto)
+
+    // Convert pixel deltas to grid units. Add half a cell to bias rounding to the nearest cell edge.
+    const deltaGridX = Math.round(deltaX / (cellWidth + gridGap));
+    const deltaGridY = Math.round(deltaY / (cellHeight + gridGap));
+    
+    let newLayout = { ...this.originalLayout };
+
+    // Adjust layout based on direction
+    if (this.resizeDirection.includes('e')) {
+      newLayout.w = this.originalLayout.w + deltaGridX;
+    }
+    if (this.resizeDirection.includes('w')) {
+      newLayout.x = this.originalLayout.x + deltaGridX;
+      newLayout.w = this.originalLayout.w - deltaGridX;
+    }
+    if (this.resizeDirection.includes('s')) {
+      newLayout.h = this.originalLayout.h + deltaGridY;
+    }
+    if (this.resizeDirection.includes('n')) {
+      newLayout.y = this.originalLayout.y + deltaGridY;
+      newLayout.h = this.originalLayout.h - deltaGridY;
+    }
+
+    // Boundary and Minimum Size Checks
+    if (newLayout.w < 1) {
+        if (this.resizeDirection.includes('w')) { // Resizing from west, width became < 1
+            newLayout.x = this.originalLayout.x + this.originalLayout.w -1; // Snap x to original right edge
+        }
+        newLayout.w = 1;
+    }
+    if (newLayout.h < 1) {
+        if (this.resizeDirection.includes('n')) { // Resizing from north, height became < 1
+            newLayout.y = this.originalLayout.y + this.originalLayout.h - 1; // Snap y to original bottom edge
+        }
+        newLayout.h = 1;
+    }
+
+    if (newLayout.x < 1) {
+        if (this.resizeDirection.includes('w') || this.resizeDirection.includes('e')) { // If width changed due to x
+            newLayout.w = this.originalLayout.x + this.originalLayout.w -1;
+        }
+        newLayout.x = 1;
+    }
+    if (newLayout.y < 1) {
+        if (this.resizeDirection.includes('n') || this.resizeDirection.includes('s')) { // If height changed due to y
+             newLayout.h = this.originalLayout.y + this.originalLayout.h - 1;
+        }
+        newLayout.y = 1;
+    }
+    
+    // Max boundary checks
+    if (newLayout.x + newLayout.w > numColumns + 1) {
+      if (this.resizeDirection.includes('e')) { // Resizing eastwards
+        newLayout.w = numColumns - newLayout.x + 1;
+      } else if (this.resizeDirection.includes('w')) { // Resizing westwards, x changed
+        // This case should be handled by x < 1 and w < 1 mostly
+      }
+    }
+     if (newLayout.w > numColumns) newLayout.w = numColumns;
+
+
+    // Collision Detection
+    let collision = false;
+    for (const otherItem of this.items) {
+      if (otherItem.id === this.resizeItem.id) continue;
+      if (this._isCollision(newLayout, otherItem.layout)) {
+        collision = true;
+        break;
+      }
+    }
+
+    if (collision) {
+      // Optionally, provide visual feedback for collision, e.g.,
+      this.resizeItemElement.style.outline = '2px solid red'; 
+      this.pendingLayout = null; // Invalidate pending layout
+      return; 
+    } else {
+      this.resizeItemElement.style.outline = ''; // Clear collision feedback
+    }
+
+    // Live Style Update
+    this.resizeItemElement.style.gridColumnStart = newLayout.x;
+    this.resizeItemElement.style.gridColumnEnd = `span ${newLayout.w}`;
+    this.resizeItemElement.style.gridRowStart = newLayout.y;
+    this.resizeItemElement.style.gridRowEnd = `span ${newLayout.h}`;
+    this.pendingLayout = newLayout;
+  }
+
+  _handleResizeUp(event) {
+    if (!this.isResizing) return;
+    this.isResizing = false;
+
+    document.removeEventListener('mousemove', this._handleResizeMoveListener);
+    document.removeEventListener('mouseup', this._handleResizeUpListener);
+    this.resizeItemElement.classList.remove('resizing-active');
+    this.resizeItemElement.style.outline = ''; // Clear any collision outline
+
+    let finalLayoutToApply = this.originalLayout; // Default to original
+
+    if (this.pendingLayout) {
+      // Final collision check for the pending layout
+      let collisionOnFinal = false;
+      for (const otherItem of this.items) {
+        if (otherItem.id === this.resizeItem.id) continue;
+        if (this._isCollision(this.pendingLayout, otherItem.layout)) {
+          collisionOnFinal = true;
+          break;
+        }
+      }
+      if (!collisionOnFinal) {
+        finalLayoutToApply = this.pendingLayout;
+      } else {
+         console.warn(`Resize for item ${this.resizeItem.id} reverted due to collision on mouseup.`);
+      }
+    }
+    
+    this.resizeItem.layout = { ...finalLayoutToApply };
+    this.updateItemLayout(this.resizeItem.id, this.resizeItem.layout, true); // Update and re-render all
+
+    // Cleanup
+    this.resizeItem = null;
+    this.resizeItemElement = null;
+    this.pendingLayout = null;
+    this.originalMouseX = null;
+    this.originalMouseY = null;
+    this.originalLayout = null;
+    this.resizeDirection = null;
+    this._handleResizeMoveListener = null;
+    this._handleResizeUpListener = null;
+  }
+
+  /**
+   * Checks if two layout objects collide (overlap).
+   * @param {object} layout1 - Layout object { x, y, w, h }.
+   * @param {object} layout2 - Layout object { x, y, w, h }.
+   * @returns {boolean} - True if they collide, false otherwise.
+   * @private
+   */
+  _isCollision(layout1, layout2) {
+    // Check for non-overlapping conditions.
+    // If any of these are true, the rectangles do NOT overlap.
+    if (
+      layout1.x + layout1.w <= layout2.x || // layout1 is to the left of layout2
+      layout1.x >= layout2.x + layout2.w || // layout1 is to the right of layout2
+      layout1.y + layout1.h <= layout2.y || // layout1 is above layout2
+      layout1.y >= layout2.y + layout2.h    // layout1 is below layout2
+    ) {
+      return false; // No collision
+    }
+    return true; // Collision
   }
 
   // Placeholder for specific rendering functions
