@@ -727,22 +727,50 @@ class Panorama {
     contentContainer.appendChild(imageElement);
   }
 
-  _renderChart(item, contentContainer) {
-    // Ensure contentContainer has a unique ID for chart rendering if needed
-    if (!contentContainer.id) {
-      contentContainer.id = `chart-container-${item.id}`;
-    }
+_renderChart(item, contentContainer) {
+    // PureChart requires a CANVAS element. We create one inside the contentContainer.
+    contentContainer.innerHTML = ''; // Clear any placeholder text like "Chart: line"
+    const canvas = document.createElement('canvas');
+    canvas.id = `chart-canvas-${item.id}`; // Unique ID for the canvas itself
+
+    // Optional: Basic styling for canvas to be responsive.
+    // PureChart might handle this, or you might need CSS for .panorama-item-content canvas
+    canvas.style.width = '100%';
+    canvas.style.height = '100%'; 
+    
+    contentContainer.appendChild(canvas);
+
     try {
-      // Assuming PureChart API: new PureChart(containerId, chartType, data, options)
-      // item.config should contain chartType, chartData, chartOptions
-      new PureChart(contentContainer.id, item.config.chartType, item.config.chartData, item.config.chartOptions || {});
-      console.log(`Rendering chart in ${contentContainer.id} with config:`, item.config);
+      const chartConfig = {
+        type: item.config.chartType,                 // e.g., 'line', 'bar'
+        data: item.config.chartData || { labels: [], datasets: [] }, // e.g., { labels: [...], datasets: [{ values: [...] }] }
+        options: item.config.chartOptions || {}      // Chart.js compatible options
+      };
+
+      if (!chartConfig.type || !chartConfig.data.datasets || chartConfig.data.datasets.length === 0) {
+         console.error(`Chart item ${item.id} is missing 'chartType' or 'chartData.datasets'.`);
+        contentContainer.innerHTML = "<p style='color:red;'>Error: Chart type or data is missing.</p>";
+        return;
+      }
+
+      if (typeof PureChart === 'function') { // PureChart is a constructor
+        new PureChart(canvas.id, chartConfig);
+        console.log(`Rendering chart on canvas ${canvas.id} for item ${item.id}.`);
+      } else {
+        console.error("Error: PureChart is not defined. Ensure PureChart.js is loaded.");
+        contentContainer.innerHTML = "<p style='color:red;'>Error: Chart library function not found.</p>";
+      }
     } catch (e) {
-      console.error("Error rendering chart:", e);
-      contentContainer.textContent = "Error rendering chart. Check console.";
+      console.error(`Error rendering chart for item ${item.id}:`, e);
+      // Attempt to show error on the canvas itself or in the container
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+      ctx.font = '12px Arial';
+      ctx.fillStyle = 'red';
+      ctx.textAlign = 'center';
+      ctx.fillText('Error rendering chart. Check console.', canvas.width / 2, canvas.height / 2);
     }
   }
-
   _renderTable(item, contentContainer) {
     // Ensure contentContainer has a unique ID if createDynamicTable requires it for the container,
     // though often such functions take the element itself.
