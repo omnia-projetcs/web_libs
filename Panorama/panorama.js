@@ -744,20 +744,47 @@ class Panorama {
   }
 
   _renderTable(item, contentContainer) {
-    // Ensure contentContainer has a unique ID for table rendering if needed
-    // if (!contentContainer.id) { // DynamicTable might not need an ID if it takes the element directly
-    //   contentContainer.id = `table-container-${item.id}`;
-    // }
+    // Ensure contentContainer has a unique ID if createDynamicTable requires it for the container,
+    // though often such functions take the element itself.
+    // If createDynamicTable uses the ID, make sure it's set.
+    if (!contentContainer.id) {
+      contentContainer.id = `table-container-${item.id}`;
+    }
+
     try {
-      // Assuming DynamicTable API: new DynamicTable(containerElement, data, options)
-      // item.config should contain tableData, tableOptions
-      new DynamicTable(contentContainer, item.config.tableData, item.config.tableOptions || {});
-      console.log(`Rendering table in container for item ${item.id} with config:`, item.config);
+      // Construct the configuration object for createDynamicTable
+      // Adjust this based on the exact requirements of your createDynamicTable function
+      const tableConfig = {
+        containerId: contentContainer.id, // Or pass contentContainer directly if API allows
+        jsonData: item.config.tableData,    // Assuming item.config.tableData is the array of objects
+        columns: item.config.tableColumns,  // Assuming item.config.tableColumns defines column headers and data keys
+        // Add any other options from item.config.tableOptions that createDynamicTable expects
+        ...(item.config.tableOptions || {})
+      };
+
+      // Verify that item.config.tableColumns is provided, as it's often essential
+      if (!tableConfig.columns || tableConfig.columns.length === 0) {
+        console.error(`Table item ${item.id} is missing 'tableColumns' in its configuration.`);
+        contentContainer.textContent = "Error: Table column configuration is missing.";
+        return;
+      }
+      
+      // Ensure the container is empty before rendering table
+      contentContainer.innerHTML = ''; 
+
+      if (typeof createDynamicTable === 'function') {
+        createDynamicTable(tableConfig); // Call the global function
+        console.log(`Rendering table in container ${contentContainer.id} for item ${item.id} with config:`, item.config);
+      } else {
+        console.error("Error: createDynamicTable function is not defined globally. Check Dynamic-table.js.");
+        contentContainer.textContent = "Error: Table library function not found.";
+      }
     } catch (e) {
-      console.error("Error rendering table:", e);
+      console.error(`Error rendering table for item ${item.id}:`, e);
       contentContainer.textContent = "Error rendering table. Check console.";
     }
   }
+
 
   _createEditModal() {
     if (document.getElementById('panorama-edit-modal')) {
