@@ -1,0 +1,251 @@
+/* General Usability */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  margin: 0;
+  background-color: #f4f7f6; /* Light background for the page */
+}
+
+#panorama-container {
+  padding: 20px;
+}
+
+/* Grid Container Styling */
+#panorama-grid-container {
+  background-color: #e9ecef; /* Light grey background for the grid area */
+  border: 1px solid #ced4da; /* Subtle border */
+  padding: 10px; /* Padding around the grid */
+  border-radius: 4px;
+  min-height: 500px; /* Ensure it's visible and spacious */
+}
+
+/* Grid Item Styling */
+.grid-stack-item {
+  /* GridStack adds its own positioning, focus on content and appearance */
+}
+
+.grid-stack-item-content {
+  background-color: #ffffff; /* White background for items */
+  border: 1px solid #dee2e6; /* Light grey border for items */
+  border-radius: 4px; /* Rounded corners for card-like appearance */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+  padding: 15px; /* Padding within items */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Pushes controls to bottom if content is short */
+  overflow: auto; /* Allow scrolling for content that's too big */
+  color: #495057; /* Default text color for items */
+  text-align: left; /* Default text alignment */
+}
+
+/* Item Controls (Edit/Delete buttons) */
+.panorama-item-controls {
+  padding: 8px 0 0 0; /* Padding above buttons */
+  background-color: transparent; /* No separate background for the controls div itself */
+  border-top: none; /* Remove previous border if any */
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the right */
+  gap: 8px; /* Space between buttons */
+}
+
+.panorama-item-controls button {
+  background-color: #6c757d; /* Secondary button color */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.panorama-item-controls button:hover {
+  background-color: #5a6268; /* Darken on hover */
+}
+
+.panorama-item-controls .panorama-delete-button {
+  background-color: #dc3545; /* Red for delete */
+}
+
+.panorama-item-controls .panorama-delete-button:hover {
+  background-color: #c82333; /* Darker red on hover */
+}
+
+/* Specific Item Types Styling */
+.grid-stack-item-content h1,
+.grid-stack-item-content h2,
+.grid-stack-item-content h3,
+.grid-stack-item-content h4,
+.grid-stack-item-content h5,
+.grid-stack-item-content h6 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #343a40; /* Darker color for titles */
+}
+
+.grid-stack-item-content p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.grid-stack-item-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 3px; /* Slight rounding for embedded images */
+}
+
+/* Modal Styling */
+.panorama-modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1050; /* Higher z-index for modals */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgba(0,0,0,0.5); /* Darker overlay */
+}
+
+.panorama-modal-content {
+  background-color: #fefefe;
+  margin: 5% auto; /* More top margin for better centering */
+  padding: 25px;
+  border: 1px solid #adb5bd;
+  width: 50%; /* Narrower for a more focused modal */
+  max-width: 700px; /* Max width for larger screens */
+  border-radius: 5px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.panorama-modal-header {
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 20px; /* Space between header and form area */
+}
+
+.panorama-modal-header h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: #343a40;
+}
+
+.panorama-modal-form-area {
+  padding: 0; /* Remove default padding if not needed, rely on label/input margins */
+  flex-grow: 1;
+  margin-bottom: 20px; /* Space before footer */
+}
+
+.panorama-modal-form-area label {
+  display: block;
+  margin-top: 15px;
+  margin-bottom: 5px; /* Space between label and input */
+  font-weight: 600;
+  color: #495057;
+}
+
+.panorama-modal-form-area input[type="text"],
+.panorama-modal-form-area input[type="number"],
+.panorama-modal-form-area textarea,
+.panorama-modal-input, /* Generic class for inputs if added in JS */
+.panorama-modal-textarea { /* Generic class for textareas */
+  width: 100%; /* Full width */
+  padding: 10px;
+  margin-top: 0; /* Remove top margin as label provides it */
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.panorama-modal-form-area textarea,
+.panorama-modal-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.panorama-modal-form-area input[type="text"]:focus,
+.panorama-modal-form-area input[type="number"]:focus,
+.panorama-modal-form-area textarea:focus,
+.panorama-modal-input:focus,
+.panorama-modal-textarea:focus {
+  border-color: #80bdff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.panorama-modal-footer {
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px; /* Space between footer buttons */
+}
+
+.panorama-modal-footer button {
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.panorama-modal-footer button:hover {
+  opacity: 0.85;
+}
+
+.panorama-modal-save {
+  background-color: #28a745; /* Green */
+  color: white;
+  border: none;
+}
+
+.panorama-modal-cancel {
+  background-color: #6c757d; /* Secondary/grey for cancel */
+  color: white;
+  border: none;
+}
+
+/* Ensure GridStack resize handles are visible if needed */
+.ui-resizable-handle {
+  z-index: 20; /* Ensure handles are above content but below modal */
+}
+
+/* Helper class for JSON text in modal */
+.panorama-modal-form-area textarea#editJsonConfig {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9em;
+  background-color: #f8f9fa; /* Slightly different background for code */
+  color: #212529;
+}
+
+/* Basic styling for placeholder text within items */
+.grid-stack-item-content > p:empty::before {
+    content: "Empty text item";
+    color: #adb5bd;
+    font-style: italic;
+}
+.grid-stack-item-content > div[id^="chart-container-"]:empty::before {
+    content: "Empty chart item";
+    color: #adb5bd;
+    font-style: italic;
+    display: block; /* Ensure it takes space */
+    text-align: center;
+    padding-top: 20px; /* Some spacing */
+}
+.grid-stack-item-content > div[id^="table-container-"]:empty::before {
+    content: "Empty table item";
+    color: #adb5bd;
+    font-style: italic;
+    display: block; /* Ensure it takes space */
+    text-align: center;
+    padding-top: 20px; /* Some spacing */
+}

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Panorama Dashboard Demo</title>
+  <!-- GridStack CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@latest/dist/gridstack.min.css" />
+  <!-- Component CSS -->
+  <link rel="stylesheet" href="../PureChart/PureChart.css" />
+  <link rel="stylesheet" href="../Dynamic-table/dynamic-table.css" />
+  <link rel="stylesheet" href="panorama.css" />
+  <style>
+    body { font-family: sans-serif; margin: 20px; background-color: #f9f9f9; }
+    .controls { margin-bottom: 20px; padding: 15px; background-color: #fff; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .controls h2 { margin-top: 0; }
+    .control-group { margin-bottom: 15px; }
+    .control-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .control-group select, .control-group button, .control-group textarea {
+      padding: 8px;
+      margin-right: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .control-group textarea { width: 90%; min-height: 80px; display: block; margin-top: 5px; }
+    #dashboard-container {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #eef;
+    }
+    /* Make sure grid items have some default content visibility */
+    .grid-stack-item-content {
+        overflow: visible !important; /* For demo purposes, ensure content like dropdowns isn't clipped */
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Panorama Dashboard Demo</h1>
+
+  <div class="controls">
+    <h2>Dashboard Controls</h2>
+    <div class="control-group">
+      <label for="item-type">Add Item:</label>
+      <select id="item-type">
+        <option value="text">Text</option>
+        <option value="title">Title</option>
+        <option value="image">Image</option>
+        <option value="chart">Chart</option>
+        <option value="table">Table</option>
+      </select>
+      <button id="add-item-btn">Add Item</button>
+    </div>
+
+    <div class="control-group">
+      <label>Save/Load Dashboard:</label>
+      <button id="save-dashboard-btn">Save Dashboard</button>
+      <button id="load-dashboard-btn">Load Dashboard</button>
+      <button id="clear-dashboard-btn">Clear Dashboard</button>
+    </div>
+    
+    <div class="control-group">
+      <label for="json-output">Dashboard JSON (Saved):</label>
+      <textarea id="json-output" readonly></textarea>
+    </div>
+
+    <div class="control-group">
+      <label for="json-input">Dashboard JSON (To Load):</label>
+      <textarea id="json-input"></textarea>
+    </div>
+  </div>
+
+  <div id="dashboard-container">
+    <!-- GridStack container -->
+    <div id="panorama-grid-container" class="grid-stack"></div>
+  </div>
+
+  <!-- GridStack JS -->
+  <script src="https://cdn.jsdelivr.net/npm/gridstack@latest/dist/gridstack-all.js"></script>
+  <!-- Component JS -->
+  <script src="../PureChart/PureChart.js"></script>
+  <script src="../Dynamic-table/dynamic-table.js"></script>
+  <script src="panorama.js"></script>
+
+  <script>
+    // Ensure the DOM is fully loaded before initializing Panorama and its dependencies
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Panorama
+      const panorama = new Panorama('panorama-grid-container'); // ID matches the GridStack container
+
+      // Add Item Button Handler
+      document.getElementById('add-item-btn').addEventListener('click', () => {
+        const itemType = document.getElementById('item-type').value;
+        let defaultConfig;
+        const defaultLayout = { x: 0, y: 0, w: 4, h: 2 }; // Default layout for new items
+
+        switch (itemType) {
+          case 'text':
+            defaultConfig = { content: 'New Text Block - Edit me!' };
+            defaultLayout.h = 2; // Example: Text items might be shorter
+            break;
+          case 'title':
+            defaultConfig = { text: 'New Title', level: 2 };
+            defaultLayout.h = 1; // Titles are usually short
+            break;
+          case 'image':
+            defaultConfig = { url: 'https://via.placeholder.com/300x150.png?text=Placeholder', alt: 'Placeholder Image' };
+            defaultLayout.h = 3; // Images might need more height
+            break;
+          case 'chart':
+            defaultConfig = {
+              chartType: 'bar', // Example default chart type
+              chartData: [
+                { label: 'Jan', value: 120 }, { label: 'Feb', value: 180 },
+                { label: 'Mar', value: 220 }, { label: 'Apr', value: 150 }
+              ],
+              chartOptions: { title: 'Sample Sales Chart', responsive: true, height: "100%", width: "100%" }
+            };
+            defaultLayout.w = 6; // Charts might be wider
+            defaultLayout.h = 4;
+            break;
+          case 'table':
+            defaultConfig = {
+              tableData: [
+                { id: 1, name: 'Product A', price: 29.99, stock: 150 },
+                { id: 2, name: 'Product B', price: 49.50, stock: 80 },
+                { id: 3, name: 'Service C', price: 199.00, stock: 'N/A' }
+              ],
+              tableOptions: { caption: 'Sample Inventory Table' }
+            };
+            defaultLayout.w = 6; // Tables can be wide
+            defaultLayout.h = 3;
+            break;
+          default:
+            console.error("Unknown item type selected");
+            return;
+        }
+        panorama.addItem(itemType, defaultConfig, defaultLayout);
+      });
+
+      // Save Dashboard Button Handler
+      document.getElementById('save-dashboard-btn').addEventListener('click', () => {
+        const jsonData = panorama.saveDashboard();
+        document.getElementById('json-output').value = jsonData;
+      });
+
+      // Load Dashboard Button Handler
+      document.getElementById('load-dashboard-btn').addEventListener('click', () => {
+        const jsonData = document.getElementById('json-input').value;
+        if (jsonData.trim() === "") {
+          alert("JSON input is empty. Please paste a valid dashboard configuration.");
+          return;
+        }
+        try {
+          const success = panorama.loadDashboard(jsonData);
+          if (success) {
+            // Optionally clear the input textarea after successful load
+            // document.getElementById('json-input').value = '';
+            alert("Dashboard loaded successfully!");
+          } else {
+            // Error messages are handled within loadDashboard via alerts
+          }
+        } catch (error) {
+          // This catch is for errors not caught by panorama.loadDashboard's try-catch,
+          // though loadDashboard aims to catch parsing errors itself.
+          alert(`Error loading dashboard: ${error.message}`);
+          console.error("Error in Load Dashboard button handler:", error);
+        }
+      });
+
+      // Clear Dashboard Button Handler
+      document.getElementById('clear-dashboard-btn').addEventListener('click', () => {
+        if (confirm("Are you sure you want to clear the entire dashboard?")) {
+          panorama.items = []; // Clear items array
+          panorama.itemIdCounter = 0; // Reset counter
+          panorama.renderDashboard(); // Re-render the empty dashboard
+          document.getElementById('json-output').value = ''; // Clear output
+          document.getElementById('json-input').value = ''; // Clear input
+        }
+      });
+
+      // Example: Load a default dashboard or some initial items
+      const initialDashboardData = {
+        items: [
+          {
+            id: 1,
+            type: "title",
+            config: { text: "Welcome to Panorama!", level: 1 },
+            layout: { x: 0, y: 0, w: 12, h: 1 }
+          },
+          {
+            id: 2,
+            type: "text",
+            config: { content: "This is a demo of the Panorama dashboard. You can add, remove, edit, and arrange items. Try saving and loading configurations using the controls above." },
+            layout: { x: 0, y: 1, w: 6, h: 2 }
+          },
+          {
+            id: 3,
+            type: "image",
+            config: { url: 'https://via.placeholder.com/300x150.png?text=Demo+Image', alt: 'Demo Image' },
+            layout: { x: 6, y: 1, w: 6, h: 3 }
+          }
+        ],
+        itemIdCounter: 3
+      };
+      panorama.loadDashboard(JSON.stringify(initialDashboardData));
+
+    });
+  </script>
+</body>
+</html>
