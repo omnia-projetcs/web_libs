@@ -9,12 +9,6 @@ class Panorama {
     this.container = document.getElementById(containerId);
     // Get the grid container element.
     this.gridContainer = document.getElementById('panorama-grid-container');
-    // Initialize GridStack.js on the grid container.
-    const options = {
-      // TODO: Add any specific GridStack options here if needed
-      // float: true, // example option
-    };
-    this.grid = GridStack.init(options, this.gridContainer);
     // Initialize an empty array to store dashboard item objects.
     this.items = [];
     // Initialize an itemIdCounter to 0, which will be used to generate unique IDs for items.
@@ -24,20 +18,55 @@ class Panorama {
     // Create the edit modal structure
     this._createEditModal();
 
-    // Add event listener for changes in the grid (drag/resize)
-    this.grid.on('change', (event, gsItems) => {
-      gsItems.forEach(gsItem => {
-        if (!gsItem.el) return; // Element might not be present if item was just removed
-        const itemId = parseInt(gsItem.el.dataset.itemId);
-        const newLayout = {
-          x: gsItem.x,
-          y: gsItem.y,
-          w: gsItem.w, // GridStack uses 'w' and 'h' for width and height
-          h: gsItem.h
-        };
-        this.updateItemLayout(itemId, newLayout, false); // Pass false to avoid re-render
-      });
-      // console.log('Dashboard layout synchronized:', this.items);
+    // NOTE: GridStack 'change' event listener has been removed.
+
+    // --- Native Drag and Drop Listeners for Grid Container ---
+    this.gridContainer.addEventListener('dragover', (event) => {
+      event.preventDefault(); // Necessary to allow dropping
+      event.dataTransfer.dropEffect = 'move';
+      // Optional: Visual feedback for drop target
+    });
+
+    this.gridContainer.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const itemId = parseInt(event.dataTransfer.getData('text/plain'));
+      const itemToMove = this.items.find(i => i.id === itemId);
+
+      if (!itemToMove) return;
+
+      // --- Calculate new grid position (x, y) ---
+      const rect = this.gridContainer.getBoundingClientRect();
+      const dropX = event.clientX - rect.left;
+      const dropY = event.clientY - rect.top;
+      
+      // Get computed style for the grid container to read CSS properties
+      const gridStyle = window.getComputedStyle(this.gridContainer);
+      const gridPaddingLeft = parseFloat(gridStyle.paddingLeft);
+      const gridPaddingTop = parseFloat(gridStyle.paddingTop);
+      const gridGap = parseFloat(gridStyle.gap) || 10; // Fallback to 10 if gap is not set or 0
+
+      // Calculate total number of columns (could be dynamic if CSS changes)
+      const numColumns = 12; // As defined in CSS: grid-template-columns: repeat(12, 1fr);
+
+      // Calculate cell width based on available space, columns, and gaps
+      const totalGapWidth = (numColumns - 1) * gridGap;
+      const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - totalGapWidth) / numColumns;
+      
+      // Approximate cell height (this remains a simplification due to grid-auto-rows)
+      // Using 50px as the min-height specified in grid-auto-rows in CSS
+      const cellHeightApproximation = 50 + gridGap; 
+
+      let newGridX = Math.floor((dropX - gridPaddingLeft) / (cellWidth + gridGap)) + 1;
+      let newGridY = Math.floor((dropY - gridPaddingTop) / cellHeightApproximation) + 1;
+
+      // Ensure newGridX/Y are within bounds
+      newGridX = Math.max(1, Math.min(newGridX, numColumns - itemToMove.layout.w + 1));
+      newGridY = Math.max(1, newGridY); // Y can grow, but not less than 1
+      
+      itemToMove.layout.x = newGridX;
+      itemToMove.layout.y = newGridY;
+
+      this.updateItemLayout(itemToMove.id, itemToMove.layout, true); // true to re-render
     });
   }
 
@@ -45,10 +74,13 @@ class Panorama {
    * Renders the entire dashboard.
    */
   renderDashboard() {
-    // Clear any existing items from the grid.
-    this.grid.removeAll();
+    // Clear any existing items from the grid container.
+    this.gridContainer.innerHTML = '';
     // Iterate over the items array and render each item.
-    this.items.forEach(item => this._renderItem(item));
+    this.items.forEach(item => {
+      const itemElement = this._renderItem(item); // _renderItem now returns the element
+      this.gridContainer.appendChild(itemElement);
+    });
   }
 
   /**
@@ -206,13 +238,27 @@ class Panorama {
   _renderItem(item) {
     // Create the main item element.
     const itemElement = document.createElement('div');
-    itemElement.className = 'grid-stack-item';
-    // Set GridStack attributes.
-    itemElement.setAttribute('gs-x', item.layout.x);
-    itemElement.setAttribute('gs-y', item.layout.y);
-    itemElement.setAttribute('gs-w', item.layout.w);
-    itemElement.setAttribute('gs-h', item.layout.h);
+    itemElement.className = 'panorama-item'; 
     itemElement.setAttribute('data-item-id', item.id); // Store item id
+    itemElement.setAttribute('draggable', 'true'); // Make item draggable
+
+    itemElement.addEventListener('dragstart', (event) => {
+        event.dataTransfer.setData('text/plain', item.id.toString());
+        event.dataTransfer.effectAllowed = 'move';
+        event.target.classList.add('dragging-item'); // Optional: for styling
+    });
+
+    itemElement.addEventListener('dragend', (event) => {
+        event.target.classList.remove('dragging-item'); // Optional: for styling
+    });
+
+    // Apply CSS Grid positioning styles. 
+    // Ensure layout values are 1-based and valid.
+    // x and y are grid line numbers (1-based). w and h are spans.
+    itemElement.style.gridColumnStart = item.layout.x;
+    itemElement.style.gridRowStart = item.layout.y;
+    itemElement.style.gridColumnEnd = `span ${item.layout.w}`;
+    itemElement.style.gridRowEnd = `span ${item.layout.h}`;
 
     // Create the content container.
     const contentContainer = document.createElement('div');
@@ -330,8 +376,79 @@ class Panorama {
       this.constructor._globalClickListenerAdded = true;
     }
 
-    // Add the item to the grid.
-    this.grid.makeWidget(itemElement);
+    // Add resize handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    itemElement.appendChild(resizeHandle);
+
+    resizeHandle.addEventListener('mousedown', (e_mousedown) => {
+      e_mousedown.preventDefault();
+      e_mousedown.stopPropagation(); // Prevent item drag
+
+      const initialMouseX = e_mousedown.clientX;
+      const initialMouseY = e_mousedown.clientY;
+      const initialWidthPx = itemElement.offsetWidth;
+      const initialHeightPx = itemElement.offsetHeight;
+      const currentItem = this.items.find(i => i.id === item.id);
+
+      const mouseMoveHandler = (e_mousemove) => {
+        const deltaX = e_mousemove.clientX - initialMouseX;
+        const deltaY = e_mousemove.clientY - initialMouseY;
+        let newWidthPx = initialWidthPx + deltaX;
+        let newHeightPx = initialHeightPx + deltaY;
+
+        // Calculate grid properties (consistent with drop handler)
+        const gridStyle = window.getComputedStyle(this.gridContainer);
+        const gridPaddingLeft = parseFloat(gridStyle.paddingLeft) || 0;
+        // const gridPaddingTop = parseFloat(gridStyle.paddingTop) || 0; // Not directly needed for width/height span calc
+        const gridGap = parseFloat(gridStyle.gap) || 10;
+        const numColumns = 12;
+
+        const trackWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
+        const trackHeight = 50; // Min height from grid-auto-rows
+
+        let newW = Math.max(1, Math.round((newWidthPx + gridGap) / (trackWidth + gridGap)));
+        let newH = Math.max(1, Math.round((newHeightPx + gridGap) / (trackHeight + gridGap)));
+        
+        // Apply live visual update using grid spans
+        itemElement.style.gridColumnEnd = `span ${newW}`;
+        itemElement.style.gridRowEnd = `span ${newH}`;
+      };
+
+      const mouseUpHandler = () => {
+        document.removeEventListener('mousemove', mouseMoveHandler);
+        document.removeEventListener('mouseup', mouseUpHandler);
+
+        const finalWidthPx = itemElement.offsetWidth;
+        const finalHeightPx = itemElement.offsetHeight;
+
+        const gridStyle = window.getComputedStyle(this.gridContainer);
+        const gridPaddingLeft = parseFloat(gridStyle.paddingLeft) || 0;
+        // const gridPaddingTop = parseFloat(gridStyle.paddingTop) || 0;
+        const gridGap = parseFloat(gridStyle.gap) || 10;
+        const numColumns = 12;
+
+        const trackWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
+        const trackHeight = 50; // Min height from grid-auto-rows
+
+        let finalW = Math.max(1, Math.round((finalWidthPx + gridGap) / (trackWidth + gridGap)));
+        let finalH = Math.max(1, Math.round((finalHeightPx + gridGap) / (trackHeight + gridGap)));
+
+        // Boundary checks
+        finalW = Math.min(finalW, numColumns - currentItem.layout.x + 1);
+        // Add similar check for finalH if there's a max row constraint, for now it's unbounded
+
+        if (currentItem) {
+          const newLayout = { ...currentItem.layout, w: finalW, h: finalH };
+          this.updateItemLayout(currentItem.id, newLayout, true); // Re-render to apply final state
+        }
+      };
+
+      document.addEventListener('mousemove', mouseMoveHandler);
+      document.addEventListener('mouseup', mouseUpHandler);
+    });
+    
+    return itemElement; // Return the created element
   }
 
   // Placeholder for specific rendering functions

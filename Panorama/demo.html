@@ -3,8 +3,6 @@
 <head>
   <meta charset="utf-8">
   <title>Panorama Dashboard Demo</title>
-  <!-- GridStack CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@latest/dist/gridstack.min.css" />
   <!-- Component CSS -->
   <link rel="stylesheet" href="../PureChart/PureChart.css" />
   <link rel="stylesheet" href="../Dynamic-table/dynamic-table.css" />
@@ -75,8 +73,6 @@
     <div id="panorama-grid-container" class="grid-stack"></div>
   </div>
 
-  <!-- GridStack JS -->
-  <script src="https://cdn.jsdelivr.net/npm/gridstack@latest/dist/gridstack-all.js"></script>
   <!-- Component JS -->
   <script src="../PureChart/PureChart.js"></script>
   <script src="../Dynamic-table/dynamic-table.js"></script>
@@ -92,7 +88,12 @@
       document.getElementById('add-item-btn').addEventListener('click', () => {
         const itemType = document.getElementById('item-type').value;
         let defaultConfig;
-        const defaultLayout = { x: 0, y: 0, w: 4, h: 2 }; // Default layout for new items
+        // Ensure x and y are at least 1 for CSS Grid 1-based indexing.
+        // A common default is to add to the first available space,
+        // but for simplicity, new items can default to x:1, y:1 or find next available row.
+        // For now, let's use x:1 and a placeholder for y that would need logic to find the next available row.
+        // Or, simply place it at a fixed starting point like x:1, y:1 for every new item.
+        const defaultLayout = { x: 1, y: 1, w: 4, h: 2 }; // Default layout for new items (1-based)
 
         switch (itemType) {
           case 'text':
@@ -186,19 +187,19 @@
             id: 1,
             type: "title",
             config: { text: "Welcome to Panorama!", level: 1 },
-            layout: { x: 0, y: 0, w: 12, h: 1 }
+            layout: { x: 1, y: 1, w: 12, h: 1 } // Adjusted to 1-based
           },
           {
             id: 2,
             type: "text",
             config: { content: "This is a demo of the Panorama dashboard. You can add, remove, edit, and arrange items. Try saving and loading configurations using the controls above." },
-            layout: { x: 0, y: 1, w: 6, h: 2 }
+            layout: { x: 1, y: 2, w: 6, h: 2 } // Adjusted to 1-based
           },
           {
             id: 3,
             type: "image",
             config: { url: 'https://via.placeholder.com/300x150.png?text=Demo+Image', alt: 'Demo Image' },
-            layout: { x: 6, y: 1, w: 6, h: 3 }
+            layout: { x: 7, y: 2, w: 6, h: 3 } // Adjusted to 1-based (x: 6+1=7)
           }
         ],
         itemIdCounter: 3
