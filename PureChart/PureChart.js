@@ -102,6 +102,7 @@ class PureChart {
                     groupSpacingFactor: 0.2,
                     defaultBorderWidth: 1,
                     borderDarkenPercent: 20,
+                    topCornerRadius: 0, // New option
                     averageLine: {
                         display: false,
                         color: '#888',
@@ -1136,35 +1137,80 @@ class PureChart {
 
     _fillRoundRect(ctx, x, y, width, height, radius) {
         if (width <= 0 || height <= 0) return; // No need to draw if no size
+        
         let tl = 0, tr = 0, br = 0, bl = 0;
-        if (typeof radius === 'number') { tl = tr = br = bl = Math.max(0, radius); }
-        else if (typeof radius === 'object' && radius !== null) { tl = Math.max(0, radius.tl || 0); tr = Math.max(0, radius.tr || 0); br = Math.max(0, radius.br || 0); bl = Math.max(0, radius.bl || 0); }
-        // Clamp radii to half width/height
-        const maxRadiusHor = width / 2; const maxRadiusVer = height / 2;
-        tl = Math.min(tl, maxRadiusHor, maxRadiusVer); tr = Math.min(tr, maxRadiusHor, maxRadiusVer);
-        br = Math.min(br, maxRadiusHor, maxRadiusVer); bl = Math.min(bl, maxRadiusHor, maxRadiusVer);
-        if (tl <=0 && tr <= 0 && br <= 0 && bl <= 0) { ctx.fillRect(x, y, width, height); return; } // No radius, use fillRect
-        ctx.beginPath(); ctx.moveTo(x + tl, y); ctx.lineTo(x + width - tr, y); if (tr > 0) ctx.arcTo(x + width, y, x + width, y + tr, tr);
-        ctx.lineTo(x + width, y + height - br); if (br > 0) ctx.arcTo(x + width, y + height, x + width - br, y + height, br);
-        ctx.lineTo(x + bl, y + height); if (bl > 0) ctx.arcTo(x, y + height, x, y + height - bl, bl);
-        ctx.lineTo(x, y + tl); if (tl > 0) ctx.arcTo(x, y, x + tl, y, tl);
-        ctx.closePath(); ctx.fill();
+        if (typeof radius === 'number') {
+            tl = tr = br = bl = Math.max(0, radius);
+        } else if (typeof radius === 'object' && radius !== null) {
+            tl = Math.max(0, radius.tl || 0);
+            tr = Math.max(0, radius.tr || 0);
+            br = Math.max(0, radius.br || 0);
+            bl = Math.max(0, radius.bl || 0);
+        }
+
+        const maxRadiusHor = width / 2; 
+        const maxRadiusVer = height / 2;
+        tl = Math.min(tl, maxRadiusHor, maxRadiusVer);
+        tr = Math.min(tr, maxRadiusHor, maxRadiusVer);
+        br = Math.min(br, maxRadiusHor, maxRadiusVer);
+        bl = Math.min(bl, maxRadiusHor, maxRadiusVer);
+
+        if (tl <= 0 && tr <= 0 && br <= 0 && bl <= 0) {
+            ctx.fillRect(x, y, width, height);
+            return;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(x + tl, y);
+        ctx.lineTo(x + width - tr, y);
+        if (tr > 0) ctx.arcTo(x + width, y, x + width, y + tr, tr);
+        ctx.lineTo(x + width, y + height - br);
+        if (br > 0) ctx.arcTo(x + width, y + height, x + width - br, y + height, br);
+        ctx.lineTo(x + bl, y + height);
+        if (bl > 0) ctx.arcTo(x, y + height, x, y + height - bl, bl);
+        ctx.lineTo(x, y + tl);
+        if (tl > 0) ctx.arcTo(x, y, x + tl, y, tl);
+        ctx.closePath();
+        ctx.fill();
     }
 
     _strokeRoundRect(ctx, x, y, width, height, radius, lineWidth = 1) {
         if (width <= 0 || height <= 0 || lineWidth <= 0) return;
+
         let tl = 0, tr = 0, br = 0, bl = 0;
-        if (typeof radius === 'number') { tl = tr = br = bl = Math.max(0, radius); }
-        else if (typeof radius === 'object' && radius !== null) { tl = Math.max(0, radius.tl||0); tr = Math.max(0, radius.tr||0); br = Math.max(0, radius.br||0); bl = Math.max(0, radius.bl||0); }
-        const maxRadiusHor = width / 2; const maxRadiusVer = height / 2;
-        tl = Math.min(tl, maxRadiusHor, maxRadiusVer); tr = Math.min(tr, maxRadiusHor, maxRadiusVer);
-        br = Math.min(br, maxRadiusHor, maxRadiusVer); bl = Math.min(bl, maxRadiusHor, maxRadiusVer);
-        if (tl <=0 && tr <= 0 && br <= 0 && bl <= 0) { ctx.strokeRect(x, y, width, height); return; }
-        ctx.beginPath(); ctx.moveTo(x + tl, y); ctx.lineTo(x + width - tr, y); if (tr > 0) ctx.arcTo(x + width, y, x + width, y + tr, tr);
-        ctx.lineTo(x + width, y + height - br); if (br > 0) ctx.arcTo(x + width, y + height, x + width - br, y + height, br);
-        ctx.lineTo(x + bl, y + height); if (bl > 0) ctx.arcTo(x, y + height, x, y + height - bl, bl);
-        ctx.lineTo(x, y + tl); if (tl > 0) ctx.arcTo(x, y, x + tl, y, tl);
-        ctx.closePath(); ctx.stroke();
+        if (typeof radius === 'number') {
+            tl = tr = br = bl = Math.max(0, radius);
+        } else if (typeof radius === 'object' && radius !== null) {
+            tl = Math.max(0, radius.tl || 0);
+            tr = Math.max(0, radius.tr || 0);
+            br = Math.max(0, radius.br || 0);
+            bl = Math.max(0, radius.bl || 0);
+        }
+
+        const maxRadiusHor = width / 2; 
+        const maxRadiusVer = height / 2;
+        tl = Math.min(tl, maxRadiusHor, maxRadiusVer);
+        tr = Math.min(tr, maxRadiusHor, maxRadiusVer);
+        br = Math.min(br, maxRadiusHor, maxRadiusVer);
+        bl = Math.min(bl, maxRadiusHor, maxRadiusVer);
+
+        if (tl <= 0 && tr <= 0 && br <= 0 && bl <= 0) {
+            ctx.strokeRect(x, y, width, height);
+            return;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(x + tl, y);
+        ctx.lineTo(x + width - tr, y);
+        if (tr > 0) ctx.arcTo(x + width, y, x + width, y + tr, tr);
+        ctx.lineTo(x + width, y + height - br);
+        if (br > 0) ctx.arcTo(x + width, y + height, x + width - br, y + height, br);
+        ctx.lineTo(x + bl, y + height);
+        if (bl > 0) ctx.arcTo(x, y + height, x, y + height - bl, bl);
+        ctx.lineTo(x, y + tl);
+        if (tl > 0) ctx.arcTo(x, y, x + tl, y, tl);
+        ctx.closePath();
+        ctx.stroke();
     }
 
     _drawPercentageBarChart() { // MODIFIED METHOD FOR NEW STYLE
@@ -1392,9 +1438,21 @@ class PureChart {
                 this.ctx.strokeStyle = borderColor || 'transparent'; 
                 this.ctx.lineWidth = borderWidth;
 
-                if (barRect.h > 0) { // Only draw if height is positive
-                    this.ctx.fillRect(barRect.x, barRect.y, barRect.w, barRect.h);
-                    if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') this.ctx.strokeRect(barRect.x, barRect.y, barRect.w, barRect.h);
+                const topCornerRadius = chartOptions.bar.topCornerRadius || 0;
+
+                if (topCornerRadius > 0 && value >= 0 && barRect.h > 0) { // Only for positive bars with height
+                    const radiusSpec = { tl: topCornerRadius, tr: topCornerRadius, bl: 0, br: 0 };
+                    this._fillRoundRect(this.ctx, barRect.x, barRect.y, barRect.w, barRect.h, radiusSpec);
+                    if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') {
+                        this._strokeRoundRect(this.ctx, barRect.x, barRect.y, barRect.w, barRect.h, radiusSpec, borderWidth);
+                    }
+                } else { // Standard drawing for negative bars or if radius is 0
+                    if (barRect.h > 0) { // Ensure there's height to draw
+                         this.ctx.fillRect(barRect.x, barRect.y, barRect.w, barRect.h);
+                         if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') {
+                             this.ctx.strokeRect(barRect.x, barRect.y, barRect.w, barRect.h);
+                         }
+                    }
                 }
                 this.interactiveElements.push({ type: 'bar', rect: barRect, xLabel: labelX, dataset: dataset, value: value, datasetIndex: originalDatasetIndex, pointIndex: i });
             });
