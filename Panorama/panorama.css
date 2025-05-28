@@ -122,9 +122,9 @@ html, body {
 .panorama-item-controls {
   position: relative; 
   display: flex;
-  justify-content: flex-start; /* Changed from flex-end */
+  justify-content: flex-end; /* Changed to flex-end to align button to the right */
   align-items: flex-start; /* Ensure alignment to the top */
-  padding: 5px; /* Uniform padding, removed specific padding-top */
+  padding: 5px; /* Uniform padding for spacing from top and right */
   background-color: transparent; 
   border-top: none; 
 }
