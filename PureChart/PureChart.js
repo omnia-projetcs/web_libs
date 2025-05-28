@@ -500,7 +500,7 @@ class PureChart {
         // Legend height (if not percentageDistribution)
         if (options.legend.display && this.config.type !== 'percentageDistribution') {
             this.ctx.font = options.legend.font;
-            const legendHeight = (this.ctx.measureText('M').width * 1.5) + options.legend.padding;
+            const legendHeight = ((this.ctx.measureText('M').width * 1.5) + options.legend.padding) * 2.1;
             if (options.legend.position === 'top') {
                 currentTop += legendHeight;
             } else { // bottom
