@@ -1,22 +1,67 @@
-/* General Usability */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #333;
+/* 
+  The following html, body, and #app-container styles are for page layout.
+  In a larger application, these might be in a global stylesheet or specific demo HTML files.
+  For this component's demo, they are included here for convenience.
+*/
+html, body {
+  height: 100%;
+  width: 100%;
   margin: 0;
-  background-color: #f4f7f6; /* Light background for the page */
+  padding: 0;
+  overflow: hidden; /* To prevent viewport scrollbars if nested elements manage their own scroll */
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Moved body font here */
+  background-color: #f4f7f6; /* Moved body background here */
+  color: #333; /* Moved body color here */
 }
 
-#panorama-container {
-  padding: 20px;
+*, *::before, *::after {
+  box-sizing: inherit; /* Ensure all elements use border-box */
+}
+
+#app-container { /* This ID will need to be added to demo HTML, wrapping controls and dashboard-container */
+  display: flex;
+  flex-direction: column; /* Stack controls on top of dashboard area */
+  height: 100%; /* Fill full viewport height */
+  width: 100%; /* Fill full viewport width */
+}
+
+.controls { /* General styling for a controls section associated with Panorama */
+  flex-shrink: 0; /* Prevent controls from shrinking */
+  padding: 15px; 
+  background-color: #fff; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  /* overflow-y: auto; /* Consider if controls area itself needs to scroll */
+}
+
+#dashboard-container { /* This ID is from demo HTML files */
+  flex-grow: 1; /* Take remaining vertical space in #app-container */
+  display: flex; 
+  flex-direction: column; 
+  padding: 10px; 
+  background-color: #eef; /* From demo file, or choose a default */
+  border: 1px solid #ccc; /* From demo file, or choose a default */
+  overflow: auto; /* Add scroll if content (grid) overflows */
+}
+
+/* Panorama Component Specific Styles */
+#panorama-container { /* This is the main container passed to the Panorama class constructor in demo.html, but #panorama-grid-container is the actual grid */
+  /* This rule might be redundant if #dashboard-container is used as the main flex child for the dashboard area */
+  /* For now, keeping it as it was, but it might need review based on HTML structure changes */
+  padding: 20px; /* This was the original style, might conflict with new layout */
+  flex-grow: 1; /* If this is meant to be the scrollable dashboard area */
+  display: flex; /* If it's meant to contain the grid and make it grow */
+  flex-direction: column;
 }
 
 /* Grid Container Styling */
 #panorama-grid-container {
-  background-color: #e9ecef; /* Light grey background for the grid area */
-  border: 1px solid #ced4da; /* Subtle border */
-  padding: 10px; /* Padding around the grid */
+  flex-grow: 1; /* Allows the grid to take up available space in #dashboard-container */
+  width: 100%;  /* Ensure it takes full width of #dashboard-container */
+  background-color: #e9ecef; 
+  border: 1px solid #ced4da; 
   border-radius: 4px;
-  min-height: 500px; /* Ensure it's visible and spacious */
+  /* overflow: auto; /* Gridstack manages its own internal scroll/overflow typically */
 }
 
 /* Grid Item Styling */

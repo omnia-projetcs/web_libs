@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="../Dynamic-table/dynamic-table.css" />
   <link rel="stylesheet" href="panorama.css" />
   <style>
-    body { font-family: sans-serif; margin: 20px; background-color: #f9f9f9; }
+    body { font-family: sans-serif; /* margin: 20px; background-color: #f9f9f9; -- Removed */ }
     .controls { margin-bottom: 20px; padding: 15px; background-color: #fff; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .controls h2 { margin-top: 0; }
     .control-group { margin-bottom: 15px; }
@@ -35,7 +35,7 @@
   </style>
 </head>
 <body>
-
+<div id="app-container">
   <h1>Panorama Dashboard Demo</h1>
 
   <div class="controls">
@@ -207,5 +207,6 @@
 
     });
   </script>
+</div> <!-- Closing app-container -->
 </body>
 </html>
