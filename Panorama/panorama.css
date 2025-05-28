@@ -108,7 +108,7 @@ html, body {
 }
 
 .panorama-item-content { 
-  padding: 5px; /* Changed from 15px */
+  padding: 15px; /* Changed from 15px */
   display: flex;
   flex-direction: column;
   justify-content: space-between; 
