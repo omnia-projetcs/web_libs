@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Panorama Dashboard Demo</title>
+  <!-- GridStack CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/gridstack.js/10.1.2/gridstack.min.css" integrity="sha512-nw3CPHwK9XYh3DRXLSsB9RDZfM98J7gpQZ182lU9W9XK2KWWoR2LhFjYhMvYh3M87g/o2k1iGj15j/x1QyL2Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Component CSS -->
+  <link rel="stylesheet" href="../PureChart/PureChart.css">
+  <link rel="stylesheet" href="../Dynamic-table/dynamic-table.css">
+  <link rel="stylesheet" href="panorama.css">
+  
+  <style>
+    /* Demo page specific styles - these were originally in the <style> tag */
+    body { font-family: sans-serif; margin: 20px; background-color: #f9f9f9; }
+    .controls { margin-bottom: 20px; padding: 15px; background-color: #fff; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .controls h2 { margin-top: 0; }
+    .control-group { margin-bottom: 15px; }
+    .control-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .control-group select, .control-group button, .control-group textarea {
+      padding: 8px;
+      margin-right: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .control-group textarea { width: 90%; min-height: 80px; display: block; margin-top: 5px; }
+    #dashboard-container {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #eef; /* Keep this for demo visibility if panorama.css doesn't style it */
+    }
+    /* Make sure grid items have some default content visibility */
+    .grid-stack-item-content {
+        overflow: visible !important; /* For demo purposes, ensure content like dropdowns isn't clipped */
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Panorama Dashboard Demo</h1>
+
+  <div class="controls">
+    <h2>Dashboard Controls</h2>
+    <div class="control-group">
+      <label for="item-type">Add Item:</label>
+      <select id="item-type">
+        <option value="text">Text</option>
+        <option value="title">Title</option>
+        <option value="image">Image</option>
+        <option value="chart">Chart</option>
+        <option value="table">Table</option>
+      </select>
+      <button id="add-item-btn">Add Item</button>
+    </div>
+
+    <div class="control-group">
+      <label>Save/Load Dashboard:</label>
+      <button id="save-dashboard-btn">Save Dashboard</button>
+      <!-- <button id="load-dashboard-btn">Load Dashboard</button> --> <!-- Commented out as per instructions -->
+      <button id="clear-dashboard-btn">Clear Dashboard</button>
+    </div>
+    
+    <div class="control-group">
+      <label for="json-output">Dashboard JSON (Saved):</label>
+      <textarea id="json-output" readonly></textarea>
+    </div>
+
+    <!-- <div class="control-group">
+      <label for="json-input">Dashboard JSON (To Load):</label>
+      <textarea id="json-input"></textarea>
+    </div> --> <!-- Commented out as per instructions -->
+  </div>
+
+  <div id="dashboard-container">
+    <!-- GridStack container -->
+    <div id="panorama-grid-container" class="grid-stack"></div>
+  </div>
+
+  <!-- External JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gridstack.js/10.1.2/gridstack.all.js" integrity="sha512-cQpX3xZ2Kx11yJpM/HWbT_X/47zGj4Xh/S/B9rTjM00Lp1s5j0L9G94x/pL9K9A70FmS00kG8h1oQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="../PureChart/PureChart.js"></script>
+  <script src="../Dynamic-table/dynamic-table.js"></script>
+  <script src="panorama.js"></script> 
+
+  <!-- Inline Demo Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const autoLoadData = { // Changed to object to match Panorama's expected format
+        items: [
+          { id: 1, type: 'title', config: { text: 'Auto-Loaded Dashboard!', level: 1 }, layout: { x: 0, y: 0, w: 12, h: 1 } }, // GridStack uses w/h
+          { id: 2, type: 'text', config: { content: 'This dashboard demonstrates the auto-load feature with embedded sample data and external JS/CSS (PureChart, Dynamic-Table, Panorama).' }, layout: { x: 0, y: 1, w: 7, h: 2 } },
+          { id: 3, type: 'image', config: { url: 'https://via.placeholder.com/300x150/28a745/ffffff?Text=Sample+Image', alt: 'Sample Img' }, layout: { x: 7, y: 1, w: 5, h: 2 } },
+          { id: 4, type: 'chart', config: { chartType: 'bar', chartData: [{label: 'Alpha', value: 15}, {label: 'Beta', value: 25},{label: 'Gamma', value: 10}], chartOptions: {title: 'Sales Chart'} }, layout: {x:0, y:3, w:6, h:3}},
+          { id: 5, type: 'table', config: { tableData: [{item: 'Gizmo', qty: 120},{item: 'Widget', qty: 210}, {item: 'Thingamajig', qty: 150}], tableOptions: {caption: 'Inventory'} }, layout: {x:6, y:3, w:6, h:3}}
+        ],
+        itemIdCounter: 5 // Ensure itemIdCounter is correctly set
+      };
+
+      const panorama = new Panorama('panorama-grid-container');
+      panorama.loadDashboard(JSON.stringify(autoLoadData)); // Pass the stringified object
+
+      // Add Item Button Handler
+      document.getElementById('add-item-btn').addEventListener('click', () => {
+        const itemType = document.getElementById('item-type').value;
+        let defaultConfig;
+        const defaultLayout = { x: 0, y: 0, w: 4, h: 2 };
+
+        switch (itemType) {
+          case 'text':
+            defaultConfig = { content: 'New Text Block - Edit me!' };
+            defaultLayout.h = 2;
+            break;
+          case 'title':
+            defaultConfig = { text: 'New Title', level: 2 };
+            defaultLayout.h = 1;
+            break;
+          case 'image':
+            defaultConfig = { url: 'https://via.placeholder.com/300x150.png?text=Placeholder', alt: 'Placeholder Image' };
+            defaultLayout.h = 3;
+            break;
+          case 'chart':
+            defaultConfig = {
+              chartType: 'bar',
+              chartData: [
+                { label: 'Jan', value: 120 }, { label: 'Feb', value: 180 },
+                { label: 'Mar', value: 220 }, { label: 'Apr', value: 150 }
+              ],
+              chartOptions: { title: 'Sample Sales Chart', responsive: true, height: "100%", width: "100%" }
+            };
+            defaultLayout.w = 6;
+            defaultLayout.h = 4;
+            break;
+          case 'table':
+            defaultConfig = {
+              tableData: [
+                { id: 1, name: 'Product A', price: 29.99, stock: 150 },
+                { id: 2, name: 'Product B', price: 49.50, stock: 80 },
+                { id: 3, name: 'Service C', price: 199.00, stock: 'N/A' }
+              ],
+              tableOptions: { caption: 'Sample Inventory Table' }
+            };
+            defaultLayout.w = 6;
+            defaultLayout.h = 3;
+            break;
+          default:
+            console.error("Unknown item type selected");
+            return;
+        }
+        panorama.addItem(itemType, defaultConfig, defaultLayout);
+      });
+
+      // Save Dashboard Button Handler
+      document.getElementById('save-dashboard-btn').addEventListener('click', () => {
+        const jsonData = panorama.saveDashboard();
+        document.getElementById('json-output').value = jsonData;
+      });
+
+      // Clear Dashboard Button Handler
+      document.getElementById('clear-dashboard-btn').addEventListener('click', () => {
+        if (confirm("Are you sure you want to clear the entire dashboard?")) {
+          panorama.items = [];
+          panorama.itemIdCounter = 0;
+          panorama.renderDashboard();
+          document.getElementById('json-output').value = '';
+          // document.getElementById('json-input').value = ''; // Already commented out
+        }
+      });
+      
+      // The old initialDashboardData load is removed as autoLoadData takes precedence.
+    });
+  </script>
+</body>
+</html>

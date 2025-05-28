@@ -273,7 +273,7 @@ class Panorama {
     contentContainer.insertBefore(controlsContainer, contentContainer.firstChild);
 
     // Add the item to the grid.
-    this.grid.addWidget(itemElement);
+    this.grid.makeWidget(itemElement);
   }
 
   // Placeholder for specific rendering functions
