@@ -89,7 +89,7 @@
           { id: 2, type: 'text', config: { content: 'This dashboard demonstrates the auto-load feature with embedded sample data and external JS/CSS (PureChart, Dynamic-Table, Panorama).' }, layout: { x: 0, y: 1, w: 7, h: 2 } },
           { id: 3, type: 'image', config: { url: 'https://via.placeholder.com/300x150/28a745/ffffff?Text=Sample+Image', alt: 'Sample Img' }, layout: { x: 7, y: 1, w: 5, h: 2 } },
           { id: 4, type: 'chart', config: { chartType: 'bar', chartData: [{label: 'Alpha', value: 15}, {label: 'Beta', value: 25},{label: 'Gamma', value: 10}], chartOptions: {title: 'Sales Chart'} }, layout: {x:0, y:3, w:6, h:3}},
-          { id: 5, type: 'table', config: { tableData: [{item: 'Gizmo', qty: 120},{item: 'Widget', qty: 210}, {item: 'Thingamajig', qty: 150}], tableOptions: {caption: 'Inventory'} }, layout: {x:6, y:3, w:6, h:3}}
+          { id: 5, type: 'table', config: { tableData: [{item: 'Gizmo', qty: 120},{item: 'Widget', qty: 210}, {item: 'Thingamajig', qty: 150}], tableColumns: [{key: 'item', header: 'Item', sortable: true, filterable: true}, {key: 'qty', header: 'Quantity', sortable: true, filterable: true}], tableOptions: {caption: 'Inventory'} }, layout: {x:6, y:3, w:6, h:3}}
         ],
         itemIdCounter: 5 // Ensure itemIdCounter is correctly set
       };
@@ -134,6 +134,12 @@
                 { id: 1, name: 'Product A', price: 29.99, stock: 150 },
                 { id: 2, name: 'Product B', price: 49.50, stock: 80 },
                 { id: 3, name: 'Service C', price: 199.00, stock: 'N/A' }
+              ],
+              tableColumns: [
+                { key: 'id', header: 'ID', sortable: true, filterable: true },
+                { key: 'name', header: 'Name', sortable: true, filterable: true },
+                { key: 'price', header: 'Price', sortable: true, filterable: false, format: 'currency:USD' },
+                { key: 'stock', header: 'Stock', sortable: true, filterable: false }
               ],
               tableOptions: { caption: 'Sample Inventory Table' }
             };
