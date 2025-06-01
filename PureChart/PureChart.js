@@ -68,6 +68,11 @@ class PureChart {
         this.isValid = true;
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d');
+
+        // Capture initial canvas dimensions from HTML attributes
+        this.initialCanvasWidth = this.canvas.getAttribute('width') ? parseInt(this.canvas.getAttribute('width'), 10) : 0;
+        this.initialCanvasHeight = this.canvas.getAttribute('height') ? parseInt(this.canvas.getAttribute('height'), 10) : 0;
+
         this.interactiveElements = [];
         this.interactiveLegendItems = []; // For legend interactivity
         this.activeTooltipData = null;
@@ -75,8 +80,8 @@ class PureChart {
         this.debouncedResize = null;
 
         const defaults = {
-            width: this.canvas.width || 300,
-            height: this.canvas.height || 150,
+            width: this.initialCanvasWidth || 300, // Use captured canvas attribute or fallback
+            height: this.initialCanvasHeight || 150, // Use captured canvas attribute or fallback
             type: 'bar',
             theme: 'light',
             data: {},
@@ -320,8 +325,16 @@ class PureChart {
     _handleResize(newRect) {
         if (!newRect) return;
 
-        const newCanvasWidth = Math.floor(newRect.width);
-        const newCanvasHeight = Math.floor(newRect.height);
+        let newCanvasWidth = Math.floor(newRect.width);
+        let newCanvasHeight = Math.floor(newRect.height);
+
+        // Apply maximum size constraints from initial canvas attributes if they were set
+        if (this.initialCanvasWidth > 0) {
+            newCanvasWidth = Math.min(newCanvasWidth, this.initialCanvasWidth);
+        }
+        if (this.initialCanvasHeight > 0) {
+            newCanvasHeight = Math.min(newCanvasHeight, this.initialCanvasHeight);
+        }
 
         if (this.canvas.width !== newCanvasWidth || this.canvas.height !== newCanvasHeight) {
             this.canvas.width = newCanvasWidth;
@@ -646,6 +659,26 @@ class PureChart {
 
     _draw() {
         if (!this.isValid) return;
+
+        // Ensure activePalette is available (Defensive check from subtask description)
+        if (!this.activePalette) {
+            console.warn("PureChart: activePalette was undefined in _draw. Re-initializing from config.theme.");
+            if (this.config && this.config.theme) {
+                if (this.config.theme === 'dark') {
+                    this.activePalette = PC_DARK_THEME_PALETTE;
+                } else if (typeof this.config.theme === 'object' && this.config.theme !== null) {
+                    const basePalette = (this.config.theme.extends === 'dark' && PC_DARK_THEME_PALETTE) ? PC_DARK_THEME_PALETTE : PC_LIGHT_THEME_PALETTE;
+                    this.activePalette = PureChart._mergeDeep(basePalette, this.config.theme);
+                } else {
+                    this.activePalette = PC_LIGHT_THEME_PALETTE; // Default to light
+                }
+            } else {
+                 // Critical fallback if config or theme is also missing
+                console.error("PureChart: Cannot initialize activePalette in _draw due to missing config or theme. Using light theme as emergency fallback.");
+                this.activePalette = PC_LIGHT_THEME_PALETTE;
+            }
+        }
+
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.textBaseline = 'middle'; // Consistent baseline
         this.interactiveElements = []; // Reset for new draw
