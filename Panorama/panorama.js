@@ -9,15 +9,14 @@ class Panorama {
     this.container = document.getElementById(containerId);
     // Get the grid container element.
     this.gridContainer = document.getElementById('panorama-grid-container');
-    // Initialize an empty array to store dashboard item objects.
-    this.items = [];
     // Initialize an itemIdCounter to 0, which will be used to generate unique IDs for items.
     // This will now be managed by PanoramaGrid instance.
     // this.itemIdCounter = 0;
     this.editingItemId = null; // To store the ID of the item being edited
-    // this.draggedItem = null; // Will be managed by PanoramaGrid
-    // this.dropPlaceholder = null; // Will be managed by PanoramaGrid or not used
+    // this.draggedItem = null; // Removed, was managed by PanoramaGrid or old D&D
+    // this.dropPlaceholder = null; // Removed, was managed by PanoramaGrid or old D&D
     this.maxGridRows = 100; // This might be a Panorama-specific option or passed to PanoramaGrid
+    // No more this.items = []; it's managed by this.grid
 
     // Create the edit modal structure
     this._createEditModal();
@@ -39,11 +38,88 @@ class Panorama {
   _renderPanoramaItemContent(type, config, contentContainerElement, itemId) {
     // The specific _render<Type> methods in Panorama.js might expect an 'item' object.
     // We need to provide it or adapt them. For now, let's create a mock 'item' for them.
-    const mockItem = { id: itemId, type: type, config: config, layout: {} /* layout not directly needed for content */ };
+    const mockItem = { id: itemId, type: type, config: config, layout: {} /* layout not directly needed for content (though might be useful for controls) */ };
+    const itemElement = contentContainerElement.parentElement; // Get the main item element
 
-    // TODO: Item controls (menu, edit/delete buttons) should be added here or called from here.
-    // For now, focusing on content rendering.
+    if (!itemElement) {
+        console.error("Panorama: Could not find parent itemElement for contentContainer.", contentContainerElement);
+        // Fallback: render content directly if itemElement is somehow missing
+        // This might happen if contentContainerElement is not yet in DOM or structure is unexpected.
+        // For now, we'll proceed assuming it's found, but this is a potential issue.
+    }
 
+    // --- Add Item Controls ---
+    if (itemElement) { // Only add controls if we have the main item element
+        let controlsContainer = itemElement.querySelector('.panorama-item-controls');
+        if (!controlsContainer) {
+            controlsContainer = document.createElement('div');
+            controlsContainer.className = 'panorama-item-controls';
+            itemElement.insertBefore(controlsContainer, itemElement.firstChild); // Prepend to itemElement
+        } else {
+            controlsContainer.innerHTML = ''; // Clear old buttons if re-rendering
+        }
+
+        const menuButton = document.createElement('button');
+        menuButton.className = 'panorama-item-menu-btn';
+        menuButton.innerHTML = '⋮'; // Vertical ellipsis
+        menuButton.dataset.itemId = itemId.toString();
+        menuButton.setAttribute('aria-haspopup', 'true');
+        menuButton.setAttribute('aria-expanded', 'false');
+
+        const popupMenu = document.createElement('div');
+        popupMenu.className = 'panorama-item-menu-popup';
+        popupMenu.style.display = 'none';
+        popupMenu.dataset.itemId = itemId.toString();
+
+        const editAction = document.createElement('a');
+        editAction.href = '#';
+        editAction.className = 'panorama-edit-action';
+        editAction.textContent = 'Edit';
+        editAction.dataset.itemId = itemId.toString();
+        editAction.addEventListener('click', (event) => {
+            event.preventDefault();
+            const itemIdToEdit = parseInt(event.target.dataset.itemId);
+            const itemFromGrid = this.grid.items.find(i => i.id === itemIdToEdit);
+            if (itemFromGrid) {
+                this._showEditModal({ id: itemFromGrid.id, type: itemFromGrid.config.type, config: itemFromGrid.config });
+            }
+            popupMenu.style.display = 'none';
+            if (menuButton) menuButton.setAttribute('aria-expanded', 'false');
+        });
+        popupMenu.appendChild(editAction);
+
+        const deleteAction = document.createElement('a');
+        deleteAction.href = '#';
+        deleteAction.className = 'panorama-delete-action';
+        deleteAction.textContent = 'Delete';
+        deleteAction.dataset.itemId = itemId.toString();
+        deleteAction.addEventListener('click', (event) => {
+            event.preventDefault();
+            const itemIdToRemove = parseInt(event.target.dataset.itemId);
+            this.removeItem(itemIdToRemove); // This now calls this.grid.removeItem
+        });
+        popupMenu.appendChild(deleteAction);
+
+        controlsContainer.appendChild(menuButton);
+        controlsContainer.appendChild(popupMenu);
+
+        menuButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const currentlyVisible = popupMenu.style.display === 'block';
+            document.querySelectorAll('.panorama-item-menu-popup').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('.panorama-item-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+            if (!currentlyVisible) {
+                popupMenu.style.display = 'block';
+                menuButton.setAttribute('aria-expanded', 'true');
+            } else {
+                popupMenu.style.display = 'none';
+                menuButton.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+    // --- End Item Controls ---
+
+    // Render actual content (text, title, image, chart, table)
     switch (type) {
         case 'text':
             this._renderText(mockItem, contentContainerElement);
@@ -244,388 +320,6 @@ class Panorama {
    * (Private helper method - To be implemented)
    * @param {object} item - The item object to render.
    */
-  _renderItem(item) {
-    // Create the main item element.
-    const itemElement = document.createElement('div');
-    itemElement.className = 'panorama-item'; 
-    itemElement.setAttribute('data-item-id', item.id); // Store item id
-    itemElement.setAttribute('draggable', 'true'); // Make item draggable
-
-    itemElement.addEventListener('dragstart', (event) => {
-        event.dataTransfer.setData('text/plain', item.id.toString());
-        event.dataTransfer.effectAllowed = 'move';
-        event.target.classList.add('dragging-item');
-        this.draggedItem = item; // Store reference to the dragged item
-    console.log('[DragStart]', { itemId: item.id, draggedItem: this.draggedItem });
-    });
-
-    itemElement.addEventListener('dragend', (event) => {
-        event.target.classList.remove('dragging-item');
-        if (this.dropPlaceholder && this.dropPlaceholder.parentNode === this.gridContainer) {
-            this.gridContainer.removeChild(this.dropPlaceholder);
-            this.dropPlaceholder = null;
-        }
-        this.draggedItem = null; // Clear reference
-    });
-
-    // Apply CSS Grid positioning styles. 
-    // Ensure layout values are 1-based and valid.
-    // x and y are grid line numbers (1-based). w and h are spans.
-    itemElement.style.gridColumnStart = item.layout.x;
-    itemElement.style.gridRowStart = item.layout.y;
-    itemElement.style.gridColumnEnd = `span ${item.layout.w}`;
-    itemElement.style.gridRowEnd = `span ${item.layout.h}`;
-
-    // Create the content container.
-    const contentContainer = document.createElement('div');
-    contentContainer.className = 'grid-stack-item-content';
-    itemElement.appendChild(contentContainer);
-
-    // Render specific content based on item type.
-    switch (item.type) {
-      case 'text':
-        this._renderText(item, contentContainer);
-        break;
-      case 'title':
-        this._renderTitle(item, contentContainer);
-        break;
-      case 'image':
-        this._renderImage(item, contentContainer);
-        break;
-      case 'chart':
-        this._renderChart(item, contentContainer);
-        break;
-      case 'table':
-        this._renderTable(item, contentContainer);
-        break;
-      default:
-        console.warn(`Unknown item type: ${item.type}`);
-        contentContainer.textContent = `Unknown item type: ${item.type}`;
-    }
-
-    // Create or reuse the controls container
-    let controlsContainer = itemElement.querySelector('.panorama-item-controls');
-    if (!controlsContainer) {
-        controlsContainer = document.createElement('div');
-        controlsContainer.className = 'panorama-item-controls';
-        // Prepend controls to the content container for better visibility/access
-        itemElement.insertBefore(controlsContainer, contentContainer);
-    } else {
-        controlsContainer.innerHTML = ''; // Clear old buttons
-    }
-
-    // Create the menu button
-    const menuButton = document.createElement('button');
-    menuButton.className = 'panorama-item-menu-btn';
-    menuButton.innerHTML = '⋮'; // Vertical ellipsis
-    menuButton.dataset.itemId = item.id;
-    menuButton.setAttribute('aria-haspopup', 'true');
-    menuButton.setAttribute('aria-expanded', 'false');
-    // Event listener for menu button will be added later to toggle popup
-
-    // Create the popup menu
-    const popupMenu = document.createElement('div');
-    popupMenu.className = 'panorama-item-menu-popup';
-    popupMenu.style.display = 'none'; // Initially hidden
-    popupMenu.dataset.itemId = item.id;
-
-    // Create "Edit" action
-    const editAction = document.createElement('a');
-    editAction.href = '#';
-    editAction.className = 'panorama-edit-action';
-    editAction.textContent = 'Edit';
-    editAction.dataset.itemId = item.id;
-    editAction.addEventListener('click', (event) => {
-      event.preventDefault();
-      const itemIdToEdit = parseInt(event.target.dataset.itemId);
-      const itemToEdit = this.items.find(i => i.id === itemIdToEdit);
-      if (itemToEdit) {
-        this._showEditModal(itemToEdit);
-      }
-      popupMenu.style.display = 'none'; // Hide menu after action
-      menuButton.setAttribute('aria-expanded', 'false');
-    });
-    popupMenu.appendChild(editAction);
-
-    // Create "Delete" action
-    const deleteAction = document.createElement('a');
-    deleteAction.href = '#';
-    deleteAction.className = 'panorama-delete-action';
-    deleteAction.textContent = 'Delete';
-    deleteAction.dataset.itemId = item.id;
-    deleteAction.addEventListener('click', (event) => {
-      event.preventDefault();
-      const itemIdToRemove = parseInt(event.target.dataset.itemId);
-      this.removeItem(itemIdToRemove);
-      // Popup will be removed with the item, so no need to explicitly hide it
-    });
-    popupMenu.appendChild(deleteAction);
-
-    // Append new controls
-    controlsContainer.appendChild(menuButton);
-    controlsContainer.appendChild(popupMenu);
-
-    // Add event listener to menu button to toggle popup
-    menuButton.addEventListener('click', (event) => {
-      event.stopPropagation(); // Prevent click from bubbling to document listener immediately
-      const currentlyVisible = popupMenu.style.display === 'block';
-      // Hide all other popups
-      document.querySelectorAll('.panorama-item-menu-popup').forEach(p => p.style.display = 'none');
-      document.querySelectorAll('.panorama-item-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
-      
-      if (!currentlyVisible) {
-        popupMenu.style.display = 'block';
-        menuButton.setAttribute('aria-expanded', 'true');
-      } else {
-        popupMenu.style.display = 'none';
-        menuButton.setAttribute('aria-expanded', 'false');
-      }
-    });
-
-    // Global click listener to close popups
-    // Ensure this listener is added only once or managed to avoid duplicates
-    if (!this.constructor._globalClickListenerAdded) {
-      document.addEventListener('click', () => {
-        document.querySelectorAll('.panorama-item-menu-popup').forEach(p => p.style.display = 'none');
-        document.querySelectorAll('.panorama-item-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
-      });
-      this.constructor._globalClickListenerAdded = true;
-    }
-
-    // Add new 8-directional resize handles
-    const handleDirections = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
-    handleDirections.forEach(direction => {
-      const handle = document.createElement('div');
-      handle.className = `resize-handle-base resize-handle-${direction}`;
-      handle.dataset.direction = direction;
-      handle.addEventListener('mousedown', this._initiateResize.bind(this, item, itemElement));
-      itemElement.appendChild(handle);
-    });
-    
-    return itemElement; // Return the created element
-  }
-
-  _initiateResize(item, itemElement, event) {
-    event.preventDefault();
-    event.stopPropagation(); // Prevent item drag or other interactions
-
-    const direction = event.target.dataset.direction;
-    event.preventDefault();
-    event.stopPropagation();
-
-    this.isResizing = true;
-    this.resizeItem = item;
-    this.resizeItemElement = itemElement;
-    this.resizeDirection = event.target.dataset.direction;
-    this.originalMouseX = event.clientX;
-    this.originalMouseY = event.clientY;
-    this.originalLayout = { ...item.layout }; // Shallow copy is fine here
-
-    this._handleResizeMoveListener = this._handleResizeMove.bind(this);
-    this._handleResizeUpListener = this._handleResizeUp.bind(this);
-    document.addEventListener('mousemove', this._handleResizeMoveListener);
-    document.addEventListener('mouseup', this._handleResizeUpListener);
-
-    // Add a class to the item being resized for visual feedback (optional)
-    this.resizeItemElement.classList.add('resizing-active');
-    console.log('[Resize Start]', { itemId: this.resizeItem.id, direction: this.resizeDirection, originalLayout: this.originalLayout });
-
-  }
-
-  _handleResizeMove(event) {
-    if (!this.isResizing) return;
-    event.preventDefault();
-
-    const deltaX = event.clientX - this.originalMouseX;
-    const deltaY = event.clientY - this.originalMouseY;
-
-    const gridStyle = window.getComputedStyle(this.gridContainer);
-    const gridGap = parseFloat(gridStyle.gap) || 10;
-    const numColumns = 12; // Assuming 12 columns as per current CSS
-    // Calculate cellWidth based on the clientWidth of the grid container, its padding, and the gaps between columns.
-    const cellWidth = (this.gridContainer.clientWidth - parseFloat(gridStyle.paddingLeft) - parseFloat(gridStyle.paddingRight) - (numColumns - 1) * gridGap) / numColumns;
-    // Use a fixed basis for cell height or derive from grid-auto-rows if possible and needed.
-    // For `grid-auto-rows: minmax(50px, auto)`, 50px is the minimum.
-    // A more robust solution might involve inspecting actual row heights if they are truly dynamic beyond minmax.
-    const cellHeight = parseFloat(gridStyle.gridAutoRows) || 50; // Approx. from minmax(50px, auto)
-
-    // Convert pixel deltas to grid units. Add half a cell to bias rounding to the nearest cell edge.
-    const deltaGridX = Math.round(deltaX / (cellWidth + gridGap));
-    const deltaGridY = Math.round(deltaY / (cellHeight + gridGap));
-    
-    let newLayout = { ...this.originalLayout };
-
-    // Adjust layout based on direction
-    if (this.resizeDirection.includes('e')) {
-      newLayout.w = this.originalLayout.w + deltaGridX;
-    }
-    if (this.resizeDirection.includes('w')) {
-      newLayout.x = this.originalLayout.x + deltaGridX;
-      newLayout.w = this.originalLayout.w - deltaGridX;
-    }
-    if (this.resizeDirection.includes('s')) {
-      newLayout.h = this.originalLayout.h + deltaGridY;
-    }
-    if (this.resizeDirection.includes('n')) {
-      newLayout.y = this.originalLayout.y + deltaGridY;
-      newLayout.h = this.originalLayout.h - deltaGridY;
-    }
-
-    // Clamp to maxGridRows if resizing downwards or item starts too low and gets too tall
-    if (newLayout.y + newLayout.h - 1 > this.maxGridRows) {
-        if (newLayout.y <= this.maxGridRows) { // Item starts within max rows
-            newLayout.h = this.maxGridRows - newLayout.y + 1;
-        } else { // Item starts already beyond max rows (should ideally not happen)
-            newLayout.h = 1; // Or some other minimum sensible height
-            newLayout.y = this.maxGridRows; // Pull it back to the last valid row
-        }
-    }
-
-    console.log('[Resize Move] Deltas:', { deltaX, deltaY, deltaGridX, deltaGridY });
-    console.log('[Resize Move] Initial newLayout:', JSON.parse(JSON.stringify(newLayout))); // Log deep copy
-
-    // Boundary and Minimum Size Checks
-    if (newLayout.w < 1) {
-        if (this.resizeDirection.includes('w')) { // Resizing from west, width became < 1
-            newLayout.x = this.originalLayout.x + this.originalLayout.w -1; // Snap x to original right edge
-        }
-        newLayout.w = 1;
-    }
-
-    if (newLayout.h < 1) {
-        if (this.resizeDirection.includes('n')) { // Resizing from north, height became < 1
-            newLayout.y = this.originalLayout.y + this.originalLayout.h - 1; // Snap y to original bottom edge
-        }
-        newLayout.h = 1;
-    }
-
-    if (newLayout.x < 1) {
-        if (this.resizeDirection.includes('w') || this.resizeDirection.includes('e')) { // If width changed due to x
-            newLayout.w = this.originalLayout.x + this.originalLayout.w -1;
-        }
-        newLayout.x = 1;
-    }
-    if (newLayout.y < 1) {
-        if (this.resizeDirection.includes('n') || this.resizeDirection.includes('s')) { // If height changed due to y
-             newLayout.h = this.originalLayout.y + this.originalLayout.h - 1;
-        }
-        newLayout.y = 1;
-    }
-
-    // Max boundary checks
-    if (newLayout.x + newLayout.w > numColumns + 1) {
-      if (this.resizeDirection.includes('e')) { // Resizing eastwards
-        newLayout.w = numColumns - newLayout.x + 1;
-      } else if (this.resizeDirection.includes('w')) { // Resizing westwards, x changed
-        // This case should be handled by x < 1 and w < 1 mostly
-      }
-    }
-     if (newLayout.w > numColumns) newLayout.w = numColumns;
-
-
-    // Collision Detection
-    let collision = false;
-    for (const otherItem of this.items) {
-      if (otherItem.id === this.resizeItem.id) continue;
-      if (this._isCollision(newLayout, otherItem.layout)) {
-        collision = true;
-        break;
-      }
-    }
-
-    if (collision) {
-      // Optionally, provide visual feedback for collision, e.g.,
-      this.resizeItemElement.style.outline = '2px solid red'; 
-      this.pendingLayout = null; // Invalidate pending layout
-      return; 
-    } else {
-      this.resizeItemElement.style.outline = ''; // Clear collision feedback
-    }
-    console.log('[Resize Move] Collision Check:', { collision, newLayoutAfterBounds: JSON.parse(JSON.stringify(newLayout)) });
-    if (collision) {
-        console.warn('[Resize Move] Resize attempt would collide.');
-    }
-    console.log('[Resize Move] Pending Layout Set:', this.pendingLayout ? JSON.parse(JSON.stringify(this.pendingLayout)) : null);
-
-
-    // Live Style Update
-    this.resizeItemElement.style.gridColumnStart = newLayout.x;
-    this.resizeItemElement.style.gridColumnEnd = `span ${newLayout.w}`;
-    this.resizeItemElement.style.gridRowStart = newLayout.y;
-    this.resizeItemElement.style.gridRowEnd = `span ${newLayout.h}`;
-    this.pendingLayout = newLayout;
-  }
-
-  _handleResizeUp(event) {
-    if (!this.isResizing) return;
-    this.isResizing = false;
-
-    document.removeEventListener('mousemove', this._handleResizeMoveListener);
-    document.removeEventListener('mouseup', this._handleResizeUpListener);
-    this.resizeItemElement.classList.remove('resizing-active');
-    this.resizeItemElement.style.outline = ''; // Clear any collision outline
-
-    let finalLayoutToApply = this.originalLayout; // Default to original
-
-    if (this.pendingLayout) {
-      // Final collision check for the pending layout
-      let collisionOnFinal = false;
-      for (const otherItem of this.items) {
-        if (otherItem.id === this.resizeItem.id) continue;
-        if (this._isCollision(this.pendingLayout, otherItem.layout)) {
-          collisionOnFinal = true;
-          break;
-        }
-      }
-      if (!collisionOnFinal) {
-        finalLayoutToApply = this.pendingLayout;
-      } else {
-         console.warn(`Resize for item ${this.resizeItem.id} reverted due to collision on mouseup.`);
-      }
-      console.log('[Resize End]', { editingItemId: this.resizeItem?.id, pendingLayout: this.pendingLayout ? JSON.parse(JSON.stringify(this.pendingLayout)) : null, collisionOnFinal });
-      if (collisionOnFinal) {
-          console.warn('[Resize End] Final layout collided, reverting to original or last valid pending.');
-      }
-      console.log('[Resize End] Applying layout:', JSON.parse(JSON.stringify(finalLayoutToApply)));
-
-    }
-    
-    this.resizeItem.layout = { ...finalLayoutToApply };
-    this.updateItemLayout(this.resizeItem.id, this.resizeItem.layout, true); // Update and re-render all
-
-    // Cleanup
-    this.resizeItem = null;
-    this.resizeItemElement = null;
-    this.pendingLayout = null;
-    this.originalMouseX = null;
-    this.originalMouseY = null;
-    this.originalLayout = null;
-    this.resizeDirection = null;
-    this._handleResizeMoveListener = null;
-    this._handleResizeUpListener = null;
-  }
-
-  /**
-   * Checks if two layout objects collide (overlap).
-   * @param {object} layout1 - Layout object { x, y, w, h }.
-   * @param {object} layout2 - Layout object { x, y, w, h }.
-   * @returns {boolean} - True if they collide, false otherwise.
-   * @private
-   */
-  _isCollision(layout1, layout2) {
-    // Check for non-overlapping conditions.
-    // If any of these are true, the rectangles do NOT overlap.
-    if (
-      layout1.x + layout1.w <= layout2.x || // layout1 is to the left of layout2
-      layout1.x >= layout2.x + layout2.w || // layout1 is to the right of layout2
-      layout1.y + layout1.h <= layout2.y || // layout1 is above layout2
-      layout1.y >= layout2.y + layout2.h    // layout1 is below layout2
-    ) {
-      return false; // No collision
-    }
-    return true; // Collision
-  }
-
   // Placeholder for specific rendering functions
   _renderText(item, contentContainer) {
     const textElement = document.createElement('p');
