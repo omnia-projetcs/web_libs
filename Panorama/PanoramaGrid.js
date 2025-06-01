@@ -715,16 +715,12 @@ class PanoramaGrid {
         }
 
         layoutData.items.forEach(itemData => {
-            if (!itemData.layout || !itemData.config) {
-                console.warn('PanoramaGrid: Skipping item in loadLayout due to missing layout or config.', itemData);
+            if (!itemData.layout || !itemData.config || typeof itemData.type === 'undefined') { // Added check for itemData.type
+                console.warn('PanoramaGrid: Skipping item in loadLayout due to missing layout, config, or type.', itemData);
                 return; // continue to next item
             }
-            // addItem expects a single config object where 'layout' is a property.
-            // The structure from getLayout is { id, config, layout }.
-            // We need to pass an object to addItem that it expects, usually { ...actualConfig, layout: actualLayout }
-            // addItem will generate its own ID, so we don't pass itemData.id to it.
-            // We will rely on itemIdCounter being set correctly afterwards.
-            this.addItem({ ...itemData.config, layout: itemData.layout });
+            // Pass itemData.type into the config object for addItem
+            this.addItem({ type: itemData.type, ...itemData.config, layout: itemData.layout });
         });
 
         // Restore itemIdCounter, ensuring it's at least the max ID from loaded items
