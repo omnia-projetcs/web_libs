@@ -71,6 +71,8 @@ class PureChart {
         this.interactiveElements = [];
         this.interactiveLegendItems = []; // For legend interactivity
         this.activeTooltipData = null;
+        this.resizeObserver = null;
+        this.debouncedResize = null;
 
         const defaults = {
             width: this.canvas.width || 300,
@@ -79,6 +81,7 @@ class PureChart {
             theme: 'light',
             data: {},
             options: {
+                autosize: true,
                 padding: { top: 20, right: 20, bottom: 40, left: 20 },
                 yAxes: [{ 
                     id: 'left', // Default ID for the first axis
@@ -161,7 +164,7 @@ class PureChart {
                     borderDarkenPercent: 20,
                     fillLightenPercent: undefined // If > 0, activates the new "gauge" style
                 },
-                font: '12px Arial', // Global default font
+                // font: '12px Arial', // Global default font - autosize will manage this if not set at component level
                 gridColor: '#e0e0e0',
                 tooltip: { 
                     enabled: true, 
@@ -201,7 +204,32 @@ class PureChart {
         };
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
-        
+
+        // Autosize specific logic - If autosize is true, canvas dimensions might be overridden by container.
+        // For the default setup, we assume if autosize is true, the user might NOT provide
+        // explicit width/height in userOptions, expecting it to adapt.
+        // The actual resizing would happen in _draw or an init step, listening to window resize.
+        // Here, we just ensure the default config reflects autosize.
+        // If this.config.options.autosize is true, width/height from defaults might be placeholders.
+
+        if (this.config.options.autosize) {
+            const parentElement = this.canvas.parentElement;
+            if (parentElement) {
+                this.debouncedResize = PureChart._debounce(this._handleResize.bind(this), 250);
+                this.resizeObserver = new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        this.debouncedResize(entry.contentRect);
+                    }
+                });
+                this.resizeObserver.observe(parentElement);
+                // Initial call to set size
+                this._handleResize(parentElement.getBoundingClientRect());
+            } else {
+                console.error("PureChart Autosize Error: Canvas parent element not found. Autosize disabled for this instance.");
+                this.config.options.autosize = false; // Disable if no parent
+            }
+        }
+
         // Part 1: Robust Axis Configuration Merging
         const defaultSingleYAxisConfig = defaults.options.yAxes[0];
 
@@ -258,9 +286,13 @@ class PureChart {
 
         if (this.isValid && this.config.options.tooltip.enabled) {
             this._createTooltipElement();
-            this.canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
-            this.canvas.addEventListener('mouseout', this._onMouseOut.bind(this));
-            this.canvas.addEventListener('mouseleave', this._onMouseOut.bind(this)); // Also hide on mouseleave
+            // Store bound versions of event handlers for later removal
+            this._boundOnMouseMove = this._onMouseMove.bind(this);
+            this._boundOnMouseOut = this._onMouseOut.bind(this); // mouseleave also uses this
+
+            this.canvas.addEventListener('mousemove', this._boundOnMouseMove);
+            this.canvas.addEventListener('mouseout', this._boundOnMouseOut);
+            this.canvas.addEventListener('mouseleave', this._boundOnMouseOut);
         }
 
         // Initialize dataset visibility
@@ -270,9 +302,37 @@ class PureChart {
             });
         }
         
-        this.canvas.addEventListener('click', this._onCanvasClick.bind(this));
+        this._boundOnCanvasClick = this._onCanvasClick.bind(this);
+        this.canvas.addEventListener('click', this._boundOnCanvasClick);
 
         this._draw();
+    }
+
+    static _debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), delay);
+        };
+    }
+
+    _handleResize(newRect) {
+        if (!newRect) return;
+
+        const newCanvasWidth = Math.floor(newRect.width);
+        const newCanvasHeight = Math.floor(newRect.height);
+
+        if (this.canvas.width !== newCanvasWidth || this.canvas.height !== newCanvasHeight) {
+            this.canvas.width = newCanvasWidth;
+            this.canvas.height = newCanvasHeight;
+
+            // Update config as _getDrawingArea and other calculations might use it directly
+            this.config.width = newCanvasWidth;
+            this.config.height = newCanvasHeight;
+
+            this._draw(); // Redraw the chart
+        }
     }
 
     static _calculateSMA(dataValues, period) {
@@ -2099,5 +2159,62 @@ class PureChart {
                 }
             }
         });
+    }
+
+    destroy() {
+        // Remove event listeners
+        if (this.canvas) { // Check if canvas exists, as it's nullified later
+            if (this.config && this.config.options.tooltip.enabled) { // Check config as well
+                if (this._boundOnMouseMove) this.canvas.removeEventListener('mousemove', this._boundOnMouseMove);
+                if (this._boundOnMouseOut) {
+                    this.canvas.removeEventListener('mouseout', this._boundOnMouseOut);
+                    this.canvas.removeEventListener('mouseleave', this._boundOnMouseOut);
+                }
+            }
+            if (this._boundOnCanvasClick) this.canvas.removeEventListener('click', this._boundOnCanvasClick);
+        }
+
+        // Clean up Tooltip
+        if (this.tooltipElement) {
+            if (this.tooltipElement.parentElement) { // Ensure it's in the DOM
+                this.tooltipElement.remove(); // More direct removal
+            }
+            this.tooltipElement = null;
+        }
+
+        // Disconnect ResizeObserver
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+        if (this.debouncedResize) {
+             // Clear any pending debounce timeout - tricky if timeout ID is not stored directly on instance
+             // For now, nullifying should prevent further calls if component is destroyed.
+            this.debouncedResize = null;
+        }
+
+        // Clear any other resources if necessary, e.g., clear context, nullify properties
+        this.ctx = null; // Context is tied to canvas, nullify first
+        this.canvas = null;
+
+        // Nullify config and other properties
+        // Check if config exists before trying to access its properties in listener removal
+        if (this.config) {
+            this.config = null;
+        }
+
+        this.interactiveElements = []; // Clear arrays
+        this.interactiveLegendItems = [];
+        this.activeTooltipData = null;
+        this.yAxisScales = null;
+        this.drawArea = null;
+
+        // Nullify bound event handlers
+        this._boundOnMouseMove = null;
+        this._boundOnMouseOut = null;
+        this._boundOnCanvasClick = null;
+
+        this.isValid = false; // Mark as no longer valid
+        // console.log("PureChart instance destroyed.");
     }
 }
