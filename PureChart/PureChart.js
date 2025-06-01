@@ -261,16 +261,41 @@ class PureChart {
         }
 
         // Initialize activePalette based on the theme
-        if (this.config.theme === 'dark') {
-            this.activePalette = PC_DARK_THEME_PALETTE;
-        } else {
-            this.activePalette = PC_LIGHT_THEME_PALETTE; // Default to light
-        }
-        // If a custom theme object is provided in options, merge it over the selected palette
+        // console.log("PureChart Constructor: Theme for palette initialization:", JSON.stringify(this.config.theme)); // For debugging
         if (typeof this.config.theme === 'object' && this.config.theme !== null) {
-            const basePalette = (this.config.theme.extends === 'dark' && PC_DARK_THEME_PALETTE) ? PC_DARK_THEME_PALETTE : PC_LIGHT_THEME_PALETTE;
-            this.activePalette = PureChart._mergeDeep(basePalette, this.config.theme);
+            const basePaletteName = this.config.theme.extends;
+            let basePaletteInstance;
+            if (basePaletteName === 'dark') {
+                basePaletteInstance = PC_DARK_THEME_PALETTE;
+            } else { // Default to light if 'extends' is not 'dark' or is missing
+                basePaletteInstance = PC_LIGHT_THEME_PALETTE;
+            }
+            // Start with a copy of the base, then merge the custom theme object, then merge specific sub-objects if they exist
+            this.activePalette = PureChart._mergeDeep({}, basePaletteInstance);
+            this.activePalette = PureChart._mergeDeep(this.activePalette, this.config.theme);
+
+            // Ensure critical top-level palette properties are present after merge, or copy from the chosen base.
+            // This handles cases where the custom theme might overwrite a top-level property with 'undefined'.
+            // For properties like defaultDatasetColors, a deep merge is generally good.
+            // For simple string properties, we ensure they exist.
+            for (const key in basePaletteInstance) {
+                if (this.activePalette[key] === undefined && basePaletteInstance.hasOwnProperty(key) && typeof basePaletteInstance[key] !== 'object') {
+                    this.activePalette[key] = basePaletteInstance[key];
+                } else if (typeof basePaletteInstance[key] === 'object' && basePaletteInstance[key] !== null && !Array.isArray(basePaletteInstance[key])) {
+                    // For nested objects like 'bar', 'line', ensure they are also merged properly if missing in custom theme
+                    if (!this.activePalette[key]) this.activePalette[key] = {};
+                    this.activePalette[key] = PureChart._mergeDeep({}, basePaletteInstance[key], this.activePalette[key]);
+                }
+            }
+            if (!this.activePalette.name) this.activePalette.name = basePaletteInstance.name; // Ensure name is set
+
+        } else if (this.config.theme === 'dark') {
+            this.activePalette = { ...PC_DARK_THEME_PALETTE }; // Use a copy
+        } else { // Includes 'light', undefined, null, or any other string
+            this.activePalette = { ...PC_LIGHT_THEME_PALETTE }; // Use a copy, default to light
         }
+        // console.log("PureChart Constructor: Active palette set to:", this.activePalette.name);
+
 
         // Default yAxisID for Datasets
         if (this.config.data && this.config.data.datasets && this.config.options.yAxes && this.config.options.yAxes.length > 0) {
@@ -323,6 +348,10 @@ class PureChart {
     }
 
     _handleResize(newRect) {
+        if (!this.isValid) {
+            // console.warn("PureChart: Attempted to call _handleResize on a destroyed instance.");
+            return;
+        }
         if (!newRect) return;
 
         let newCanvasWidth = Math.floor(newRect.width);
@@ -658,24 +687,42 @@ class PureChart {
     }
 
     _draw() {
-        if (!this.isValid) return;
+        if (!this.isValid) {
+            // console.warn("PureChart: Attempted to call _draw on a destroyed instance.");
+            return;
+        }
 
-        // Ensure activePalette is available (Defensive check from subtask description)
+        // Ensure activePalette is available (Defensive check from subtask description - already present)
+        // This was added in a previous step and is good to keep.
         if (!this.activePalette) {
             console.warn("PureChart: activePalette was undefined in _draw. Re-initializing from config.theme.");
-            if (this.config && this.config.theme) {
+            if (this.config && this.config.theme) { // Check this.config exists
                 if (this.config.theme === 'dark') {
-                    this.activePalette = PC_DARK_THEME_PALETTE;
+                    this.activePalette = { ...PC_DARK_THEME_PALETTE };
                 } else if (typeof this.config.theme === 'object' && this.config.theme !== null) {
-                    const basePalette = (this.config.theme.extends === 'dark' && PC_DARK_THEME_PALETTE) ? PC_DARK_THEME_PALETTE : PC_LIGHT_THEME_PALETTE;
-                    this.activePalette = PureChart._mergeDeep(basePalette, this.config.theme);
+                    const basePaletteName = this.config.theme.extends;
+                    let basePaletteInstance;
+                    if (basePaletteName === 'dark') {
+                        basePaletteInstance = PC_DARK_THEME_PALETTE;
+                    } else {
+                        basePaletteInstance = PC_LIGHT_THEME_PALETTE;
+                    }
+                    this.activePalette = PureChart._mergeDeep({}, basePaletteInstance, this.config.theme);
+                     for (const key in basePaletteInstance) {
+                        if (this.activePalette[key] === undefined && basePaletteInstance.hasOwnProperty(key) && typeof basePaletteInstance[key] !== 'object') {
+                            this.activePalette[key] = basePaletteInstance[key];
+                        } else if (typeof basePaletteInstance[key] === 'object' && basePaletteInstance[key] !== null && !Array.isArray(basePaletteInstance[key])) {
+                            if (!this.activePalette[key]) this.activePalette[key] = {};
+                            this.activePalette[key] = PureChart._mergeDeep({}, basePaletteInstance[key], this.activePalette[key]);
+                        }
+                    }
+                    if (!this.activePalette.name) this.activePalette.name = basePaletteInstance.name;
                 } else {
-                    this.activePalette = PC_LIGHT_THEME_PALETTE; // Default to light
+                    this.activePalette = { ...PC_LIGHT_THEME_PALETTE };
                 }
             } else {
-                 // Critical fallback if config or theme is also missing
                 console.error("PureChart: Cannot initialize activePalette in _draw due to missing config or theme. Using light theme as emergency fallback.");
-                this.activePalette = PC_LIGHT_THEME_PALETTE;
+                this.activePalette = { ...PC_LIGHT_THEME_PALETTE };
             }
         }
 
@@ -1002,36 +1049,44 @@ class PureChart {
             }
 
             if (minValue === maxValue) {
-                if (minValue === 0) {
-                    maxValue = 1;
-                } else {
-                    const buffer = Math.abs(maxValue * 0.1) || 1; // Ensure buffer is at least 1
+                if (minValue === 0) { // If the single value is 0
+                    maxValue = 1; // Set range 0-1 for scale calculation
+                    // minValue remains 0
+                } else { // If single value is non-zero
+                    const buffer = Math.abs(maxValue * 0.1) || 1; // Ensure buffer is at least 1, or 10% of value
                     maxValue += buffer;
                     if (!axisConfig.beginAtZero) {
                         minValue -= buffer;
                     } else {
-                        minValue = Math.min(0, minValue - buffer); // Ensure beginAtZero is still respected
+                        // If beginAtZero is true, minValue should be 0 if original value was positive,
+                        // or (original value - buffer) if original value was negative (then capped at 0 by Math.min).
+                        minValue = Math.min(0, minValue - buffer);
                     }
                 }
             }
-             // Final safety check if still equal (e.g. if buffer was 0 or values were very small)
+            // Defensive check: if after buffering, they are *still* somehow equal (e.g. buffer was 0)
+            // This can happen if maxValue was extremely small, making buffer * 0.1 effectively zero.
             if (minValue === maxValue) {
-                maxValue += 1;
+                maxValue += 1; // Final fallback to prevent division by zero for the scale
             }
 
-
             let yScale;
-            if (this.drawArea.height === 0 || (maxValue - minValue === 0)) {
-                yScale = 1; // Avoid division by zero or scale based on zero height
-            } else {
+            if (this.drawArea.height <= 0) {
+                // console.warn(`PureChart _calculateScale: drawArea.height is ${this.drawArea.height} for yAxis ID '${currentAxisID}'. Defaulting yScale to 1.`);
+                yScale = 1;
+            } else if (maxValue - minValue === 0) { // This case should ideally be handled by the minValue === maxValue logic above
+                // console.warn(`PureChart _calculateScale: Value range is 0 for yAxis ID '${currentAxisID}'. Defaulting yScale to 1.`);
+                yScale = 1;
+            }
+            else {
                 yScale = this.drawArea.height / (maxValue - minValue);
             }
 
-            if (!isFinite(yScale) || yScale <= 0) {
+            if (!isFinite(yScale) || yScale <= 0) { // Ensure this check remains after all yScale calculations
                 console.error(`PureChart _calculateScale: Invalid yScale (${yScale}) calculated for yAxis ID '${currentAxisID}'. Defaulting to 1.`);
                 yScale = 1;
                 // Consider if this specific axis failure should invalidate the entire chart:
-                // this.isValid = false; 
+                // this.isValid = false;
             }
             
             this.yAxisScales[currentAxisID] = {
@@ -1194,121 +1249,113 @@ class PureChart {
                 // Set styles for X-axis labels
                 this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor; // Prioritize dedicated labelColor
                 this.ctx.font = oX.labelFont;
-                this.ctx.textAlign = 'center';
+                // textAlign is set per label later, textBaseline is top for X-axis labels
                 this.ctx.textBaseline = 'top';
 
                 const labels = data.labels;
                 const numLabels = labels.length;
-                // Use provided xAxis options, with defaults
                 const forceShowFirstAndLast = oX.forceShowFirstAndLastLabel !== undefined ? oX.forceShowFirstAndLastLabel : true;
-                let maxLabelsToShow = oX.maxLabelsToShow; // User-defined override
+                let maxLabelsToShow = oX.maxLabelsToShow;
                 const minSpacingBetweenLabels = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
-                // const labelRotation = oX.labelRotation || 0; // In degrees, 0 for no rotation. Not used in current fillText.
-                const labelYOffset = oX.labelYOffset || 8; // Default vertical offset from axis line
-
+                const labelYOffset = oX.labelYOffset || 8;
                 const labelYPos = this.drawArea.y + this.drawArea.height + labelYOffset;
                 let lastDrawnLabelXEnd = -Infinity;
+
+                const xLabelSlotWidth = numLabels > 0 ? this.drawArea.width / numLabels : this.drawArea.width;
 
                 // Calculate maxLabelsToShow dynamically if not explicitly set by user
                 if (maxLabelsToShow === undefined && numLabels > 0) {
                     let totalTextWidth = 0;
-                    const originalFont = this.ctx.font; // Save current font
-                    this.ctx.font = oX.labelFont; // Ensure correct font for measurement
+                    const originalFont = this.ctx.font;
+                    this.ctx.font = oX.labelFont;
                     labels.forEach(l => { totalTextWidth += this.ctx.measureText(String(l)).width; });
-                    this.ctx.font = originalFont; // Restore font
+                    this.ctx.font = originalFont;
 
-                    const avgLabelWidth = numLabels > 0 ? totalTextWidth / numLabels : 0; // Avoid NaN if numLabels is 0
+                    const avgLabelWidth = numLabels > 0 ? totalTextWidth / numLabels : 0;
                     if (avgLabelWidth + minSpacingBetweenLabels > 0) {
                         maxLabelsToShow = Math.floor(this.drawArea.width / (avgLabelWidth + minSpacingBetweenLabels));
-                    } else { // If avgLabelWidth is 0 (e.g. all empty strings) or negative for some reason
-                        maxLabelsToShow = numLabels; // Default to trying to show all, overlap checks will handle it
+                    } else {
+                        maxLabelsToShow = numLabels;
                     }
-                    maxLabelsToShow = Math.max(1, maxLabelsToShow); // Show at least one label if possible
+                    maxLabelsToShow = Math.max(1, maxLabelsToShow);
                 } else if (maxLabelsToShow === undefined && numLabels === 0) {
                     maxLabelsToShow = 0;
                 }
 
-
                 let indexesToDraw = [];
-                if (numLabels > 0 && maxLabelsToShow > 0) { // Proceed only if there are labels and we can show at least one
+                if (numLabels > 0 && maxLabelsToShow > 0) {
                     if (numLabels <= maxLabelsToShow) {
-                        indexesToDraw = labels.map((_, i) => i); // Draw all labels if they fit
+                        indexesToDraw = labels.map((_, i) => i);
                     } else {
-                        // Determine labels to draw based on maxLabelsToShow
                         if (forceShowFirstAndLast) {
                             indexesToDraw.push(0);
                             if (numLabels > 1) {
                                 indexesToDraw.push(numLabels - 1);
                             }
                         }
-
                         const remainingSlots = maxLabelsToShow - indexesToDraw.length;
                         if (remainingSlots > 0) {
                             let availableInnerLabels = [];
                             for(let i = 0; i < numLabels; i++) {
-                                if (!indexesToDraw.includes(i)) { // Only consider labels not already added (first/last)
+                                if (!indexesToDraw.includes(i)) {
                                     availableInnerLabels.push(i);
                                 }
                             }
-
                             if (availableInnerLabels.length > 0) {
-                                 // Distribute remaining slots among available inner labels
                                  const step = Math.max(1, Math.floor(availableInnerLabels.length / remainingSlots));
                                  for (let i = 0; i < availableInnerLabels.length && indexesToDraw.length < maxLabelsToShow; i += step) {
-                                    // Add if not already present (shouldn't be, but as safeguard)
                                     if (!indexesToDraw.includes(availableInnerLabels[i])) {
                                         indexesToDraw.push(availableInnerLabels[i]);
                                     }
                                  }
                             }
                         }
-                        indexesToDraw = [...new Set(indexesToDraw)].sort((a, b) => a - b); // Remove duplicates and sort
+                        indexesToDraw = [...new Set(indexesToDraw)].sort((a, b) => a - b);
                     }
                 }
 
-                const xLabelSlotWidth = numLabels > 0 ? this.drawArea.width / numLabels : this.drawArea.width;
-
                 indexesToDraw.forEach(index => {
                     const labelText = String(labels[index]);
-                    // Ensure font is set correctly before measuring, as it might be reset by other drawing operations
                     this.ctx.font = oX.labelFont;
                     const labelWidth = this.ctx.measureText(labelText).width;
+                    let xPos = this.drawArea.x + (index * xLabelSlotWidth) + (xLabelSlotWidth / 2);
 
-                    const xPos = this.drawArea.x + (index * xLabelSlotWidth) + (xLabelSlotWidth / 2);
+                    let currentLabelStartX = xPos - labelWidth / 2;
+                    let currentLabelEndX = xPos + labelWidth / 2;
 
-                    const labelStartX = xPos - labelWidth / 2;
-                    const labelEndX = xPos + labelWidth / 2;
-
-                    const isFirstLabelToDraw = lastDrawnLabelXEnd === -Infinity;
-                    let allowThisLabel = false;
-
-                    if (isFirstLabelToDraw) { // Always attempt to draw the first chosen label if it's within bounds
-                        if (labelEndX >= this.drawArea.x && labelStartX <= this.drawArea.x + this.drawArea.width) {
-                            allowThisLabel = true;
+                    if (forceShowFirstAndLast) {
+                        if (index === 0 && currentLabelStartX < this.drawArea.x) {
+                            xPos = this.drawArea.x + labelWidth / 2;
+                        } else if (index === numLabels - 1 && currentLabelEndX > this.drawArea.x + this.drawArea.width) {
+                            xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
                         }
-                    } else {
-                        // Standard overlap and boundary check for subsequent labels
-                        const noOverlap = labelStartX >= lastDrawnLabelXEnd + minSpacingBetweenLabels;
-                        const withinBounds = labelStartX >= this.drawArea.x && labelEndX <= this.drawArea.x + this.drawArea.width;
-                        if (noOverlap && withinBounds) {
-                            allowThisLabel = true;
+                        currentLabelStartX = xPos - labelWidth / 2; // Recalculate after potential xPos adjustment
+                        currentLabelEndX = xPos + labelWidth / 2;
+                    }
+
+                    let drawThisLabel = true;
+
+                    if (lastDrawnLabelXEnd !== -Infinity && currentLabelStartX < lastDrawnLabelXEnd + minSpacingBetweenLabels) {
+                        drawThisLabel = false;
+                    }
+
+                    if (drawThisLabel) {
+                        const visiblePortionStart = Math.max(this.drawArea.x, currentLabelStartX);
+                        const visiblePortionEnd = Math.min(this.drawArea.x + this.drawArea.width, currentLabelEndX);
+                        const visibleWidth = visiblePortionEnd - visiblePortionStart;
+                        if (visibleWidth < 1) { // Or a more generous minimum like labelWidth * 0.25
+                            drawThisLabel = false;
                         }
                     }
 
-                    // Special consideration for forced first/last labels if they were skipped by normal logic
-                    if (forceShowFirstAndLast && (index === 0 || index === numLabels - 1) && !allowThisLabel) {
-                        // Try to draw if it's at least partially visible and doesn't catastrophically overlap
-                        const partialOverlapOK = labelStartX >= lastDrawnLabelXEnd - labelWidth / 4; // Allow more overlap
-                        const partiallyVisible = labelEndX > this.drawArea.x && labelStartX < this.drawArea.x + this.drawArea.width;
-                        if (partialOverlapOK && partiallyVisible) {
-                            allowThisLabel = true;
-                        }
-                    }
+                    // The previous "Special consideration" for forced labels to allow partial overlap has been removed
+                    // in favor of the xPos adjustment and the standard visibility/overlap checks.
+                    // A forced label, after xPos adjustment, must still pass visibility and not overlap the *previous* drawn label.
 
-
-                    if (allowThisLabel) {
+                    if (drawThisLabel) {
+                        this.ctx.textAlign = 'center'; // Ensure it's center for xPos
                         this.ctx.fillText(labelText, xPos, labelYPos);
-                        lastDrawnLabelXEnd = labelEndX;
+                        lastDrawnLabelXEnd = currentLabelEndX;
 
                         if (oX.gridLines && index > 0) {
                             const xPosGrid = this.drawArea.x + (index * xLabelSlotWidth);
@@ -2195,9 +2242,12 @@ class PureChart {
     }
 
     destroy() {
+        if (!this.isValid) return; // Already destroyed or never valid
+
         // Remove event listeners
         if (this.canvas) { // Check if canvas exists, as it's nullified later
-            if (this.config && this.config.options.tooltip.enabled) { // Check config as well
+            // Check config before accessing its properties for tooltip.enabled
+            if (this.config && this.config.options && this.config.options.tooltip && this.config.options.tooltip.enabled) {
                 if (this._boundOnMouseMove) this.canvas.removeEventListener('mousemove', this._boundOnMouseMove);
                 if (this._boundOnMouseOut) {
                     this.canvas.removeEventListener('mouseout', this._boundOnMouseOut);
