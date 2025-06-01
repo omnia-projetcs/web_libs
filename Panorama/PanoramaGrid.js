@@ -24,6 +24,13 @@ class PanoramaGrid {
         this._boundHandleDragMove = null; // To store bound event handlers
         this._boundHandleDragEnd = null;
 
+        this.resizeItem = null;
+        this.resizeItemInitialLayout = null;
+        this.resizeInitialMousePos = null; // {x, y} relative to viewport
+        this.resizeDirection = null; // e.g., 'se'
+        this._boundHandleResizeMove = null; // For storing bound mousemove handler
+        this._boundHandleResizeEnd = null;   // For storing bound mouseup handler
+
         this._init();
     }
 
@@ -192,6 +199,17 @@ class PanoramaGrid {
         }
 
         itemElement.appendChild(contentElement);
+
+        // Add resize handle (example: South-East)
+        const resizeHandleSE = document.createElement('div');
+        resizeHandleSE.className = 'pg-resize-handle pg-resize-handle-se';
+        resizeHandleSE.setAttribute('data-direction', 'se');
+        // Add mousedown listener for resizing on the handle
+        resizeHandleSE.addEventListener('mousedown', (event) => {
+            this._handleResizeStart(event, itemObject);
+        });
+        itemElement.appendChild(resizeHandleSE); // Append handle to the item element
+
         this.containerElement.appendChild(itemElement);
         itemObject.element = itemElement; // Store reference to the DOM element
 
@@ -214,6 +232,9 @@ class PanoramaGrid {
         this.draggedItem = itemObject;
         this.draggedItemInitialLayout = { ...itemObject.layout };
         this.dragInitialMousePos = { x: event.clientX, y: event.clientY };
+        // Initialize potentialLayout on the item being dragged
+        this.draggedItem.potentialLayout = { ...itemObject.layout };
+
 
         if (itemObject.element) {
             itemObject.element.classList.add('pg-dragging');
@@ -231,33 +252,287 @@ class PanoramaGrid {
 
     _handleDragMove(event) {
         event.preventDefault();
-        if (!this.draggedItem) return;
+        if (!this.draggedItem || !this.dragInitialMousePos) {
+            return;
+        }
 
-        // For now, just log. Actual position update will be in the next step.
-        console.log('PanoramaGrid: Drag move', event.clientX, event.clientY);
-        // Later: calculate new position, check collisions, update element style
+        const dx = event.clientX - this.dragInitialMousePos.x;
+        const dy = event.clientY - this.dragInitialMousePos.y;
+
+        // Apply visual translation for smooth feedback
+        this.draggedItem.element.style.transform = `translate(${dx}px, ${dy}px)`;
+
+        // Calculate grid cell dimensions
+        // Consider padding of the container for accurate cell width calculation.
+        const containerStyle = getComputedStyle(this.containerElement);
+        const containerPaddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+        const containerPaddingRight = parseFloat(containerStyle.paddingRight) || 0;
+        // Effective width for cells is container's content box width.
+        const contentWidth = this.containerElement.clientWidth - containerPaddingLeft - containerPaddingRight;
+
+        const cellWidth = (contentWidth - (this.options.columns - 1) * this.options.gap) / this.options.columns;
+        const cellHeight = this.options.rowHeight; // Using the configured rowHeight
+
+        // Convert pixel delta to grid cell delta
+        // Add half a cell/gap to bias towards the cell the mouse is mostly over
+        const gridDeltaX = Math.round(dx / (cellWidth + this.options.gap));
+        const gridDeltaY = Math.round(dy / (cellHeight + this.options.gap));
+
+        // Calculate new potential grid position based on initial layout + delta
+        let newGridX = this.draggedItemInitialLayout.x + gridDeltaX;
+        let newGridY = this.draggedItemInitialLayout.y + gridDeltaY;
+
+        // Boundary checks for the new grid position
+        // Ensure item doesn't go out of left/right bounds
+        newGridX = Math.max(1, Math.min(newGridX, this.options.columns - this.draggedItemInitialLayout.w + 1));
+        // Ensure item doesn't go above top bound (y=1)
+        newGridY = Math.max(1, newGridY);
+        // No maximum Y boundary for now, grid can expand downwards.
+
+        // Store the calculated potential layout (grid units)
+        this.draggedItem.potentialLayout = {
+            x: newGridX,
+            y: newGridY,
+            w: this.draggedItemInitialLayout.w, // Width and height don't change during drag
+            h: this.draggedItemInitialLayout.h
+        };
+
+        // console.log(`PanoramaGrid: Drag Move - dx:${dx}, dy:${dy}, gridDeltaX:${gridDeltaX}, gridDeltaY:${gridDeltaY}, Potential:`, this.draggedItem.potentialLayout);
+    }
+
+    _updateItemDOMPosition(itemObject) {
+        if (!itemObject || !itemObject.element || !itemObject.layout) {
+            console.warn('PanoramaGrid: Cannot update DOM position for invalid item object.', itemObject);
+            return;
+        }
+
+        itemObject.element.style.gridColumnStart = itemObject.layout.x;
+        itemObject.element.style.gridRowStart = itemObject.layout.y;
+        itemObject.element.style.gridColumnEnd = `span ${itemObject.layout.w}`;
+        itemObject.element.style.gridRowEnd = `span ${itemObject.layout.h}`;
+
+        const itemHeight = (itemObject.layout.h * this.options.rowHeight) + ((itemObject.layout.h - 1) * this.options.gap);
+        itemObject.element.style.height = `${itemHeight}px`;
+
+        // console.log(`PanoramaGrid: Updated DOM position for item ID ${itemObject.id} to`, itemObject.layout);
     }
 
     _handleDragEnd(event) {
         event.preventDefault();
-        if (!this.draggedItem) return; // Should not happen if listeners are correctly managed
+        if (!this.draggedItem) { // Early exit if no item was being dragged
+            // Ensure listeners are cleaned up if they somehow persisted
+            if (this._boundHandleDragMove) document.removeEventListener('mousemove', this._boundHandleDragMove);
+            if (this._boundHandleDragEnd) document.removeEventListener('mouseup', this._boundHandleDragEnd);
+            this._boundHandleDragMove = null;
+            this._boundHandleDragEnd = null;
+            return;
+        }
 
-        console.log(`PanoramaGrid: Drag end for item ID ${this.draggedItem.id}`);
+        // Clear the visual transform effect immediately
+        if (this.draggedItem.element) { // Check element exists before styling
+            this.draggedItem.element.style.transform = '';
+        }
 
+        if (this.draggedItem.potentialLayout) {
+            const targetLayout = this.draggedItem.potentialLayout;
+            let collisionFound = false;
+
+            for (const existingItem of this.items) {
+                if (existingItem.id === this.draggedItem.id) {
+                    continue; // Skip self
+                }
+                if (this._isCollision(targetLayout, existingItem.layout)) {
+                    collisionFound = true;
+                    break;
+                }
+            }
+
+            if (collisionFound) {
+                console.warn(`PanoramaGrid: Collision detected for item ID ${this.draggedItem.id} at new position. Reverting.`);
+                this.draggedItem.layout = { ...this.draggedItemInitialLayout };
+            } else {
+                // No collision, apply the new layout
+                this.draggedItem.layout = { ...targetLayout };
+                // console.log(`PanoramaGrid: Item ID ${this.draggedItem.id} moved to`, this.draggedItem.layout);
+            }
+        } else {
+            // If no potentialLayout, it means no valid drag move happened (e.g. just a click), so revert.
+            // console.warn(`PanoramaGrid: No potential layout calculated for item ID ${this.draggedItem.id}. Reverting.`);
+            this.draggedItem.layout = { ...this.draggedItemInitialLayout };
+        }
+
+        // Update the item's actual grid positioning in the DOM
+        this._updateItemDOMPosition(this.draggedItem);
+
+        // --- Existing Cleanup ---
+        if (this.draggedItem.element) { // Check if element exists before trying to modify classList
+           this.draggedItem.element.classList.remove('pg-dragging');
+        }
         document.removeEventListener('mousemove', this._boundHandleDragMove);
         document.removeEventListener('mouseup', this._boundHandleDragEnd);
 
-        if (this.draggedItem.element) {
-            this.draggedItem.element.classList.remove('pg-dragging');
-        }
+        console.log(`PanoramaGrid: Drag End for item ID ${this.draggedItem.id}. Final layout:`, this.draggedItem.layout);
 
-        // Reset state
         this.draggedItem = null;
         this.draggedItemInitialLayout = null;
         this.dragInitialMousePos = null;
         this._boundHandleDragMove = null;
         this._boundHandleDragEnd = null;
-        // Later: Finalize position, save layout, etc.
+        // this.draggedItem.potentialLayout is cleared when this.draggedItem is set to null
+    }
+
+    _handleResizeStart(event, itemObject) {
+        event.preventDefault();
+        event.stopPropagation(); // Prevent item drag start
+
+        if (event.button !== 0) { // Only left mouse button
+            return;
+        }
+
+        this.resizeItem = itemObject;
+        this.resizeItemInitialLayout = { ...itemObject.layout };
+        this.resizeInitialMousePos = { x: event.clientX, y: event.clientY };
+        this.resizeDirection = event.target.dataset.direction;
+        // Initialize potentialLayout on the item being resized
+        this.resizeItem.potentialLayout = { ...itemObject.layout };
+
+        if (itemObject.element) {
+            itemObject.element.classList.add('pg-resizing');
+        }
+
+        this._boundHandleResizeMove = this._handleResizeMove.bind(this);
+        this._boundHandleResizeEnd = this._handleResizeEnd.bind(this);
+
+        document.addEventListener('mousemove', this._boundHandleResizeMove);
+        document.addEventListener('mouseup', this._boundHandleResizeEnd);
+
+        console.log(`PanoramaGrid: Resize start on item ID ${itemObject.id}, Dir: ${this.resizeDirection}`);
+    }
+
+    _handleResizeMove(event) {
+        event.preventDefault();
+        if (!this.resizeItem || !this.resizeInitialMousePos) {
+            return;
+        }
+
+        const dx = event.clientX - this.resizeInitialMousePos.x;
+        const dy = event.clientY - this.resizeInitialMousePos.y;
+
+        const containerStyle = getComputedStyle(this.containerElement);
+        const containerPaddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+        const containerPaddingRight = parseFloat(containerStyle.paddingRight) || 0;
+        const contentWidth = this.containerElement.clientWidth - containerPaddingLeft - containerPaddingRight;
+
+        const cellWidth = (contentWidth - (this.options.columns - 1) * this.options.gap) / this.options.columns;
+        const cellHeight = this.options.rowHeight;
+
+        let newW = this.resizeItemInitialLayout.w;
+        let newH = this.resizeItemInitialLayout.h;
+
+        // For 'se' handle, we only adjust width and height based on delta from initial grab point
+        if (this.resizeDirection.includes('e')) { // Simplified for 'se'
+            const gridDeltaW = Math.round(dx / (cellWidth + this.options.gap));
+            newW = this.resizeItemInitialLayout.w + gridDeltaW;
+        }
+        if (this.resizeDirection.includes('s')) { // Simplified for 'se'
+            const gridDeltaH = Math.round(dy / (cellHeight + this.options.gap));
+            newH = this.resizeItemInitialLayout.h + gridDeltaH;
+        }
+
+        // Boundary checks
+        newW = Math.max(1, newW);
+        newH = Math.max(1, newH);
+        // Ensure item does not exceed grid columns from its starting X position
+        newW = Math.min(newW, this.options.columns - this.resizeItemInitialLayout.x + 1);
+        // Max height check can be added if grid has a fixed max row count
+
+        // Update potentialLayout (x and y are from initial layout for 'se' handle)
+        this.resizeItem.potentialLayout = {
+            x: this.resizeItemInitialLayout.x,
+            y: this.resizeItemInitialLayout.y,
+            w: newW,
+            h: newH
+        };
+
+        // Live DOM Update for visual feedback
+        this.resizeItem.element.style.gridColumnEnd = `span ${newW}`;
+        this.resizeItem.element.style.gridRowEnd = `span ${newH}`;
+        const itemHeight = (newH * this.options.rowHeight) + ((newH - 1) * this.options.gap);
+        this.resizeItem.element.style.height = `${itemHeight}px`;
+
+        // console.log(`PanoramaGrid: Resize Move - newW:${newW}, newH:${newH}`);
+    }
+
+    _handleResizeEnd(event) {
+        event.preventDefault();
+        if (!this.resizeItem) { // Early exit if no item was being resized
+            // Ensure listeners are cleaned up if they somehow persisted
+            if (this._boundHandleResizeMove) document.removeEventListener('mousemove', this._boundHandleResizeMove);
+            if (this._boundHandleResizeEnd) document.removeEventListener('mouseup', this._boundHandleResizeEnd);
+            this._boundHandleResizeMove = null;
+            this._boundHandleResizeEnd = null;
+            return;
+        }
+
+        if (this.resizeItem.potentialLayout) {
+            const targetLayout = this.resizeItem.potentialLayout;
+            let collisionFound = false;
+
+            // It's crucial that targetLayout has x,y,w,h for collision check
+            // For 'se' resize, x and y come from resizeItemInitialLayout, w and h from potentialLayout updates
+            const finalTargetLayout = {
+                x: this.resizeItemInitialLayout.x,
+                y: this.resizeItemInitialLayout.y,
+                w: targetLayout.w,
+                h: targetLayout.h
+            };
+
+
+            for (const existingItem of this.items) {
+                if (existingItem.id === this.resizeItem.id) {
+                    continue; // Skip self
+                }
+                // Use the fully formed finalTargetLayout for collision check
+                if (this._isCollision(finalTargetLayout, existingItem.layout)) {
+                    collisionFound = true;
+                    break;
+                }
+            }
+
+            if (collisionFound) {
+                console.warn(`PanoramaGrid: Collision detected for item ID ${this.resizeItem.id} at new size. Reverting.`);
+                this.resizeItem.layout = { ...this.resizeItemInitialLayout };
+            } else {
+                // No collision, apply the new layout (which includes potentially new W and H)
+                // X and Y are from initial for 'se' handle
+                this.resizeItem.layout = { ...finalTargetLayout };
+                console.log(`PanoramaGrid: Item ID ${this.resizeItem.id} resized to`, this.resizeItem.layout);
+            }
+        } else {
+            // If no potentialLayout (e.g. click without move), revert to ensure consistency
+            this.resizeItem.layout = { ...this.resizeItemInitialLayout };
+            // console.log(`PanoramaGrid: No resize changes for item ID ${this.resizeItem.id}. Reverted to initial.`);
+        }
+
+        // Update the item's actual grid positioning in the DOM to reflect final layout
+        this._updateItemDOMPosition(this.resizeItem);
+
+        // --- Existing Cleanup ---
+        if (this.resizeItem.element) {
+            this.resizeItem.element.classList.remove('pg-resizing');
+        }
+        document.removeEventListener('mousemove', this._boundHandleResizeMove);
+        document.removeEventListener('mouseup', this._boundHandleResizeEnd);
+
+        // console.log(`PanoramaGrid: Resize End for item ID ${this.resizeItem.id}. Final layout:`, this.resizeItem.layout);
+
+        this.resizeItem = null;
+        this.resizeItemInitialLayout = null;
+        this.resizeInitialMousePos = null;
+        this.resizeDirection = null;
+        this._boundHandleResizeMove = null;
+        this._boundHandleResizeEnd = null;
+        // this.resizeItem.potentialLayout is cleared when this.resizeItem is set to null
     }
 }
 
