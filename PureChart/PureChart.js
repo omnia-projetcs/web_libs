@@ -1083,11 +1083,11 @@ class PureChart {
             });
         }
 
-        // X-Axis (largely unchanged, but ensure it uses themed colors if oX.color not present)
+        // X-Axis
         const oX = options.xAxis;
-        if (oX.display && this.drawArea.width > 0) {
+        if (oX.display && this.drawArea.width > 0 && data.labels && data.labels.length > 0) {
             this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
-            this.ctx.fillStyle = oX.color || this.activePalette.axisColor;
+            this.ctx.fillStyle = oX.color || this.activePalette.labelColor || this.activePalette.axisColor; // Use labelColor for text
             this.ctx.font = oX.labelFont;
 
             // Draw X-Axis Line
@@ -1096,33 +1096,118 @@ class PureChart {
             this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
             this.ctx.stroke();
 
-            // Draw X-Axis Labels and Vertical Grid Lines
+            // X-Axis Label Filtering Logic
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'top';
-            if (data.labels && data.labels.length > 0) {
-                const xLabelWidth = this.drawArea.width / data.labels.length;
-                data.labels.forEach((label, i) => {
-                    const xPos = this.drawArea.x + (i * xLabelWidth) + (xLabelWidth / 2);
-                    this.ctx.fillText(String(label), xPos, this.drawArea.y + this.drawArea.height + 8);
 
-                    // Vertical Grid Lines for X-Axis
-                    if (oX.gridLines && i > 0) { // Don't draw for the first label (it's the Y-axis line)
-                        const xPosGrid = this.drawArea.x + (i * xLabelWidth);
-                        if (xPosGrid > this.drawArea.x && xPosGrid < this.drawArea.x + this.drawArea.width) {
-                            this.ctx.save();
-                            this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor;
-                            this.ctx.lineWidth = 0.5;
-                            this.ctx.beginPath();
-                            this.ctx.moveTo(xPosGrid, this.drawArea.y);
-                            this.ctx.lineTo(xPosGrid, this.drawArea.y + this.drawArea.height -1); // -1 to avoid overdraw on x-axis line
-                            this.ctx.stroke();
-                            this.ctx.restore();
-                        }
-                    }
+            const labels = data.labels;
+            const numLabels = labels.length;
+            const forceShowFirstAndLast = oX.forceShowFirstAndLastLabel !== undefined ? oX.forceShowFirstAndLastLabel : true;
+
+            let maxLabelsToShow = oX.maxLabelsToShow;
+            const labelYPos = this.drawArea.y + this.drawArea.height + 8;
+            let lastDrawnLabelXEnd = -Infinity;
+            const minSpacingBetweenLabels = 5; // Minimum pixels between the end of one label and start of next
+
+            if (!maxLabelsToShow) { // Calculate dynamically if not set
+                // Estimate average label width (can be improved)
+                let totalLabelWidth = 0;
+                labels.forEach(label => {
+                    totalLabelWidth += this.ctx.measureText(String(label)).width;
                 });
+                const avgLabelWidth = numLabels > 0 ? totalLabelWidth / numLabels : 50; // Default 50 if no labels
+                maxLabelsToShow = Math.floor(this.drawArea.width / (avgLabelWidth + minSpacingBetweenLabels));
+                maxLabelsToShow = Math.max(2, maxLabelsToShow); // Ensure at least 2 if possible
             }
 
-            // Draw X-Axis Title
+            let labelsToDraw = [];
+
+            if (numLabels <= 1) { // Always draw if 0 or 1 label
+                labelsToDraw = labels.map((label, index) => ({ label, index }));
+            } else {
+                // Determine which labels to draw
+                const step = Math.max(1, Math.ceil(numLabels / maxLabelsToShow));
+                for (let i = 0; i < numLabels; i += step) {
+                    labelsToDraw.push({ label: labels[i], index: i });
+                }
+
+                // Ensure first and last labels are included if forced
+                if (forceShowFirstAndLast) {
+                    if (labelsToDraw.length === 0 || labelsToDraw[0].index !== 0) {
+                        labelsToDraw.unshift({ label: labels[0], index: 0 });
+                    }
+                    if (labelsToDraw[labelsToDraw.length - 1].index !== numLabels - 1) {
+                        // Remove any label that might be too close to the last one before adding it
+                        if (labelsToDraw.length > 1 && labelsToDraw[labelsToDraw.length-1].index > numLabels - 1 - step/2) {
+                            labelsToDraw.pop();
+                        }
+                        labelsToDraw.push({ label: labels[numLabels - 1], index: numLabels - 1 });
+                    }
+                }
+                // Remove duplicates that might have been added by forceShowFirstAndLast
+                labelsToDraw = labelsToDraw.filter((item, pos, self) => self.findIndex(sItem => sItem.index === item.index) === pos);
+                labelsToDraw.sort((a,b) => a.index - b.index); // Ensure sorted by index
+            }
+
+            // Draw selected labels and their grid lines
+            const singleLabelXWidth = this.drawArea.width / numLabels; // Used for grid line positioning primarily
+
+            labelsToDraw.forEach(item => {
+                const labelText = String(item.label);
+                const labelIndex = item.index;
+
+                // Calculate position based on original index
+                const xPos = this.drawArea.x + (labelIndex * singleLabelXWidth) + (singleLabelXWidth / 2);
+                const currentLabelWidth = this.ctx.measureText(labelText).width;
+                const currentLabelXStart = xPos - currentLabelWidth / 2;
+
+                // Check for overlap before drawing
+                if (currentLabelXStart >= lastDrawnLabelXEnd + minSpacingBetweenLabels || labelIndex === 0) {
+                     // Boundary checks: ensure label does not overflow drawArea boundaries significantly
+                    const effectiveDrawAreaStartX = this.drawArea.x;
+                    const effectiveDrawAreaEndX = this.drawArea.x + this.drawArea.width;
+
+                    if (currentLabelXStart + currentLabelWidth <= effectiveDrawAreaEndX + (minSpacingBetweenLabels*2) && currentLabelXStart >= effectiveDrawAreaStartX - (minSpacingBetweenLabels*2) ) {
+                        this.ctx.fillText(labelText, xPos, labelYPos);
+                        lastDrawnLabelXEnd = currentLabelXStart + currentLabelWidth;
+
+                        // Draw vertical grid line for this drawn label (if enabled)
+                        // Grid lines are drawn at the START of a label's "slot", not its center.
+                        if (oX.gridLines && labelIndex > 0) { // Don't draw for the first slot (it's the Y-axis line or chart start)
+                            const xPosGrid = this.drawArea.x + (labelIndex * singleLabelXWidth);
+                             // Ensure grid line is within main draw area and not overlapping Y axis line too much
+                            if (xPosGrid > this.drawArea.x + 1 && xPosGrid < this.drawArea.x + this.drawArea.width -1) {
+                                this.ctx.save();
+                                this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor;
+                                this.ctx.lineWidth = 0.5;
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(xPosGrid, this.drawArea.y);
+                                // -1 to avoid overdraw on x-axis line if possible, but ensure it reaches the line
+                                this.ctx.lineTo(xPosGrid, this.drawArea.y + this.drawArea.height - (this.ctx.lineWidth % 2 === 0 ? 0 : 0.5) );
+                                this.ctx.stroke();
+                                this.ctx.restore();
+                            }
+                        }
+                    }
+                }
+            });
+             // Special case for the very first grid line if enabled and if the first label itself wasn't drawn due to space,
+             // but grid lines are desired for all potential slots.
+             // However, typical behavior is to only draw grid lines for *shown* labels.
+             // The current logic draws grid lines associated with shown labels.
+             // If X-axis grid lines are desired independently of labels, that would be a separate loop from 0 to numLabels-1.
+        } else if (oX.display && this.drawArea.width > 0 && (!data.labels || data.labels.length === 0)) {
+            // Still draw X-axis line if display is true but no labels
+            this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height);
+            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
+            this.ctx.stroke();
+        }
+
+
+        // Draw X-Axis Title
             if (oX.displayTitle && oX.title) {
                 this.ctx.font = oX.titleFont;
                 this.ctx.textAlign = 'center';
