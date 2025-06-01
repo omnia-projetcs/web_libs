@@ -1,0 +1,37 @@
+/* PanoramaGrid.css - Styles for the Custom Grid Layout Library */
+
+.panorama-grid-custom-container {
+    display: grid; /* Using CSS Grid for the container */
+    grid-template-columns: repeat(var(--pg-columns, 12), 1fr); /* Default 12 columns, customizable via CSS var */
+    gap: var(--pg-gap, 10px); /* Default gap, customizable */
+    padding: var(--pg-padding, 10px); /* Padding for the container */
+    background-color: #f0f0f0; /* Example background */
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    min-height: 200px; /* Example minimum height */
+}
+
+.panorama-grid-custom-item {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    overflow: hidden; /* Or 'auto' if content might scroll */
+    position: relative; /* For potential absolute positioned children or pseudo-elements */
+
+    /* Grid positioning will be set by JS via style attributes:
+       grid-column-start, grid-row-start, grid-column-end, grid-row-end (or spans)
+    */
+}
+
+.panorama-grid-custom-item-content {
+    padding: 10px;
+    /* Add more styles for the content area of an item */
+}
+
+.panorama-grid-custom-item.pg-dragging {
+    opacity: 0.7;
+    cursor: grabbing;
+    z-index: 1000; /* Ensure it's above other items */
+    /* box-shadow: 0 4px 8px rgba(0,0,0,0.2); */ /* Optional: enhanced shadow */
+}
