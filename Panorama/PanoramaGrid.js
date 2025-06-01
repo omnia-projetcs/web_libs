@@ -587,12 +587,8 @@ class PanoramaGrid {
         }
 
         if (this.resizeItem.potentialLayout) {
-            const targetLayout = this.resizeItem.potentialLayout;
-            let collisionFound = false;
-
-            // Use the full potential layout calculated during _handleResizeMove
             const finalTargetLayout = this.resizeItem.potentialLayout;
-            let collisionFound = false;
+            let collisionFound = false; // Declared once
 
             for (const existingItem of this.items) {
                 if (existingItem.id === this.resizeItem.id) {
