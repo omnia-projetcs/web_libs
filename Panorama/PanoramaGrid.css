@@ -35,3 +35,32 @@
     z-index: 1000; /* Ensure it's above other items */
     /* box-shadow: 0 4px 8px rgba(0,0,0,0.2); */ /* Optional: enhanced shadow */
 }
+
+/* Resize Handle Styles */
+.pg-resize-handle {
+    position: absolute;
+    width: 10px;  /* Adjust size as needed */
+    height: 10px; /* Adjust size as needed */
+    background-color: rgba(0, 0, 0, 0.2); /* Subtle handle color */
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+    opacity: 0; /* Hidden by default, show on hover/selection */
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* Show handles when parent item is hovered */
+.panorama-grid-custom-item:hover .pg-resize-handle {
+    opacity: 1;
+}
+
+.pg-resize-handle-se {
+    bottom: -1px; /* Adjust for border or desired position */
+    right: -1px;  /* Adjust for border or desired position */
+    cursor: nwse-resize;
+}
+
+.panorama-grid-custom-item.pg-resizing {
+    /* Optional: Add a border or outline to indicate resizing */
+    outline: 2px dashed #007bff;
+    opacity: 0.9; /* Slightly different from dragging if desired */
+}
