@@ -195,61 +195,30 @@ class Panorama {
   /**
    * Updates the configuration of an existing item.
    * @param {number} itemId - The ID of the item to update.
-   * @param {object} newConfig - The new configuration object.
+   * Updates the configuration of an existing item.
+   * @param {number} itemId - The ID of the item to update.
+   * @param {object} newConfigFields - The new configuration fields for the item.
+   * @param {string} itemType - The type of the item being updated.
    */
-  updateItemConfig(itemId, newConfig) {
-    // We need to inform PanoramaGrid to update the item's content.
-    // PanoramaGrid's updateItemContent expects the full new content block.
-    // This method might need to fetch the item's existing config, merge, then pass to updateItemContent,
-    // or PanoramaGrid could have a more specific config update method.
-    // For now, let's assume newConfig is the 'content' part for simplicity,
-    // but this is an area for refinement.
-    // A better approach: PanoramaGrid.updateItemConfig(itemId, newConfig) which then calls
-    // its own internal update and re-rendering of content for that item.
-
-    // Find the item in PanoramaGrid's items array to get its current type.
-    const itemInGrid = this.grid.items.find(i => i.id === itemId);
-    if (itemInGrid) {
-        // Merge newConfig with existing config, preserving type.
-        const updatedConfig = { ...itemInGrid.config, ...newConfig, type: itemInGrid.config.type };
-        this.grid.updateItemContent(itemId, updatedConfig); // Assuming updateItemContent will use this updatedConfig.
-                                                          // This is a slight misuse of updateItemContent if it only expected the 'content' field.
-                                                          // Let's assume for now `updateItemContent` updates `itemObject.config` and then re-renders content.
-                                                          // The `updateItemContent` in PanoramaGrid.js was written to take `newContent` which replaces `itemObject.config.content`.
-                                                          // This needs to be reconciled.
-
-        // Correct approach: PanoramaGrid should have a method like `updateItemConfig(itemId, newConfigPartial)`
-        // For now, let's call the existing `updateItemContent` but it might not reflect all config changes visually
-        // if they are not part of the `config.content` structure that `renderItemContent` uses.
-        // The `updateItemContent` in PanoramaGrid.js expects the *actual content payload*, not a partial config.
-        // So, the call should be:
-        // this.grid.updateItemContent(itemId, newConfig.content_payload_if_any_or_full_new_config_if_renderItemContent_handles_it);
-
-        // Given current PanoramaGrid.updateItemContent, it expects the new "content" part of config.
-        // If newConfig is a full replacement for item.config.content:
-        // this.grid.updateItemContent(itemId, newConfig);
-        // If newConfig is a partial update to item.config:
-        const currentItem = this.grid.items.find(i => i.id === itemId);
-        if (currentItem) {
-            const mergedConfig = { ...currentItem.config, ...newConfig };
-            // updateItemContent in PanoramaGrid takes the 'content' part of the config.
-            // This is tricky. Let's assume newConfig IS the new `content` sub-object for now.
-            // This means `Panorama.updateItemConfig` is now more like `Panorama.updateItemSpecificConfigFields`.
-            // For a generic config update, PanoramaGrid would need `updateItemFullConfig(itemId, newFullConfig)`
-            // which then calls its `_renderItem` or similar.
-
+  updateItemConfig(itemId, newConfigFields, itemType) { // newConfigFields comes from _handleSaveModal's 'newConfig'
     if (!itemType) {
-        console.error("Panorama.updateItemConfig: itemType is required to build the full config for PanoramaGrid.");
-        // Attempt to find item in grid to get its type as a fallback - this indicates an issue in calling context
-        const itemInGrid = this.grid.items && this.grid.items.find(i => i.id === itemId);
-        if (itemInGrid && itemInGrid.config && itemInGrid.config.type) {
-            itemType = itemInGrid.config.type;
+        let foundType = null;
+        // Attempt to find item in grid to get its type as a fallback
+        if (this.grid && this.grid.items) { // Check if grid and items exist
+            const itemInGrid = this.grid.items.find(i => i.id === itemId);
+            if (itemInGrid && itemInGrid.config && itemInGrid.config.type) {
+                foundType = itemInGrid.config.type;
+            }
+        }
+
+        if (foundType) {
+            itemType = foundType;
             console.warn(`Panorama.updateItemConfig: itemType was missing, retrieved from grid item as '${itemType}'.`);
         } else {
-            console.error("Panorama.updateItemConfig: Could not determine itemType. Update failed.");
+            console.error("Panorama.updateItemConfig: Could not determine itemType. Update failed for item ID:", itemId);
             return;
         }
-            }
+    }
 
     // Construct the full config object that PanoramaGrid's renderItemContent callback expects.
     // newConfigFields are the specific properties for that type (e.g., { content: "..." } for text, or { chartType: "..." } for chart).
@@ -259,7 +228,11 @@ class Panorama {
     };
 
     // Call PanoramaGrid's method, which will update its internal config and re-render content.
-    this.grid.updateItemContent(itemId, fullNewConfig);
+    if (this.grid) { // Check if grid exists before calling its method
+        this.grid.updateItemContent(itemId, fullNewConfig);
+    } else {
+        console.error("Panorama.updateItemConfig: this.grid is not initialized.");
+    }
   }
 
   /**
