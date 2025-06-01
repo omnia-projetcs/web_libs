@@ -10,10 +10,17 @@ class PanoramaGrid {
 
         this.options = Object.assign({}, {
             columns: 12,
-            rowHeight: 50, // Default row height in pixels
-            gap: 10,       // Gap between items in pixels
-            // Add other default options here
+            rowHeight: 50,
+            gap: 10,
+            renderItemContent: null // Default to null
         }, options);
+
+        if (this.options.renderItemContent && typeof this.options.renderItemContent !== 'function') {
+            console.warn('PanoramaGrid: options.renderItemContent must be a function.');
+            this.options.renderItemContent = null; // Invalidate if not a function
+        } else if (!this.options.renderItemContent) {
+            console.warn('PanoramaGrid: renderItemContent callback not provided. Item content will not be rendered by Panorama.');
+        }
 
         this.items = [];
         this.itemIdCounter = 0;
@@ -221,17 +228,22 @@ class PanoramaGrid {
         const contentElement = document.createElement('div');
         contentElement.className = 'panorama-grid-custom-item-content';
 
-        if (typeof itemObject.config.content === 'function') {
-            contentElement.appendChild(itemObject.config.content(itemObject)); // Pass itemObject if function needs context
-        } else if (typeof itemObject.config.content === 'string' || typeof itemObject.config.content === 'number') {
-            contentElement.innerHTML = itemObject.config.content;
-        } else if (itemObject.config.content instanceof HTMLElement) {
-            contentElement.appendChild(itemObject.config.content);
-        } else if (itemObject.config.content) {
-            console.warn(`PanoramaGrid: Item ID ${itemObject.id} has unsupported content type.`, itemObject.config.content);
-            contentElement.textContent = '[Unsupported Content]';
+        if (this.options.renderItemContent) {
+            try {
+                // Ensure itemObject.config has 'type' for the callback
+                if (itemObject.config && typeof itemObject.config.type !== 'undefined') {
+                    this.options.renderItemContent(itemObject.config.type, itemObject.config, contentElement, itemObject.id);
+                } else {
+                    console.error(`PanoramaGrid: Item ID ${itemObject.id} is missing 'type' in its config. Cannot render content.`);
+                    contentElement.innerHTML = `<p style="color:red;">Error: Item config missing 'type'.</p>`;
+                }
+            } catch (e) {
+                console.error(`Error executing renderItemContent for item ID ${itemObject.id}, type ${itemObject.config.type}:`, e);
+                contentElement.innerHTML = `<p style="color:red;">Error rendering content. Type: ${itemObject.config.type}</p>`;
+            }
         } else {
-            contentElement.textContent = ''; // Empty content
+            // Fallback or default rendering if no callback provided
+            contentElement.innerHTML = `Item ID: ${itemObject.id}, Type: ${itemObject.config.type || 'N/A'} (No renderer provided)`;
         }
 
         itemElement.appendChild(contentElement);
@@ -626,6 +638,51 @@ class PanoramaGrid {
         this._boundHandleResizeMove = null;
         this._boundHandleResizeEnd = null;
         // this.resizeItem.potentialLayout is cleared when this.resizeItem is set to null
+    }
+
+    updateItemLayout(itemId, newLayout) {
+        const itemObject = this.items.find(item => item.id === itemId);
+        if (!itemObject) {
+            console.warn(`PanoramaGrid: Item with ID ${itemId} not found. Cannot update layout.`);
+            return false;
+        }
+
+        // Validate newLayout structure and basic values
+        if (!newLayout || typeof newLayout.x !== 'number' || typeof newLayout.y !== 'number' ||
+            typeof newLayout.w !== 'number' || typeof newLayout.h !== 'number' ||
+            newLayout.w <= 0 || newLayout.h <= 0 || newLayout.x < 1 || newLayout.y < 1) {
+            console.error('PanoramaGrid: Invalid newLayout provided (structure, type, or positive dimensions/coordinates).', newLayout);
+            return false;
+        }
+        // Validate against grid boundaries
+        if (newLayout.x + newLayout.w > this.options.columns + 1) {
+            console.error('PanoramaGrid: newLayout exceeds grid column boundaries.', newLayout);
+            return false;
+        }
+        // Add maxRows check if applicable: if (newLayout.y + newLayout.h > this.options.maxRows + 1) ...
+
+        let collisionFound = false;
+        for (const existingItem of this.items) {
+            if (existingItem.id === itemId) continue; // Skip self
+            if (this._isCollision(newLayout, existingItem.layout)) {
+                collisionFound = true;
+                break;
+            }
+        }
+
+        if (collisionFound) {
+            console.warn(`PanoramaGrid: Programmatic layout update for item ID ${itemId} would cause collision. Layout update rejected.`);
+            // Optionally, emit an event indicating failure due to collision
+            this._emit('itemLayoutUpdateFailed', itemId, newLayout, 'collision');
+            return false;
+        }
+
+        // No collision, apply the new layout
+        itemObject.layout = { ...newLayout };
+        this._updateItemDOMPosition(itemObject);
+        this._emit('itemLayoutUpdated', itemId, { ...itemObject.layout });
+        console.log(`PanoramaGrid: Layout updated for item ID ${itemId}.`, itemObject.layout);
+        return true;
     }
 
     _clearGrid() {

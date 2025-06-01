@@ -12,183 +12,79 @@ class Panorama {
     // Initialize an empty array to store dashboard item objects.
     this.items = [];
     // Initialize an itemIdCounter to 0, which will be used to generate unique IDs for items.
-    this.itemIdCounter = 0;
+    // This will now be managed by PanoramaGrid instance.
+    // this.itemIdCounter = 0;
     this.editingItemId = null; // To store the ID of the item being edited
-    this.draggedItem = null; // To store the item being dragged
-    this.dropPlaceholder = null; // To store the placeholder element
-    this.maxGridRows = 100;
+    // this.draggedItem = null; // Will be managed by PanoramaGrid
+    // this.dropPlaceholder = null; // Will be managed by PanoramaGrid or not used
+    this.maxGridRows = 100; // This might be a Panorama-specific option or passed to PanoramaGrid
 
     // Create the edit modal structure
     this._createEditModal();
 
-    // --- Native Drag and Drop Listeners for Grid Container ---
-    this.gridContainer.addEventListener('dragover', (event) => {
-        event.preventDefault(); // Necessary to allow dropping
-        event.dataTransfer.dropEffect = 'move';
-
-        if (!this.draggedItem) return;
-
-        // --- Calculate mouse position relative to grid container ---
-        const rect = this.gridContainer.getBoundingClientRect();
-        const dropX = event.clientX - rect.left;
-        const dropY = event.clientY - rect.top;
-
-        const gridStyle = window.getComputedStyle(this.gridContainer);
-        const gridPaddingLeft = parseFloat(gridStyle.paddingLeft);
-        const gridPaddingTop = parseFloat(gridStyle.paddingTop);
-        const gridGap = parseFloat(gridStyle.gap) || 10;
-        const numColumns = 12;
-        
-        const clientWidth = this.gridContainer.clientWidth;
-        const cellWidth = (clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
-        const cellHeightApproximation = 50 + (gridGap/2);
-
-        // --- Get Dragged Item's Layout for width and height of placeholder ---
-        const draggedItemLayout = this.draggedItem.layout;
-        const placeholderW = draggedItemLayout.w;
-        const placeholderH = draggedItemLayout.h;
-        
-        // --- Determine Target Placeholder Position based on mouse grid position ---
-        let placeholderX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
-        let placeholderY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
-        
-        // --- Apply Grid Boundary Checks ---
-        placeholderX = Math.max(1, Math.min(placeholderX, numColumns - placeholderW + 1));
-        placeholderY = Math.max(1, placeholderY);
-
-        // --- Debugging Logs ---
-        console.log('[DragOver] MousePos:', { dropX, dropY });
-        console.log('[DragOver] GridParams:', { gridPaddingLeft, gridPaddingTop, gridGap, cellWidth, cellHeightApproximation });
-        console.log('[DragOver] Placeholder Attempt:', { x: placeholderX, y: placeholderY, w: placeholderW, h: placeholderH });
-        console.log('[DragOver] Dragged Item Layout:', { w: draggedItemLayout.w, h: draggedItemLayout.h }); // Added this to check draggedItem's current W/H
-
-        // --- Create or update placeholder div ---
-        if (!this.dropPlaceholder) {
-          this.dropPlaceholder = document.createElement('div');
-          this.dropPlaceholder.className = 'drop-placeholder';
-          this.gridContainer.appendChild(this.dropPlaceholder);
-        }
-        this.dropPlaceholder.style.gridColumnStart = placeholderX;
-        this.dropPlaceholder.style.gridRowStart = placeholderY;
-        this.dropPlaceholder.style.gridColumnEnd = `span ${placeholderW}`;
-        this.dropPlaceholder.style.gridRowEnd = `span ${placeholderH}`;
-
-        // --- Collision Detection for Placeholder ---
-        const potentialLayout = { x: placeholderX, y: placeholderY, w: placeholderW, h: placeholderH };
-        let collisionDetected = false;
-        let collidingItemId = null;
-        for (const otherItem of this.items) {
-          if (otherItem.id === this.draggedItem.id) continue; // Skip self
-          if (this._isCollision(potentialLayout, otherItem.layout)) {
-            collisionDetected = true;
-            collidingItemId = otherItem.id;
-            break;
-          }
-        }
-
-        if (collisionDetected) {
-          this.dropPlaceholder.classList.add('drop-placeholder-invalid');
-          event.dataTransfer.dropEffect = 'none';
-        } else {
-          this.dropPlaceholder.classList.remove('drop-placeholder-invalid');
-          event.dataTransfer.dropEffect = 'move';
-        }
-        console.log('[DragOver] Collision Status:', { collisionDetected, dropEffect: event.dataTransfer.dropEffect, collidingWithItemId: collidingItemId });      
-
-
-
+    // Instantiate PanoramaGrid
+    this.grid = new PanoramaGrid('panorama-grid-container', {
+        columns: 12, // Example: Default or from Panorama options
+        rowHeight: 50, // Example: Default or from Panorama options
+        gap: 10,       // Example: Default or from Panorama options
+        renderItemContent: this._renderPanoramaItemContent.bind(this)
     });
 
-    this.gridContainer.addEventListener('dragleave', (event) => {
-      // Remove placeholder if mouse leaves grid container
-      if (this.dropPlaceholder && event.target === this.gridContainer) {
-        this.gridContainer.removeChild(this.dropPlaceholder);
-        this.dropPlaceholder = null;
-      }
-    });
+    // Replace direct access to this.items and this.itemIdCounter with calls to this.grid
+    // For example, this.items becomes this.grid.items (though direct access might be discouraged)
+    // this.itemIdCounter becomes this.grid.itemIdCounter
 
-    this.gridContainer.addEventListener('drop', (event) => {
-      event.preventDefault();
-      if (this.dropPlaceholder) {
-        this.gridContainer.removeChild(this.dropPlaceholder);
-        this.dropPlaceholder = null;
-      }
-
-      const itemId = parseInt(event.dataTransfer.getData('text/plain'));
-      const itemToMove = this.items.find(i => i.id === itemId);
-
-      if (!itemToMove) return;
-    console.log('[Drop] Item:', { itemId, itemToMove });
-
-      // --- Calculate new grid position (x, y) ---
-      const rect = this.gridContainer.getBoundingClientRect();
-      const dropX = event.clientX - rect.left;
-      const dropY = event.clientY - rect.top;
-
-      const gridStyle = window.getComputedStyle(this.gridContainer);
-      const gridPaddingLeft = parseFloat(gridStyle.paddingLeft);
-      const gridPaddingTop = parseFloat(gridStyle.paddingTop);
-      const gridGap = parseFloat(gridStyle.gap) || 10;
-      const numColumns = 12;
-      const cellWidth = (this.gridContainer.clientWidth - (2 * gridPaddingLeft) - ((numColumns - 1) * gridGap)) / numColumns;
-      const cellHeightApproximation = 50 + (gridGap/2); // Based on minmax(50px, auto) and gap
-
-      // Adjust calculation to better snap to grid cells considering their full span including gap
-      // The idea is to find which cell's "center" (or a point within it) the drop point is closest to.
-      let newGridX = Math.floor((dropX - gridPaddingLeft + gridGap / 2) / (cellWidth + gridGap)) + 1;
-      let newGridY = Math.floor((dropY - gridPaddingTop + gridGap / 2) / (cellHeightApproximation)) + 1;
-      
-      // Ensure newGridX/Y are within bounds
-      // For X: cannot start beyond where it would exceed numColumns
-      newGridX = Math.max(1, Math.min(newGridX, numColumns - itemToMove.layout.w + 1));
-      // For Y: cannot start below 1. If grid has max rows, add upper bound.
-      newGridY = Math.max(1, newGridY); 
-    console.log('[Drop] Calculated:', { dropX, dropY, newGridX, newGridY, cellWidth, cellHeightApproximation });
-      
-      // --- Collision Detection before committing drop ---
-      const finalLayout = { 
-        x: newGridX, 
-        y: newGridY, 
-        w: itemToMove.layout.w, 
-        h: itemToMove.layout.h 
-      };
-      let dropCollision = false;
-      for (const otherItem of this.items) {
-        if (otherItem.id === itemToMove.id) continue; // Skip self
-        if (this._isCollision(finalLayout, otherItem.layout)) {
-          dropCollision = true;
-          break;
-        }
-      }
-
-      if (dropCollision) {
-        console.warn(`[Drop] Collision detected for item ${itemToMove.id}. Reverting.`);
-        // Item remains in its original position as its layout is not updated.
-        // Re-render to ensure it snaps back visually if placeholder was different.
-        this.renderDashboard(); 
-      } else {
-        console.log(`[Drop] Applying new layout for item ${itemToMove.id}:`, {newGridX, newGridY});
-        itemToMove.layout.x = newGridX;
-        itemToMove.layout.y = newGridY;
-        this.updateItemLayout(itemToMove.id, itemToMove.layout, true); // true to re-render
-      }
-    console.log('[Drop] Final Layout & Collision:', { finalLayout, dropCollision });
-      
-      this.draggedItem = null; // Clear dragged item reference
-    });
   }
+
+  _renderPanoramaItemContent(type, config, contentContainerElement, itemId) {
+    // The specific _render<Type> methods in Panorama.js might expect an 'item' object.
+    // We need to provide it or adapt them. For now, let's create a mock 'item' for them.
+    const mockItem = { id: itemId, type: type, config: config, layout: {} /* layout not directly needed for content */ };
+
+    // TODO: Item controls (menu, edit/delete buttons) should be added here or called from here.
+    // For now, focusing on content rendering.
+
+    switch (type) {
+        case 'text':
+            this._renderText(mockItem, contentContainerElement);
+            break;
+        case 'title':
+            this._renderTitle(mockItem, contentContainerElement);
+            break;
+        case 'image':
+            this._renderImage(mockItem, contentContainerElement);
+            break;
+        case 'chart':
+            this._renderChart(mockItem, contentContainerElement);
+            break;
+        case 'table':
+            this._renderTable(mockItem, contentContainerElement);
+            break;
+        default:
+            console.warn(`Panorama: Unknown item type for content rendering: ${type}`);
+            contentContainerElement.textContent = `Unknown item type: ${type}`;
+    }
+  }
+
 
   /**
    * Renders the entire dashboard.
+   * This method will now delegate rendering to PanoramaGrid or be significantly changed.
+   * For now, it might not do much if PanoramaGrid handles its own rendering on item add/remove.
+   * If PanoramaGrid does not auto-render on load, this might trigger a batch render.
    */
   renderDashboard() {
-    // Clear any existing items from the grid container.
-    this.gridContainer.innerHTML = '';
-    // Iterate over the items array and render each item.
-    this.items.forEach(item => {
-      const itemElement = this._renderItem(item); // _renderItem now returns the element
-      this.gridContainer.appendChild(itemElement);
-    });
+    // With PanoramaGrid, direct manipulation of gridContainer.innerHTML here might be incorrect.
+    // PanoramaGrid manages its own DOM elements.
+    // If we need to re-render all items for some reason (e.g. after a batch load without individual renders),
+    // we would iterate through this.grid.items and tell PanoramaGrid to update/re-render them,
+    // or PanoramaGrid might have its own full re-render method.
+    // For now, this method's role is reduced.
+    console.log("Panorama.renderDashboard() called. Actual rendering is now largely managed by PanoramaGrid.");
+    // If PanoramaGrid's loadLayout doesn't trigger render for each item,
+    // this could be a place to trigger a full render if needed, e.g., by calling a
+    // hypothetical this.grid.renderAllItems() or similar.
+    // However, addItem in PanoramaGrid calls _renderItem, so items are rendered as they are added.
   }
 
   /**
@@ -198,63 +94,16 @@ class Panorama {
    * @param {object} layout - The layout information for the item (x, y, w, h).
    */
   addItem(type, config, layout) {
-    let currentLayout = { ...layout }; // Operate on a copy
-    const maxRowsToTry = 50; // Max Y value to try
-    let collision = false;
-    let attempts = 0;
-    const numColumns = 12; // Assuming 12 columns
-
-    // Ensure initial x is at least 1
-    if (currentLayout.x < 1) {
-        console.log(`[AddItem] Original layout.x ${currentLayout.x} < 1, adjusting to 1.`);
-        currentLayout.x = 1;
-    }
-
-    // Ensure item fits horizontally
-    if (currentLayout.x + currentLayout.w - 1 > numColumns) {
-        if (currentLayout.w <= numColumns) { // If width itself is fine, try to shift x
-             console.log(`[AddItem] Item (type: ${type}, w: ${currentLayout.w}) overflows at x: ${currentLayout.x}. Shifting x.`);
-             currentLayout.x = numColumns - currentLayout.w + 1;
-        } else { // Width is too large for the grid
-            console.warn(`[AddItem] New item (type: ${type}) is too wide for the grid (w: ${currentLayout.w}). Clamping width to ${numColumns}.`);
-            currentLayout.w = numColumns;
-            currentLayout.x = 1; // Place at start if clamped
-        }
-    }
-     // After potential adjustments, ensure x is still at least 1 (e.g. if w was clamped making original x invalid)
-    if (currentLayout.x < 1) {
-        currentLayout.x = 1;
-    }
-
-
-    do {
-        collision = false;
-        for (const existingItem of this.items) {
-            if (this._isCollision(currentLayout, existingItem.layout)) {
-                collision = true;
-                break;
-            }
-        }
-
-        if (collision) {
-            currentLayout.y++;
-            attempts++;
-            if (currentLayout.y >= maxRowsToTry) {
-                console.warn(`[AddItem] Could not find a non-colliding position for new item (type: ${type}) after ${attempts} attempts. Placing at y=${currentLayout.y}.`);
-                break; 
-            }
-        }
-    } while (collision && attempts < maxRowsToTry); // Ensure attempts limit is also part of the loop condition
-
-    const newItem = {
-      id: ++this.itemIdCounter, // Generate unique ID
-      type,
-      config,
-      layout: currentLayout, // Use the potentially adjusted layout
+    // PanoramaGrid's addItem expects a single config object that includes layout.
+    // It also handles its own ID generation and collision detection.
+    const itemConfig = {
+        type: type, // Add type to the config object for PanoramaGrid's renderItemContent
+        ...config,  // Spread the rest of the original config
+        layout: layout
     };
-    this.items.push(newItem); // Add to items array
-    this.renderDashboard(); // Re-render the entire dashboard
-    return newItem.id;
+    // addItem in PanoramaGrid will handle ID generation, collision, and rendering.
+    const newItemId = this.grid.addItem(itemConfig);
+    return newItemId;
   }
 
   /**
@@ -262,9 +111,9 @@ class Panorama {
    * @param {number} itemId - The ID of the item to remove.
    */
   removeItem(itemId) {
-    this.items = this.items.filter(item => item.id !== itemId);
-    // No need to call this.grid.removeWidget() explicitly if we re-render
-    this.renderDashboard(); // Re-render the entire dashboard
+    this.grid.removeItem(itemId);
+    // PanoramaGrid handles its own DOM updates and internal array.
+    // No explicit renderDashboard() needed here if PanoramaGrid updates DOM.
   }
 
   /**
@@ -273,163 +122,121 @@ class Panorama {
    * @param {object} newConfig - The new configuration object.
    */
   updateItemConfig(itemId, newConfig) {
-    const item = this.items.find(i => i.id === itemId);
-    if (item) {
-      item.config = { ...item.config, ...newConfig };
-      this.renderDashboard(); // Re-render to reflect changes
-    } else {
-      console.warn(`Item with ID ${itemId} not found for config update.`);
-    }
+    // We need to inform PanoramaGrid to update the item's content.
+    // PanoramaGrid's updateItemContent expects the full new content block.
+    // This method might need to fetch the item's existing config, merge, then pass to updateItemContent,
+    // or PanoramaGrid could have a more specific config update method.
+    // For now, let's assume newConfig is the 'content' part for simplicity,
+    // but this is an area for refinement.
+    // A better approach: PanoramaGrid.updateItemConfig(itemId, newConfig) which then calls
+    // its own internal update and re-rendering of content for that item.
+
+    // Find the item in PanoramaGrid's items array to get its current type.
+    const itemInGrid = this.grid.items.find(i => i.id === itemId);
+    if (itemInGrid) {
+        // Merge newConfig with existing config, preserving type.
+        const updatedConfig = { ...itemInGrid.config, ...newConfig, type: itemInGrid.config.type };
+        this.grid.updateItemContent(itemId, updatedConfig); // Assuming updateItemContent will use this updatedConfig.
+                                                          // This is a slight misuse of updateItemContent if it only expected the 'content' field.
+                                                          // Let's assume for now `updateItemContent` updates `itemObject.config` and then re-renders content.
+                                                          // The `updateItemContent` in PanoramaGrid.js was written to take `newContent` which replaces `itemObject.config.content`.
+                                                          // This needs to be reconciled.
+
+        // Correct approach: PanoramaGrid should have a method like `updateItemConfig(itemId, newConfigPartial)`
+        // For now, let's call the existing `updateItemContent` but it might not reflect all config changes visually
+        // if they are not part of the `config.content` structure that `renderItemContent` uses.
+        // The `updateItemContent` in PanoramaGrid.js expects the *actual content payload*, not a partial config.
+        // So, the call should be:
+        // this.grid.updateItemContent(itemId, newConfig.content_payload_if_any_or_full_new_config_if_renderItemContent_handles_it);
+
+        // Given current PanoramaGrid.updateItemContent, it expects the new "content" part of config.
+        // If newConfig is a full replacement for item.config.content:
+        // this.grid.updateItemContent(itemId, newConfig);
+        // If newConfig is a partial update to item.config:
+        const currentItem = this.grid.items.find(i => i.id === itemId);
+        if (currentItem) {
+            const mergedConfig = { ...currentItem.config, ...newConfig };
+            // updateItemContent in PanoramaGrid takes the 'content' part of the config.
+            // This is tricky. Let's assume newConfig IS the new `content` sub-object for now.
+            // This means `Panorama.updateItemConfig` is now more like `Panorama.updateItemSpecificConfigFields`.
+            // For a generic config update, PanoramaGrid would need `updateItemFullConfig(itemId, newFullConfig)`
+            // which then calls its `_renderItem` or similar.
+
+    if (!itemType) {
+        console.error("Panorama.updateItemConfig: itemType is required to build the full config for PanoramaGrid.");
+        // Attempt to find item in grid to get its type as a fallback - this indicates an issue in calling context
+        const itemInGrid = this.grid.items && this.grid.items.find(i => i.id === itemId);
+        if (itemInGrid && itemInGrid.config && itemInGrid.config.type) {
+            itemType = itemInGrid.config.type;
+            console.warn(`Panorama.updateItemConfig: itemType was missing, retrieved from grid item as '${itemType}'.`);
+        } else {
+            console.error("Panorama.updateItemConfig: Could not determine itemType. Update failed.");
+            return;
+        }
+            }
+
+    // Construct the full config object that PanoramaGrid's renderItemContent callback expects.
+    // newConfigFields are the specific properties for that type (e.g., { content: "..." } for text, or { chartType: "..." } for chart).
+    const fullNewConfig = {
+        type: itemType,
+        ...newConfigFields
+    };
+
+    // Call PanoramaGrid's method, which will update its internal config and re-render content.
+    this.grid.updateItemContent(itemId, fullNewConfig);
   }
 
   /**
-   * Updates the layout of an existing item in the internal items array.
+   * Updates the layout of an existing item.
+   * This is now primarily handled by PanoramaGrid's drag/resize end handlers.
+   * This method could be used for programmatic updates if needed.
    * @param {number} itemId - The ID of the item to update.
    * @param {object} newLayout - The new layout object (x, y, w, h).
-   * @param {boolean} [shouldRender=true] - Whether to re-render the dashboard.
+   * @param {boolean} [shouldRender=true] - This param is no longer used by Panorama.js.
    */
   updateItemLayout(itemId, newLayout, shouldRender = true) {
-    const item = this.items.find(i => i.id === itemId);
-    if (item) {
-      // Ensure all layout properties are updated
-      item.layout = { 
-        x: newLayout.x, 
-        y: newLayout.y, 
-        w: newLayout.w, 
-        h: newLayout.h 
-      };
-      if (shouldRender) {
-        this.renderDashboard(); // Re-render if needed
-      }
-      // console.log(`Internal layout for item ${itemId} updated:`, item.layout);
-    } else {
-      console.warn(`Item with ID ${itemId} not found for layout update.`);
-    }
+       if (!this.grid) {
+           console.error("PanoramaGrid instance not available in Panorama.js");
+           return;
+       }
+       const success = this.grid.updateItemLayout(itemId, newLayout);
+       if (!success) {
+           // Handle failure if needed, e.g., by alerting the user or logging
+           console.warn(`Panorama.js: updateItemLayout for item ${itemId} failed in PanoramaGrid.`);
+       }
+       // No explicit DOM update or re-render call needed here, PanoramaGrid handles it.
   }
 
   /**
-   * Saves the current dashboard state to a JSON string.
-   * Saves the current dashboard state (items and itemIdCounter) to a JSON string.
+   * Saves the current dashboard state to a JSON string using PanoramaGrid's getLayout.
    * @returns {string} - JSON string representing the dashboard state, pretty-printed.
    */
   saveDashboard() {
-    const dashboardState = {
-      items: this.items,
-      itemIdCounter: this.itemIdCounter
-    };
+    const dashboardState = this.grid.getLayout();
     return JSON.stringify(dashboardState, null, 2);
   }
 
   /**
-   * Loads a dashboard state from a JSON string.
+   * Loads a dashboard state from a JSON string using PanoramaGrid's loadLayout.
    * @param {string} jsonData - JSON string representing the dashboard state.
    * @returns {boolean} - True if loading and rendering were successful, false otherwise.
    */
   loadDashboard(jsonData) {
-      try {
-          const loadedState = JSON.parse(jsonData);
-
-          // Basic validation for loadedState and its properties
-          if (!loadedState || typeof loadedState !== 'object') {
-              console.error("[LoadDashboard] Load failed: Invalid data format (not an object).");
-              alert("Failed to load dashboard: Invalid data format.");
-              return false;
-          }
-          if (!Array.isArray(loadedState.items)) {
-              console.error("[LoadDashboard] Load failed: 'items' property is not an array.");
-              alert("Failed to load dashboard: 'items' property is missing or not an array.");
-              return false;
-          }
-          if (typeof loadedState.itemIdCounter !== 'number' || loadedState.itemIdCounter < 0) {
-              console.error("[LoadDashboard] Load failed: 'itemIdCounter' is invalid.");
-              alert("Failed to load dashboard: 'itemIdCounter' is missing or invalid.");
-              return false;
-          }
-
-          const tempLoadedItems = loadedState.items;
-          this.items = []; // Clear current items before loading new ones
-          // this.itemIdCounter will be set later based on max ID and loadedState.itemIdCounter
-
-          const numColumns = 12; 
-          const maxRowsToTry = 50; 
-
-          for (const item of tempLoadedItems) {
-              if (!item.layout || typeof item.layout.x !== 'number' || typeof item.layout.y !== 'number' || 
-                  typeof item.layout.w !== 'number' || typeof item.layout.h !== 'number') {
-                  console.warn(`[LoadDashboard] Item ID ${item.id || 'unknown'} has invalid or missing layout. Skipping.`);
-                  continue;
-              }
-
-              let currentLayout = { ...item.layout };
-
-              // 1. Initial Layout Correction (1-based indexing and horizontal fit)
-              if (currentLayout.x < 1) {
-                  console.log(`[LoadDashboard] Item ID ${item.id}: layout.x ${currentLayout.x} < 1, adjusting to 1.`);
-                  currentLayout.x = 1;
-              }
-              if (currentLayout.y < 1) { // Should not happen if saved correctly
-                  console.log(`[LoadDashboard] Item ID ${item.id}: layout.y ${currentLayout.y} < 1, adjusting to 1.`);
-                  currentLayout.y = 1;
-              }
-
-              if (currentLayout.x + currentLayout.w - 1 > numColumns) {
-                  if (currentLayout.w <= numColumns) {
-                      currentLayout.x = numColumns - currentLayout.w + 1;
-                  } else {
-                      currentLayout.w = numColumns;
-                      currentLayout.x = 1;
-                  }
-              }
-              if (currentLayout.x < 1) { // Re-check after width adjustment
-                  currentLayout.x = 1;
-              }
-
-              // 2. Collision Avoidance against already processed items in this.items
-              let collision = false;
-              let attempts = 0;
-              let originalY = currentLayout.y; // Store original Y for more controlled searching
-
-              do {
-                  collision = false;
-                  for (const existingItem of this.items) { 
-                      if (this._isCollision(currentLayout, existingItem.layout)) {
-                          collision = true;
-                          break;
-                      }
-                  }
-
-                  if (collision) {
-                      currentLayout.y++;
-                      attempts++;
-                      if (currentLayout.y >= originalY + maxRowsToTry) { // Limit search relative to original Y
-                          console.warn(`[LoadDashboard] Could not find a non-colliding position for loaded item ID ${item.id} near y=${originalY} after ${attempts} attempts. Placing at y=${currentLayout.y}.`);
-                          break; 
-                      }
-                  }
-              } while (collision && attempts < maxRowsToTry); // Ensure attempts limit is part of loop
-
-              this.items.push({
-                  ...item,
-                  layout: currentLayout 
-              });
-          }
-
-          // Update itemIdCounter based on loaded items and/or the loaded counter value
-          let maxIdInLoadedItems = 0;
-          if (this.items.length > 0) {
-              maxIdInLoadedItems = this.items.reduce((max, itm) => Math.max(max, itm.id), 0);
-          }
-          this.itemIdCounter = Math.max(loadedState.itemIdCounter, maxIdInLoadedItems);
-          
-          this.renderDashboard();
-          console.log("[LoadDashboard] Dashboard loaded successfully with layout adjustments.");
-          return true;
-
-      } catch (error) {
-          console.error("[LoadDashboard] Failed to load dashboard:", error);
-          alert(`Failed to load dashboard: ${error.message}`);
-          return false;
-      }
+    try {
+        const layoutData = JSON.parse(jsonData);
+        // Basic validation of layoutData structure can be done here if needed,
+        // but PanoramaGrid.loadLayout also does validation.
+        if (!layoutData || typeof layoutData !== 'object') {
+            console.error("Panorama.loadDashboard: Invalid JSON data.");
+            alert("Failed to load dashboard: Invalid JSON data.");
+            return false;
+        }
+        return this.grid.loadLayout(layoutData);
+    } catch (error) {
+        console.error("Panorama.loadDashboard: Failed to parse or load dashboard:", error);
+        alert(`Failed to load dashboard: ${error.message}`);
+        return false;
+    }
   }
 
   /**
@@ -1121,7 +928,7 @@ _renderChart(item, contentContainer) {
       return; // Don't close modal or save if there's an error
     }
 
-    this.updateItemConfig(this.editingItemId, newConfig);
+    this.updateItemConfig(this.editingItemId, newConfig, itemType);
     this._hideEditModal();
   }
 }
