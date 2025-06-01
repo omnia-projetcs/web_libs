@@ -39,6 +39,7 @@ class PanoramaGrid {
         this._boundHandleResizeEnd = null;   // For storing bound mouseup handler
 
         this._events = {};
+        this.dragPlaceholderElement = null;
 
         this._init();
     }
@@ -285,6 +286,17 @@ class PanoramaGrid {
         // Initialize potentialLayout on the item being dragged
         this.draggedItem.potentialLayout = { ...itemObject.layout };
 
+        if (!this.dragPlaceholderElement) {
+            this.dragPlaceholderElement = document.createElement('div');
+            this.dragPlaceholderElement.className = 'pg-drag-placeholder';
+        }
+        this.dragPlaceholderElement.style.gridColumnStart = '';
+        this.dragPlaceholderElement.style.gridRowStart = '';
+        this.dragPlaceholderElement.style.gridColumnEnd = '';
+        this.dragPlaceholderElement.style.gridRowEnd = '';
+        this.dragPlaceholderElement.style.width = '';
+        this.dragPlaceholderElement.style.height = '';
+
 
         if (itemObject.element) {
             itemObject.element.classList.add('pg-dragging');
@@ -347,6 +359,21 @@ class PanoramaGrid {
             h: this.draggedItemInitialLayout.h
         };
 
+        if (this.dragPlaceholderElement) {
+            const phLayout = this.draggedItem.potentialLayout;
+            this.dragPlaceholderElement.style.gridColumnStart = phLayout.x;
+            this.dragPlaceholderElement.style.gridRowStart = phLayout.y;
+            this.dragPlaceholderElement.style.gridColumnEnd = `span ${phLayout.w}`;
+            this.dragPlaceholderElement.style.gridRowEnd = `span ${phLayout.h}`;
+
+            const phHeight = (phLayout.h * this.options.rowHeight) + ((phLayout.h - 1) * this.options.gap);
+            this.dragPlaceholderElement.style.height = `${phHeight}px`;
+
+            if (!this.dragPlaceholderElement.parentNode) {
+                this.containerElement.appendChild(this.dragPlaceholderElement);
+            }
+        }
+
         // console.log(`PanoramaGrid: Drag Move - dx:${dx}, dy:${dy}, gridDeltaX:${gridDeltaX}, gridDeltaY:${gridDeltaY}, Potential:`, this.draggedItem.potentialLayout);
     }
 
@@ -376,6 +403,10 @@ class PanoramaGrid {
             this._boundHandleDragMove = null;
             this._boundHandleDragEnd = null;
             return;
+        }
+
+        if (this.dragPlaceholderElement && this.dragPlaceholderElement.parentNode) {
+            this.dragPlaceholderElement.parentNode.removeChild(this.dragPlaceholderElement);
         }
 
         // Clear the visual transform effect immediately
