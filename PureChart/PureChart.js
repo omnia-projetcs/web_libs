@@ -1084,140 +1084,167 @@ class PureChart {
         }
 
         // X-Axis
-        const oX = options.xAxis;
-        if (oX.display && this.drawArea.width > 0 && data.labels && data.labels.length > 0) {
+        const oX = options.xAxis; // options = this.config.options, data = this.config.data
+        if (oX.display && this.drawArea.width > 0) {
+            // Set styles for X-axis line
             this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
-            this.ctx.fillStyle = oX.color || this.activePalette.labelColor || this.activePalette.axisColor; // Use labelColor for text
-            this.ctx.font = oX.labelFont;
+            this.ctx.lineWidth = 1; // Default line width for the axis itself
 
-            // Draw X-Axis Line
+            // Draw X-Axis Line (drawn if X-axis is displayed)
             this.ctx.beginPath();
             this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height);
             this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
             this.ctx.stroke();
 
-            // X-Axis Label Filtering Logic
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'top';
+            // Logic for drawing labels and their associated grid lines
+            if (data.labels && data.labels.length > 0) {
+                // Set styles for X-axis labels
+                this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor; // Prioritize dedicated labelColor
+                this.ctx.font = oX.labelFont;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'top';
 
-            const labels = data.labels;
-            const numLabels = labels.length;
-            const forceShowFirstAndLast = oX.forceShowFirstAndLastLabel !== undefined ? oX.forceShowFirstAndLastLabel : true;
+                const labels = data.labels;
+                const numLabels = labels.length;
+                // Use provided xAxis options, with defaults
+                const forceShowFirstAndLast = oX.forceShowFirstAndLastLabel !== undefined ? oX.forceShowFirstAndLastLabel : true;
+                let maxLabelsToShow = oX.maxLabelsToShow; // User-defined override
+                const minSpacingBetweenLabels = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
+                // const labelRotation = oX.labelRotation || 0; // In degrees, 0 for no rotation. Not used in current fillText.
+                const labelYOffset = oX.labelYOffset || 8; // Default vertical offset from axis line
 
-            let maxLabelsToShow = oX.maxLabelsToShow;
-            const labelYPos = this.drawArea.y + this.drawArea.height + 8;
-            let lastDrawnLabelXEnd = -Infinity;
-            const minSpacingBetweenLabels = 5; // Minimum pixels between the end of one label and start of next
+                const labelYPos = this.drawArea.y + this.drawArea.height + labelYOffset;
+                let lastDrawnLabelXEnd = -Infinity;
 
-            if (!maxLabelsToShow) { // Calculate dynamically if not set
-                // Estimate average label width (can be improved)
-                let totalLabelWidth = 0;
-                labels.forEach(label => {
-                    totalLabelWidth += this.ctx.measureText(String(label)).width;
-                });
-                const avgLabelWidth = numLabels > 0 ? totalLabelWidth / numLabels : 50; // Default 50 if no labels
-                maxLabelsToShow = Math.floor(this.drawArea.width / (avgLabelWidth + minSpacingBetweenLabels));
-                maxLabelsToShow = Math.max(2, maxLabelsToShow); // Ensure at least 2 if possible
-            }
+                // Calculate maxLabelsToShow dynamically if not explicitly set by user
+                if (maxLabelsToShow === undefined && numLabels > 0) {
+                    let totalTextWidth = 0;
+                    const originalFont = this.ctx.font; // Save current font
+                    this.ctx.font = oX.labelFont; // Ensure correct font for measurement
+                    labels.forEach(l => { totalTextWidth += this.ctx.measureText(String(l)).width; });
+                    this.ctx.font = originalFont; // Restore font
 
-            let labelsToDraw = [];
-
-            if (numLabels <= 1) { // Always draw if 0 or 1 label
-                labelsToDraw = labels.map((label, index) => ({ label, index }));
-            } else {
-                // Determine which labels to draw
-                const step = Math.max(1, Math.ceil(numLabels / maxLabelsToShow));
-                for (let i = 0; i < numLabels; i += step) {
-                    labelsToDraw.push({ label: labels[i], index: i });
+                    const avgLabelWidth = numLabels > 0 ? totalTextWidth / numLabels : 0; // Avoid NaN if numLabels is 0
+                    if (avgLabelWidth + minSpacingBetweenLabels > 0) {
+                        maxLabelsToShow = Math.floor(this.drawArea.width / (avgLabelWidth + minSpacingBetweenLabels));
+                    } else { // If avgLabelWidth is 0 (e.g. all empty strings) or negative for some reason
+                        maxLabelsToShow = numLabels; // Default to trying to show all, overlap checks will handle it
+                    }
+                    maxLabelsToShow = Math.max(1, maxLabelsToShow); // Show at least one label if possible
+                } else if (maxLabelsToShow === undefined && numLabels === 0) {
+                    maxLabelsToShow = 0;
                 }
 
-                // Ensure first and last labels are included if forced
-                if (forceShowFirstAndLast) {
-                    if (labelsToDraw.length === 0 || labelsToDraw[0].index !== 0) {
-                        labelsToDraw.unshift({ label: labels[0], index: 0 });
-                    }
-                    if (labelsToDraw[labelsToDraw.length - 1].index !== numLabels - 1) {
-                        // Remove any label that might be too close to the last one before adding it
-                        if (labelsToDraw.length > 1 && labelsToDraw[labelsToDraw.length-1].index > numLabels - 1 - step/2) {
-                            labelsToDraw.pop();
+
+                let indexesToDraw = [];
+                if (numLabels > 0 && maxLabelsToShow > 0) { // Proceed only if there are labels and we can show at least one
+                    if (numLabels <= maxLabelsToShow) {
+                        indexesToDraw = labels.map((_, i) => i); // Draw all labels if they fit
+                    } else {
+                        // Determine labels to draw based on maxLabelsToShow
+                        if (forceShowFirstAndLast) {
+                            indexesToDraw.push(0);
+                            if (numLabels > 1) {
+                                indexesToDraw.push(numLabels - 1);
+                            }
                         }
-                        labelsToDraw.push({ label: labels[numLabels - 1], index: numLabels - 1 });
+
+                        const remainingSlots = maxLabelsToShow - indexesToDraw.length;
+                        if (remainingSlots > 0) {
+                            let availableInnerLabels = [];
+                            for(let i = 0; i < numLabels; i++) {
+                                if (!indexesToDraw.includes(i)) { // Only consider labels not already added (first/last)
+                                    availableInnerLabels.push(i);
+                                }
+                            }
+
+                            if (availableInnerLabels.length > 0) {
+                                 // Distribute remaining slots among available inner labels
+                                 const step = Math.max(1, Math.floor(availableInnerLabels.length / remainingSlots));
+                                 for (let i = 0; i < availableInnerLabels.length && indexesToDraw.length < maxLabelsToShow; i += step) {
+                                    // Add if not already present (shouldn't be, but as safeguard)
+                                    if (!indexesToDraw.includes(availableInnerLabels[i])) {
+                                        indexesToDraw.push(availableInnerLabels[i]);
+                                    }
+                                 }
+                            }
+                        }
+                        indexesToDraw = [...new Set(indexesToDraw)].sort((a, b) => a - b); // Remove duplicates and sort
                     }
                 }
-                // Remove duplicates that might have been added by forceShowFirstAndLast
-                labelsToDraw = labelsToDraw.filter((item, pos, self) => self.findIndex(sItem => sItem.index === item.index) === pos);
-                labelsToDraw.sort((a,b) => a.index - b.index); // Ensure sorted by index
-            }
 
-            // Draw selected labels and their grid lines
-            const singleLabelXWidth = this.drawArea.width / numLabels; // Used for grid line positioning primarily
+                const xLabelSlotWidth = numLabels > 0 ? this.drawArea.width / numLabels : this.drawArea.width;
 
-            labelsToDraw.forEach(item => {
-                const labelText = String(item.label);
-                const labelIndex = item.index;
+                indexesToDraw.forEach(index => {
+                    const labelText = String(labels[index]);
+                    // Ensure font is set correctly before measuring, as it might be reset by other drawing operations
+                    this.ctx.font = oX.labelFont;
+                    const labelWidth = this.ctx.measureText(labelText).width;
 
-                // Calculate position based on original index
-                const xPos = this.drawArea.x + (labelIndex * singleLabelXWidth) + (singleLabelXWidth / 2);
-                const currentLabelWidth = this.ctx.measureText(labelText).width;
-                const currentLabelXStart = xPos - currentLabelWidth / 2;
+                    const xPos = this.drawArea.x + (index * xLabelSlotWidth) + (xLabelSlotWidth / 2);
 
-                // Check for overlap before drawing
-                if (currentLabelXStart >= lastDrawnLabelXEnd + minSpacingBetweenLabels || labelIndex === 0) {
-                     // Boundary checks: ensure label does not overflow drawArea boundaries significantly
-                    const effectiveDrawAreaStartX = this.drawArea.x;
-                    const effectiveDrawAreaEndX = this.drawArea.x + this.drawArea.width;
+                    const labelStartX = xPos - labelWidth / 2;
+                    const labelEndX = xPos + labelWidth / 2;
 
-                    if (currentLabelXStart + currentLabelWidth <= effectiveDrawAreaEndX + (minSpacingBetweenLabels*2) && currentLabelXStart >= effectiveDrawAreaStartX - (minSpacingBetweenLabels*2) ) {
+                    const isFirstLabelToDraw = lastDrawnLabelXEnd === -Infinity;
+                    let allowThisLabel = false;
+
+                    if (isFirstLabelToDraw) { // Always attempt to draw the first chosen label if it's within bounds
+                        if (labelEndX >= this.drawArea.x && labelStartX <= this.drawArea.x + this.drawArea.width) {
+                            allowThisLabel = true;
+                        }
+                    } else {
+                        // Standard overlap and boundary check for subsequent labels
+                        const noOverlap = labelStartX >= lastDrawnLabelXEnd + minSpacingBetweenLabels;
+                        const withinBounds = labelStartX >= this.drawArea.x && labelEndX <= this.drawArea.x + this.drawArea.width;
+                        if (noOverlap && withinBounds) {
+                            allowThisLabel = true;
+                        }
+                    }
+
+                    // Special consideration for forced first/last labels if they were skipped by normal logic
+                    if (forceShowFirstAndLast && (index === 0 || index === numLabels - 1) && !allowThisLabel) {
+                        // Try to draw if it's at least partially visible and doesn't catastrophically overlap
+                        const partialOverlapOK = labelStartX >= lastDrawnLabelXEnd - labelWidth / 4; // Allow more overlap
+                        const partiallyVisible = labelEndX > this.drawArea.x && labelStartX < this.drawArea.x + this.drawArea.width;
+                        if (partialOverlapOK && partiallyVisible) {
+                            allowThisLabel = true;
+                        }
+                    }
+
+
+                    if (allowThisLabel) {
                         this.ctx.fillText(labelText, xPos, labelYPos);
-                        lastDrawnLabelXEnd = currentLabelXStart + currentLabelWidth;
+                        lastDrawnLabelXEnd = labelEndX;
 
-                        // Draw vertical grid line for this drawn label (if enabled)
-                        // Grid lines are drawn at the START of a label's "slot", not its center.
-                        if (oX.gridLines && labelIndex > 0) { // Don't draw for the first slot (it's the Y-axis line or chart start)
-                            const xPosGrid = this.drawArea.x + (labelIndex * singleLabelXWidth);
-                             // Ensure grid line is within main draw area and not overlapping Y axis line too much
-                            if (xPosGrid > this.drawArea.x + 1 && xPosGrid < this.drawArea.x + this.drawArea.width -1) {
+                        if (oX.gridLines && index > 0) {
+                            const xPosGrid = this.drawArea.x + (index * xLabelSlotWidth);
+                            if (xPosGrid > this.drawArea.x + 0.5 && xPosGrid < this.drawArea.x + this.drawArea.width - 0.5) {
                                 this.ctx.save();
                                 this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor;
                                 this.ctx.lineWidth = 0.5;
                                 this.ctx.beginPath();
                                 this.ctx.moveTo(xPosGrid, this.drawArea.y);
-                                // -1 to avoid overdraw on x-axis line if possible, but ensure it reaches the line
                                 this.ctx.lineTo(xPosGrid, this.drawArea.y + this.drawArea.height - (this.ctx.lineWidth % 2 === 0 ? 0 : 0.5) );
                                 this.ctx.stroke();
                                 this.ctx.restore();
                             }
                         }
                     }
-                }
-            });
-             // Special case for the very first grid line if enabled and if the first label itself wasn't drawn due to space,
-             // but grid lines are desired for all potential slots.
-             // However, typical behavior is to only draw grid lines for *shown* labels.
-             // The current logic draws grid lines associated with shown labels.
-             // If X-axis grid lines are desired independently of labels, that would be a separate loop from 0 to numLabels-1.
-        } else if (oX.display && this.drawArea.width > 0 && (!data.labels || data.labels.length === 0)) {
-            // Still draw X-axis line if display is true but no labels
-            this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
-            this.ctx.lineWidth = 1;
-            this.ctx.beginPath();
-            this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height);
-            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
-            this.ctx.stroke();
-        }
+                });
+            } // End of if (data.labels && data.labels.length > 0) for label drawing
 
-
-        // Draw X-Axis Title
+            // Draw X-Axis Title
             if (oX.displayTitle && oX.title) {
                 this.ctx.font = oX.titleFont;
+                this.ctx.fillStyle = oX.titleColor || this.activePalette.titleColor || this.activePalette.axisColor;
                 this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'bottom'; // Place it below the labels
-                 // Ensure title is placed at the very bottom of the canvas padding area
-                const titleY = this.canvas.height - (options.padding.bottom || 5) + ((this.ctx.measureText('M').width * 1.5)/2); // Adjust if paddingBottom is small
-                this.ctx.fillText(oX.title, this.drawArea.x + this.drawArea.width / 2, this.canvas.height - (options.padding.bottom / 2) ); // Centered at bottom padding
+                this.ctx.textBaseline = 'bottom';
+                this.ctx.fillText(oX.title, this.drawArea.x + this.drawArea.width / 2, this.canvas.height - (options.padding.bottom / 2));
             }
-        }
-        this.ctx.restore();
+        } // End of if (oX.display && this.drawArea.width > 0)
+
+        this.ctx.restore(); // This is the restore for the save() at the beginning of _drawAxesAndGrid method
     }
 
     _fillRoundRect(ctx, x, y, width, height, radius) {
