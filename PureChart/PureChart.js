@@ -179,31 +179,46 @@ class PureChart {
                     padding: '10px', 
                     borderRadius: '5px', 
                     offset: 10, 
-                    formatter: (params) => { // Default tooltip formatter
-                        if (!params) return ''; 
-                        if (params.type === 'percentageDistribution' && params.item) { 
-                            let itemValueStr = params.item.value.toLocaleString('en-US');
-                            itemValueStr = itemValueStr.replace(/,/g, ' ');
-                            // percentage.toFixed(1) already uses a period and is unlikely to need thousands separators.
+                    formatter: (params) => {
+                        if (!params) return '';
+                        if (params.type === 'percentageDistribution' && params.item) {
+                            let itemValueStr = params.item.value.toLocaleString('en-US').replace(/,/g, ' ');
                             return `<div style="text-align:left;"><strong>${params.item.label}</strong><br/>Value: ${itemValueStr}<br/>Percentage: ${params.item.percentage.toFixed(1)}%</div>`;
-                        } 
-                        let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`; 
-                        (params.datasets || []).forEach((item, index) => { 
+                        }
+
+                        let html = `<div style="font-weight:bold;margin-bottom:5px;text-align:left;">${params.xLabel || ''}</div>`;
+
+                        // params.datasets is now an array like:
+                        // [{ dataset: { label: 'Series A', color: '#ff0000', originalIndex: 0 }, value: 10 }, ...]
+                        // or for single item tooltips (old style, but _onMouseMove now tries to make it shared for bar/line):
+                        // [{ dataset: { label: 'Series A', borderColor: ..., backgroundColor: ... }, value: 10 }]
+                        (params.datasets || []).forEach((item) => {
                             if (item && item.dataset) {
-                                let markerColor = item.dataset.borderColor || (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor);
-                                if (!markerColor) { // Fallback to theme's default dataset color
-                                    const palette = params.themePalette || PC_LIGHT_THEME_PALETTE; // Default to light if somehow not passed
-                                    markerColor = palette.defaultDatasetColors[index % palette.defaultDatasetColors.length];
+                                let markerColor = item.dataset.color; // Prefer pre-resolved color from _onMouseMove
+
+                                if (!markerColor) { // Fallback if color was not pre-resolved or for non-shared structure
+                                    markerColor = item.dataset.borderColor ||
+                                                  (Array.isArray(item.dataset.backgroundColor) ? item.dataset.backgroundColor[0] : item.dataset.backgroundColor);
                                 }
-                                let valStr = item.value !== undefined ? item.value.toLocaleString('en-US') : 'N/A';
-                                if (item.value !== undefined) { // Only replace if it's a number-derived string
-                                    valStr = valStr.replace(/,/g, ' ');
+                                if (!markerColor && params.themePalette) { // Further fallback to theme default
+                                    // originalIndex should be provided by _onMouseMove on item.dataset for this to work reliably
+                                    const originalIndex = item.dataset.originalIndex !== undefined ? item.dataset.originalIndex : 0; // Fallback to 0 if not present
+                                    markerColor = params.themePalette.defaultDatasetColors[originalIndex % params.themePalette.defaultDatasetColors.length];
                                 }
-                                html += `<div style="text-align:left;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>${item.dataset.label||'Dataset'}: ${valStr}</div>`; // Translated "Dataset"
-                            } 
-                        }); 
-                        return html; 
-                    } 
+                                markerColor = markerColor || '#ccc'; // Ultimate fallback color
+
+                                let valStr = (item.value !== undefined && item.value !== null) ?
+                                             item.value.toLocaleString('en-US').replace(/,/g, ' ') :
+                                             'N/A';
+
+                                html += `<div style="text-align:left;">` +
+                                        `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${markerColor};margin-right:5px;"></span>` +
+                                        `${item.dataset.label || 'Dataset'}: ${valStr}` +
+                                        `</div>`;
+                            }
+                        });
+                        return html;
+                    }
                 }
             }
         };
@@ -1886,47 +1901,75 @@ class PureChart {
         if (bestMatch) {
             let tooltipContentParams; 
             let anchorX, anchorY; // Anchor for tooltip position
-            let yAxisScaleInfo = null; // Initialize for potential use
+            let yAxisScaleInfo = null;
 
-            // For points and bars, try to get their Y-axis scale information
-            if (bestMatch.dataset && bestMatch.dataset.yAxisID && this.yAxisScales) {
-                yAxisScaleInfo = this.yAxisScales[bestMatch.dataset.yAxisID] || null;
-            }
-
-            if (bestMatch.type === 'point') { 
-                anchorX = bestMatch.pos.x + canvasRect.left; 
-                anchorY = bestMatch.pos.y + canvasRect.top; 
-                tooltipContentParams = { 
-                    type: 'point', 
-                    xLabel: bestMatch.xLabel, 
-                    datasets: [{ dataset: bestMatch.dataset, value: bestMatch.value }], 
-                    yAxisScaleInfo: yAxisScaleInfo,
-                    themePalette: this.activePalette 
-                }; 
-            } else if (bestMatch.type === 'bar') { 
-                anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; 
-                anchorY = bestMatch.rect.y + canvasRect.top; 
-                // For grouped bars, find all datasets at this xLabel
-                const groupedDatasets = this.interactiveElements
-                    .filter(elem => elem.type === 'bar' && elem.xLabel === bestMatch.xLabel && elem.pointIndex === bestMatch.pointIndex)
-                    .map(elem => ({ dataset: elem.dataset, value: elem.value }))
-                    .sort((a,b) => (this.config.data.datasets.indexOf(a.dataset) - this.config.data.datasets.indexOf(b.dataset))); // Ensure original dataset order
-                
-                tooltipContentParams = { 
-                    type: 'bar', 
-                    xLabel: bestMatch.xLabel, 
-                    datasets: groupedDatasets.length > 0 ? groupedDatasets : [{ dataset: bestMatch.dataset, value: bestMatch.value }],
-                    yAxisScaleInfo: yAxisScaleInfo, // yAxisScaleInfo of the primarily hovered bar
-                    themePalette: this.activePalette
-                };
-            } else if (bestMatch.type === 'percentageDistribution') { 
+            if (bestMatch.type === 'percentageDistribution') {
                 anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left; 
                 anchorY = bestMatch.rect.y + bestMatch.rect.h / 2 + canvasRect.top; 
                 tooltipContentParams = { 
                     type: 'percentageDistribution', 
                     item: bestMatch.item,
-                    themePalette: this.activePalette // Provide palette to formatter
+                    themePalette: this.activePalette
                 }; 
+            } else if (bestMatch.type === 'bar' || bestMatch.type === 'point') {
+                const pointIndex = bestMatch.pointIndex;
+                const xLabel = this.config.data.labels && this.config.data.labels.length > pointIndex ?
+                               String(this.config.data.labels[pointIndex]) :
+                               (bestMatch.xLabel || `Index ${pointIndex}`);
+
+                let datasetsForTooltip = [];
+                (this.config.data.datasets || []).forEach((ds, dsIndex) => {
+                    if (ds._hidden) return;
+
+                    const datasetType = ds.type || this.config.type;
+                    if (datasetType === 'percentageDistribution') return;
+
+                    const value = (ds.values && ds.values.length > pointIndex && ds.values[pointIndex] !== null && ds.values[pointIndex] !== undefined) ?
+                                  ds.values[pointIndex] : undefined;
+
+                    // For shared tooltip, we always want to show the dataset label if the dataset is visible,
+                    // even if the value for this specific pointIndex is undefined.
+                    // The formatter will handle displaying "N/A" or similar for undefined values.
+
+                    let resolvedColor = ds.borderColor || ds.backgroundColor;
+                    if (Array.isArray(resolvedColor)) resolvedColor = resolvedColor[0];
+                    if (!resolvedColor) {
+                        const palette = this.activePalette || PC_LIGHT_THEME_PALETTE;
+                        resolvedColor = palette.defaultDatasetColors[dsIndex % palette.defaultDatasetColors.length];
+                    }
+
+                    datasetsForTooltip.push({
+                        dataset: {
+                            label: ds.label || `Dataset ${dsIndex + 1}`,
+                            color: resolvedColor, // Provide pre-resolved color
+                            originalIndex: dsIndex // For potential fallback in formatter if color is missing
+                            // Pass other original ds properties if formatter might need them, e.g., ds.borderColor, ds.backgroundColor
+                        },
+                        value: value
+                    });
+                });
+
+                if (datasetsForTooltip.length > 0) {
+                    if (bestMatch.type === 'point' && bestMatch.pos) {
+                        anchorX = bestMatch.pos.x + canvasRect.left;
+                        anchorY = bestMatch.pos.y + canvasRect.top;
+                    } else if (bestMatch.type === 'bar' && bestMatch.rect) {
+                        anchorX = bestMatch.rect.x + bestMatch.rect.w / 2 + canvasRect.left;
+                        anchorY = bestMatch.rect.y + canvasRect.top;
+                    } else { // Fallback anchor if specific position isn't clear from bestMatch
+                        anchorX = mousePos.x + canvasRect.left;
+                        anchorY = mousePos.y + canvasRect.top;
+                    }
+
+                    tooltipContentParams = {
+                        type: 'shared', // Or bestMatch.type, but 'shared' is more accurate now
+                        xLabel: xLabel,
+                        datasets: datasetsForTooltip,
+                        themePalette: this.activePalette
+                        // yAxisScaleInfo could be passed if relevant, but for shared it's complex.
+                        // The default formatter doesn't use yAxisScaleInfo.
+                    };
+                }
             }
             
             if (tooltipContentParams) { 
