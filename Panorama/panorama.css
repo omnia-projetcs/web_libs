@@ -58,12 +58,12 @@ html, body {
   background-color: #e9ecef; 
   border: 1px solid #ced4da; 
   border-radius: 4px;
-  /* New CSS Grid styles */
-  display: grid;
-  grid-template-columns: repeat(12, 1fr); /* 12-column grid */
-  grid-auto-rows: minmax(50px, auto); /* Default row height, min 50px, auto-sizing */
-  gap: 15px; /* Space between grid cells */
-  padding: 10px; /* Padding inside the grid container */
+  /* New CSS Grid styles -- These are now controlled by PanoramaGrid.js and PanoramaGrid.css */
+  /* display: grid; */
+  /* grid-template-columns: repeat(12, 1fr); */ /* 12-column grid */
+  /* grid-auto-rows: minmax(50px, auto); */ /* Default row height, min 50px, auto-sizing */
+  /* gap: 15px; */ /* Space between grid cells */
+  /* padding: 10px; */ /* Padding inside the grid container */
 }
 
 /* Grid Item Styling */

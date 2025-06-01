@@ -26,7 +26,14 @@
 
 .panorama-grid-custom-item-content {
     padding: 10px;
-    /* Add more styles for the content area of an item */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* Changed from center to allow natural top-to-bottom flow */
+    align-items: stretch;       /* Changed from center to allow content to take full width */
+    flex-grow: 1;
+    overflow: auto; /* Allow scrolling for content that exceeds the item's bounds */
+    height: 100%; /* Ensure it utilizes the height of .panorama-grid-custom-item */
+    box-sizing: border-box; /* Padding should not add to the 100% height */
 }
 
 .panorama-grid-custom-item.pg-dragging {
