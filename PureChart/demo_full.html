@@ -68,6 +68,53 @@
         <canvas id="multiAxisChartCanvas" width="700" height="400"></canvas>
     </div>
 
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <h2>Autosize Demo (Responsive)</h2>
+    <p>Resize the container (e.g., by resizing the browser window if the container has percentage width, or drag its corner if it's made resizable with CSS) to see the chart adapt.</p>
+    <div id="autosizeContainer_full" style="width: 70%; height: 350px; border: 1px solid #ccc; padding: 10px; resize: both; overflow: auto; margin-bottom: 20px;">
+        <canvas id="autosizeChartCanvas_full"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <h2>Autosize with Max Dimensions Demo</h2>
+    <p>The container below is larger than the canvas's initial HTML attributes (width="400", height="250"). The chart will use the container size up to these maximums.</p>
+    <div id="maxSizeContainer_full" style="width: 600px; height: 400px; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+        <canvas id="maxSizeChartCanvas_full" width="400" height="250"></canvas>
+    </div>
+    <p>Container below is smaller than canvas attributes. Chart will shrink.</p>
+    <div id="maxSizeContainerSmall_full" style="width: 300px; height: 200px; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+        <canvas id="maxSizeChartCanvasSmall_full" width="400" height="250"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <h2>Fixed Size Chart Demo (Autosize Off)</h2>
+    <p>This chart has <code>autosize: false</code> and fixed dimensions (450x280), regardless of container size.</p>
+    <div id="fixedSizeContainer_full" style="width: 70%; height: 350px; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+        <canvas id="fixedSizeChartCanvas_full"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <h2>Chart Destroy Demo</h2>
+    <div id="destroyableContainer_full" style="width: 500px; height: 300px; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+        <canvas id="destroyableChartCanvas_full"></canvas>
+    </div>
+    <button id="createChartBtn_full">Create Chart</button>
+    <button id="destroyChartBtn_full" disabled>Destroy Chart</button>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <h2>X-Axis Label Filtering</h2>
+    <p>This chart has many labels. Observe how labels are skipped to prevent overlap. Try resizing the container.</p>
+    <div id="labelFilterContainer_full" style="width: 90%; max-width:700px; height: 350px; border: 1px solid #ccc; padding: 10px; resize: both; overflow: auto; margin-bottom: 20px;">
+        <canvas id="labelFilterChartCanvas_full"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
     <h2>Original Demo Charts (for reference)</h2>
 
     <div class="chart-container">
@@ -643,6 +690,168 @@
                 }
             };
             new PureChart('percentageChartOldStyleAutonome', percentageChartOldStyleConfig);
+
+            // --- Appended Demos Start ---
+
+            // Autosize Demo Chart (for demo_full.html)
+            const autosizeCtx_full = document.getElementById('autosizeChartCanvas_full');
+            if (autosizeCtx_full) {
+                new PureChart(autosizeCtx_full.id, {
+                    type: 'line',
+                    data: {
+                        labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                        datasets: [{
+                            label: 'Monthly Sales',
+                            values: [65, 59, 80, 81, 56, 55, 40],
+                            borderColor: '#007bff',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        title: { text: 'Responsive Chart (Autosize On)' }
+                    }
+                });
+            }
+
+            // Autosize with Max Dimensions Demo (Larger Container - for demo_full.html)
+            const maxSizeCtx_full = document.getElementById('maxSizeChartCanvas_full');
+            if (maxSizeCtx_full) {
+                new PureChart(maxSizeCtx_full.id, {
+                    type: 'bar',
+                    data: {
+                        labels: ['A', 'B', 'C', 'D', 'E'],
+                        datasets: [{
+                            label: 'Performance',
+                            values: [12, 19, 3, 5, 2],
+                            backgroundColor: '#28a745'
+                        }]
+                    },
+                    options: {
+                        title: { text: 'Autosize with Max (Canvas: 400x250)' }
+                    }
+                });
+            }
+
+            // Autosize with Max Dimensions Demo (Smaller Container - for demo_full.html)
+            const maxSizeCtxSmall_full = document.getElementById('maxSizeChartCanvasSmall_full');
+            if (maxSizeCtxSmall_full) {
+                new PureChart(maxSizeCtxSmall_full.id, {
+                    type: 'bar',
+                    data: {
+                        labels: ['A', 'B', 'C', 'D', 'E'],
+                        datasets: [{
+                            label: 'Performance',
+                            values: [12, 19, 3, 5, 2],
+                            backgroundColor: '#ffc107'
+                        }]
+                    },
+                    options: {
+                        title: { text: 'Autosize with Max (Canvas: 400x250, Container Smaller)' }
+                    }
+                });
+            }
+
+            // Fixed Size Chart Demo (for demo_full.html)
+            const fixedSizeCtx_full = document.getElementById('fixedSizeChartCanvas_full');
+            if (fixedSizeCtx_full) {
+                new PureChart(fixedSizeCtx_full.id, {
+                    type: 'bar', // Changed from pie for safety
+                    data: {
+                        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple'],
+                        datasets: [{
+                            label: 'Votes',
+                            values: [300, 50, 100, 40, 120],
+                            backgroundColor: ['#dc3545', '#007bff', '#ffc107', '#28a745', '#6f42c1']
+                        }]
+                    },
+                    options: {
+                        autosize: false,
+                        width: 450,
+                        height: 280,
+                        title: { text: 'Fixed Size Chart (450x280)' }
+                    }
+                });
+            }
+
+            // Destroy Method Demo (for demo_full.html)
+            const createChartBtn_full = document.getElementById('createChartBtn_full');
+            const destroyChartBtn_full = document.getElementById('destroyChartBtn_full');
+            const destroyableCanvasId_full = 'destroyableChartCanvas_full';
+            let destroyableChart_full = null;
+
+            function createDestroyableChart_full() {
+                if (destroyableChart_full) {
+                    destroyableChart_full.destroy();
+                }
+                const canvasEl_full = document.getElementById(destroyableCanvasId_full);
+                if (canvasEl_full) {
+                    const ctx_full = canvasEl_full.getContext('2d');
+                    ctx_full.clearRect(0,0,canvasEl_full.width, canvasEl_full.height);
+
+                    destroyableChart_full = new PureChart(destroyableCanvasId_full, {
+                        type: 'line',
+                        data: {
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                            datasets: [{ label: 'Activity', values: [5,9,6,8,7], tension: 0 }]
+                        },
+                        options: { title: { text: 'Destroyable Chart' }}
+                    });
+                    if(createChartBtn_full) createChartBtn_full.disabled = true;
+                    if(destroyChartBtn_full) destroyChartBtn_full.disabled = false;
+                    console.log('Chart created for destroy demo (full).');
+                }
+            }
+
+            function destroyTheChart_full() {
+                if (destroyableChart_full) {
+                    destroyableChart_full.destroy();
+                    destroyableChart_full = null;
+                    if(createChartBtn_full) createChartBtn_full.disabled = false;
+                    if(destroyChartBtn_full) destroyChartBtn_full.disabled = true;
+                    console.log('Chart destroyed (full).');
+                    const canvasEl_full = document.getElementById(destroyableCanvasId_full);
+                    if(canvasEl_full) {
+                        const ctx_full = canvasEl_full.getContext('2d');
+                        if (ctx_full) { // Ensure context is available
+                           ctx_full.clearRect(0,0,canvasEl_full.width, canvasEl_full.height);
+                           ctx_full.font = "16px Arial";
+                           ctx_full.textAlign = "center";
+                           ctx_full.fillText("Chart destroyed. Create again.", canvasEl_full.width/2, canvasEl_full.height/2);
+                        }
+                    }
+                }
+            }
+
+            if (createChartBtn_full) createChartBtn_full.addEventListener('click', createDestroyableChart_full);
+            if (destroyChartBtn_full) destroyChartBtn_full.addEventListener('click', destroyTheChart_full);
+            createDestroyableChart_full(); // Initial creation
+
+            // X-Axis Label Filtering (for demo_full.html)
+            const labelFilterCtx_full = document.getElementById('labelFilterChartCanvas_full');
+            if (labelFilterCtx_full) {
+                const manyLabels_full = [];
+                for (let i = 1; i <= 50; i++) {
+                    manyLabels_full.push(`Label ${i}`);
+                }
+                const manyValues_full = manyLabels_full.map(() => Math.random() * 100);
+
+                new PureChart(labelFilterCtx_full.id, {
+                    type: 'line',
+                    data: {
+                        labels: manyLabels_full,
+                        datasets: [{
+                            label: 'Data Series',
+                            values: manyValues_full,
+                            borderColor: '#6f42c1',
+                            tension: 0.2
+                        }]
+                    },
+                    options: {
+                        title: { text: 'X-Axis Label Filtering Demo' }
+                    }
+                });
+            }
+            // --- Appended Demos End ---
         });
     </script>
 </body>

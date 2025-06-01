@@ -164,6 +164,175 @@
                 }
             };
             new PureChart('smaAnnotationChartCanvas', smaAnnotationChartConfig);
+
+            // Autosize Demo Chart
+            const autosizeCtx = document.getElementById('autosizeChartCanvas');
+            if (autosizeCtx) {
+                new PureChart(autosizeCtx.id, {
+                    type: 'line',
+                    data: {
+                        labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                        datasets: [{
+                            label: 'Monthly Sales',
+                            values: [65, 59, 80, 81, 56, 55, 40],
+                            borderColor: '#007bff',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        title: { text: 'Responsive Chart (Autosize On)' }
+                        // Autosize is true by default
+                    }
+                });
+            }
+
+            // Autosize with Max Dimensions Demo (Larger Container)
+            const maxSizeCtx = document.getElementById('maxSizeChartCanvas');
+            if (maxSizeCtx) {
+                new PureChart(maxSizeCtx.id, {
+                    type: 'bar',
+                    data: {
+                        labels: ['A', 'B', 'C', 'D', 'E'],
+                        datasets: [{
+                            label: 'Performance',
+                            values: [12, 19, 3, 5, 2],
+                            backgroundColor: '#28a745'
+                        }]
+                    },
+                    options: {
+                        title: { text: 'Autosize with Max (Canvas: 400x250)' }
+                        // Autosize is true by default, canvas attributes width="400" height="250" act as max
+                    }
+                });
+            }
+
+            // Autosize with Max Dimensions Demo (Smaller Container)
+            const maxSizeCtxSmall = document.getElementById('maxSizeChartCanvasSmall');
+            if (maxSizeCtxSmall) {
+                new PureChart(maxSizeCtxSmall.id, {
+                    type: 'bar',
+                    data: {
+                        labels: ['A', 'B', 'C', 'D', 'E'],
+                        datasets: [{
+                            label: 'Performance',
+                            values: [12, 19, 3, 5, 2],
+                            backgroundColor: '#ffc107'
+                        }]
+                    },
+                    options: {
+                        title: { text: 'Autosize with Max (Canvas: 400x250, Container Smaller)' }
+                        // Autosize is true by default
+                    }
+                });
+            }
+
+            // Fixed Size Chart Demo
+            const fixedSizeCtx = document.getElementById('fixedSizeChartCanvas');
+            if (fixedSizeCtx) {
+                new PureChart(fixedSizeCtx.id, {
+                    // type: 'pie', // Assuming pie is a valid type or will be added
+                    // For now, let's use 'bar' to avoid issues if 'pie' isn't implemented yet.
+                    type: 'bar',
+                    data: {
+                        labels: ['Red', 'Blue', 'Yellow'],
+                        datasets: [{
+                            label: 'Votes', // Pie charts usually don't have a dataset label like this, but bar charts do.
+                            values: [300, 50, 100],
+                            backgroundColor: ['#dc3545', '#007bff', '#ffc107']
+                        }]
+                    },
+                    options: {
+                        autosize: false,
+                        width: 450,
+                        height: 280,
+                        title: { text: 'Fixed Size Chart (450x280)' }
+                    }
+                });
+            }
+
+            // Destroy Method Demo
+            const createChartBtn = document.getElementById('createChartBtn');
+            const destroyChartBtn = document.getElementById('destroyChartBtn');
+            const destroyableCanvasId = 'destroyableChartCanvas';
+            let destroyableChart = null;
+
+            function createDestroyableChart() {
+                if (destroyableChart) {
+                    destroyableChart.destroy();
+                }
+                const canvasEl = document.getElementById(destroyableCanvasId);
+                if (canvasEl) {
+                    // Clear previous content if any (might not be necessary if canvas is replaced or re-styled)
+                    const ctx = canvasEl.getContext('2d');
+                    ctx.clearRect(0,0,canvasEl.width, canvasEl.height);
+
+                    destroyableChart = new PureChart(destroyableCanvasId, {
+                        type: 'line',
+                        data: {
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                            datasets: [{ label: 'Activity', values: [5,9,6,8,7], tension: 0 }]
+                        },
+                        options: { title: { text: 'Destroyable Chart' }}
+                    });
+                    if(createChartBtn) createChartBtn.disabled = true;
+                    if(destroyChartBtn) destroyChartBtn.disabled = false;
+                    console.log('Chart created for destroy demo.');
+                }
+            }
+
+            function destroyTheChart() {
+                if (destroyableChart) {
+                    destroyableChart.destroy();
+                    destroyableChart = null;
+                    if(createChartBtn) createChartBtn.disabled = false;
+                    if(destroyChartBtn) destroyChartBtn.disabled = true;
+                    console.log('Chart destroyed.');
+                    const canvasEl = document.getElementById(destroyableCanvasId);
+                    if(canvasEl) { // Check if canvas element still exists
+                        const ctx = canvasEl.getContext('2d');
+                         // It's possible canvas is null if destroy removed it, though current destroy() doesn't.
+                        if (ctx) {
+                           ctx.clearRect(0,0,canvasEl.width, canvasEl.height);
+                           ctx.font = "16px Arial";
+                           ctx.textAlign = "center";
+                           ctx.fillText("Chart destroyed. Create again.", canvasEl.width/2, canvasEl.height/2);
+                        }
+                    }
+                }
+            }
+
+            if (createChartBtn) createChartBtn.addEventListener('click', createDestroyableChart);
+            if (destroyChartBtn) destroyChartBtn.addEventListener('click', destroyTheChart);
+
+            // Initially create the destroyable chart for the demo
+            createDestroyableChart();
+
+            // X-Axis Label Filtering Demo
+            const labelFilterCtx = document.getElementById('labelFilterChartCanvas');
+            if (labelFilterCtx) {
+                const manyLabels = [];
+                for (let i = 1; i <= 50; i++) {
+                    manyLabels.push(`Label ${i}`);
+                }
+                const manyValues = manyLabels.map(() => Math.random() * 100);
+
+                new PureChart(labelFilterCtx.id, {
+                    type: 'line',
+                    data: {
+                        labels: manyLabels,
+                        datasets: [{
+                            label: 'Data Series',
+                            values: manyValues,
+                            borderColor: '#6f42c1',
+                            tension: 0.2
+                        }]
+                    },
+                    options: {
+                        title: { text: 'X-Axis Label Filtering Demo' }
+                    }
+                });
+            }
+
         });
     </script>
 </body>
