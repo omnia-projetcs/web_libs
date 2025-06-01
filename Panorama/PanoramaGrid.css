@@ -53,10 +53,30 @@
     opacity: 1;
 }
 
+/* Individual Handle Positioning and Cursors */
+.pg-resize-handle-n {
+    top: -5px; left: 50%; transform: translateX(-50%); cursor: ns-resize;
+}
+.pg-resize-handle-s {
+    bottom: -5px; left: 50%; transform: translateX(-50%); cursor: ns-resize;
+}
+.pg-resize-handle-e {
+    right: -5px; top: 50%; transform: translateY(-50%); cursor: ew-resize;
+}
+.pg-resize-handle-w {
+    left: -5px; top: 50%; transform: translateY(-50%); cursor: ew-resize;
+}
+.pg-resize-handle-nw {
+    top: -5px; left: -5px; cursor: nwse-resize;
+}
+.pg-resize-handle-ne {
+    top: -5px; right: -5px; cursor: nesw-resize;
+}
+.pg-resize-handle-sw {
+    bottom: -5px; left: -5px; cursor: nesw-resize;
+}
 .pg-resize-handle-se {
-    bottom: -1px; /* Adjust for border or desired position */
-    right: -1px;  /* Adjust for border or desired position */
-    cursor: nwse-resize;
+    bottom: -5px; right: -5px; cursor: nwse-resize;
 }
 
 .panorama-grid-custom-item.pg-resizing {

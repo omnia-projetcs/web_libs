@@ -31,7 +31,42 @@ class PanoramaGrid {
         this._boundHandleResizeMove = null; // For storing bound mousemove handler
         this._boundHandleResizeEnd = null;   // For storing bound mouseup handler
 
+        this._events = {};
+
         this._init();
+    }
+
+    on(eventName, callback) {
+        if (typeof callback !== 'function') {
+            console.warn('PanoramaGrid.on: callback must be a function.');
+            return;
+        }
+        if (!this._events[eventName]) {
+            this._events[eventName] = [];
+        }
+        this._events[eventName].push(callback);
+    }
+
+    off(eventName, callback) {
+        if (!this._events[eventName]) {
+            return;
+        }
+        this._events[eventName] = this._events[eventName].filter(
+            listener => listener !== callback
+        );
+    }
+
+    _emit(eventName, ...args) {
+        if (!this._events[eventName]) {
+            return;
+        }
+        this._events[eventName].forEach(listener => {
+            try {
+                listener(...args);
+            } catch (e) {
+                console.error(`Error in PanoramaGrid event listener for ${eventName}:`, e, 'Listener:', listener);
+            }
+        });
     }
 
     _init() {
@@ -122,6 +157,7 @@ class PanoramaGrid {
         this.items.push(newItemObject);
         this._renderItem(newItemObject);
 
+        this._emit('itemAdded', { ...newItemObject, element: undefined }); // Don't emit DOM element directly
         console.log(`PanoramaGrid: Added item ID ${newItemId} with layout:`, newItemObject.layout, `(Attempts: ${placementAttempts})`);
         return newItemId;
     }
@@ -147,7 +183,7 @@ class PanoramaGrid {
 
         // Remove the item from the internal array
         this.items.splice(itemIndex, 1);
-
+        this._emit('itemRemoved', itemId, { ...itemObject, element: undefined }); // Emit data of removed item
         console.log(`PanoramaGrid: Removed item ID ${itemId}.`);
         return true;
     }
@@ -200,15 +236,17 @@ class PanoramaGrid {
 
         itemElement.appendChild(contentElement);
 
-        // Add resize handle (example: South-East)
-        const resizeHandleSE = document.createElement('div');
-        resizeHandleSE.className = 'pg-resize-handle pg-resize-handle-se';
-        resizeHandleSE.setAttribute('data-direction', 'se');
-        // Add mousedown listener for resizing on the handle
-        resizeHandleSE.addEventListener('mousedown', (event) => {
-            this._handleResizeStart(event, itemObject);
+        // Add all 8 resize handles
+        const directions = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
+        directions.forEach(direction => {
+            const handle = document.createElement('div');
+            handle.className = `pg-resize-handle pg-resize-handle-${direction}`;
+            handle.setAttribute('data-direction', direction);
+            handle.addEventListener('mousedown', (event) => {
+                this._handleResizeStart(event, itemObject);
+            });
+            itemElement.appendChild(handle);
         });
-        itemElement.appendChild(resizeHandleSE); // Append handle to the item element
 
         this.containerElement.appendChild(itemElement);
         itemObject.element = itemElement; // Store reference to the DOM element
@@ -353,7 +391,8 @@ class PanoramaGrid {
             } else {
                 // No collision, apply the new layout
                 this.draggedItem.layout = { ...targetLayout };
-                // console.log(`PanoramaGrid: Item ID ${this.draggedItem.id} moved to`, this.draggedItem.layout);
+            this._emit('itemMoved', this.draggedItem.id, { ...this.draggedItem.layout });
+            console.log(`PanoramaGrid: Item ID ${this.draggedItem.id} moved to`, this.draggedItem.layout);
             }
         } else {
             // If no potentialLayout, it means no valid drag move happened (e.g. just a click), so revert.
@@ -426,35 +465,96 @@ class PanoramaGrid {
         const cellWidth = (contentWidth - (this.options.columns - 1) * this.options.gap) / this.options.columns;
         const cellHeight = this.options.rowHeight;
 
-        let newW = this.resizeItemInitialLayout.w;
-        let newH = this.resizeItemInitialLayout.h;
+        let { x: newX, y: newY, w: newW, h: newH } = this.resizeItemInitialLayout;
 
-        // For 'se' handle, we only adjust width and height based on delta from initial grab point
-        if (this.resizeDirection.includes('e')) { // Simplified for 'se'
-            const gridDeltaW = Math.round(dx / (cellWidth + this.options.gap));
-            newW = this.resizeItemInitialLayout.w + gridDeltaW;
+        const gridDeltaX = Math.round(dx / (cellWidth + this.options.gap));
+        const gridDeltaY = Math.round(dy / (cellHeight + this.options.gap));
+        const dir = this.resizeDirection;
+
+        if (dir.includes('n')) {
+            let proposedY = this.resizeItemInitialLayout.y + gridDeltaY;
+            let proposedH = this.resizeItemInitialLayout.h - gridDeltaY;
+            if (proposedY < 1) {
+                proposedH += (1 - proposedY);
+                proposedY = 1;
+            }
+            if (proposedH < 1) { // Ensure height does not make Y adjust again to break top boundary
+                // If proposedH became < 1, it means gridDeltaY was too large for initial H.
+                // Adjust Y upwards from its proposed position to maintain H=1
+                // This effectively means the bottom edge moves up more than the top edge tried to.
+                // No, this logic is tricky. If H becomes < 1, it means deltaY was > initial H.
+                // We should clamp H to 1, and Y should be initialY + initialH - 1.
+                 proposedY = this.resizeItemInitialLayout.y + this.resizeItemInitialLayout.h -1;
+                 if (proposedY < 1) proposedY = 1; // Should not happen if initial H >=1
+                 proposedH = 1;
+            }
+            newY = proposedY;
+            newH = proposedH;
         }
-        if (this.resizeDirection.includes('s')) { // Simplified for 'se'
-            const gridDeltaH = Math.round(dy / (cellHeight + this.options.gap));
-            newH = this.resizeItemInitialLayout.h + gridDeltaH;
+        if (dir.includes('s')) {
+            newH = this.resizeItemInitialLayout.h + gridDeltaY;
+        }
+        if (dir.includes('w')) {
+            let proposedX = this.resizeItemInitialLayout.x + gridDeltaX;
+            let proposedW = this.resizeItemInitialLayout.w - gridDeltaX;
+            if (proposedX < 1) {
+                proposedW += (1 - proposedX);
+                proposedX = 1;
+            }
+            if (proposedW < 1) { // Similar to 'n' handle for H
+                 proposedX = this.resizeItemInitialLayout.x + this.resizeItemInitialLayout.w - 1;
+                 if (proposedX < 1) proposedX = 1;
+                 proposedW = 1;
+            }
+            newX = proposedX;
+            newW = proposedW;
+        }
+        if (dir.includes('e')) {
+            newW = this.resizeItemInitialLayout.w + gridDeltaX;
         }
 
-        // Boundary checks
-        newW = Math.max(1, newW);
-        newH = Math.max(1, newH);
-        // Ensure item does not exceed grid columns from its starting X position
-        newW = Math.min(newW, this.options.columns - this.resizeItemInitialLayout.x + 1);
-        // Max height check can be added if grid has a fixed max row count
+        // Boundary Checks
+        if (newH < 1) newH = 1;
+        if (newW < 1) newW = 1;
 
-        // Update potentialLayout (x and y are from initial layout for 'se' handle)
+        // Ensure X and Y are at least 1 (can be affected by previous logic if initial size was 1)
+        if (newX < 1) newX = 1;
+        if (newY < 1) newY = 1;
+
+
+        if (newX + newW > this.options.columns + 1) {
+            if (dir.includes('w')) {
+                // If dragging from west, X can change, W was primary driver from delta.
+                // We need to adjust X to keep W if possible, or reduce W if X hits 1.
+                newX = this.options.columns - newW + 1;
+                if (newX < 1) {
+                    newW = this.options.columns;
+                    newX = 1;
+                }
+            } else { // East or no horizontal drag component that affects X directly.
+                newW = this.options.columns - newX + 1;
+            }
+        }
+        // Max height check can be added if this.options.maxRows is defined.
+
+        // Final clamping for safety / consistency
+        if (newW < 1) newW = 1;
+        if (newX < 1) newX = 1;
+        if (newX + newW > this.options.columns + 1) { // Re-check width if X was clamped to 1
+             newW = this.options.columns - newX + 1;
+        }
+
+
         this.resizeItem.potentialLayout = {
-            x: this.resizeItemInitialLayout.x,
-            y: this.resizeItemInitialLayout.y,
+            x: newX,
+            y: newY,
             w: newW,
             h: newH
         };
 
         // Live DOM Update for visual feedback
+        this.resizeItem.element.style.gridColumnStart = newX;
+        this.resizeItem.element.style.gridRowStart = newY;
         this.resizeItem.element.style.gridColumnEnd = `span ${newW}`;
         this.resizeItem.element.style.gridRowEnd = `span ${newH}`;
         const itemHeight = (newH * this.options.rowHeight) + ((newH - 1) * this.options.gap);
@@ -478,21 +578,14 @@ class PanoramaGrid {
             const targetLayout = this.resizeItem.potentialLayout;
             let collisionFound = false;
 
-            // It's crucial that targetLayout has x,y,w,h for collision check
-            // For 'se' resize, x and y come from resizeItemInitialLayout, w and h from potentialLayout updates
-            const finalTargetLayout = {
-                x: this.resizeItemInitialLayout.x,
-                y: this.resizeItemInitialLayout.y,
-                w: targetLayout.w,
-                h: targetLayout.h
-            };
-
+            // Use the full potential layout calculated during _handleResizeMove
+            const finalTargetLayout = this.resizeItem.potentialLayout;
+            let collisionFound = false;
 
             for (const existingItem of this.items) {
                 if (existingItem.id === this.resizeItem.id) {
                     continue; // Skip self
                 }
-                // Use the fully formed finalTargetLayout for collision check
                 if (this._isCollision(finalTargetLayout, existingItem.layout)) {
                     collisionFound = true;
                     break;
@@ -500,12 +593,12 @@ class PanoramaGrid {
             }
 
             if (collisionFound) {
-                console.warn(`PanoramaGrid: Collision detected for item ID ${this.resizeItem.id} at new size. Reverting.`);
+                console.warn(`PanoramaGrid: Collision detected for item ID ${this.resizeItem.id} with new layout. Reverting.`);
                 this.resizeItem.layout = { ...this.resizeItemInitialLayout };
             } else {
-                // No collision, apply the new layout (which includes potentially new W and H)
-                // X and Y are from initial for 'se' handle
+                // No collision, apply the new layout from potentialLayout
                 this.resizeItem.layout = { ...finalTargetLayout };
+            this._emit('itemResized', this.resizeItem.id, { ...this.resizeItem.layout });
                 console.log(`PanoramaGrid: Item ID ${this.resizeItem.id} resized to`, this.resizeItem.layout);
             }
         } else {
@@ -533,6 +626,140 @@ class PanoramaGrid {
         this._boundHandleResizeMove = null;
         this._boundHandleResizeEnd = null;
         // this.resizeItem.potentialLayout is cleared when this.resizeItem is set to null
+    }
+
+    _clearGrid() {
+        // Remove DOM elements
+        this.items.forEach(item => {
+            if (item.element && item.element.parentNode) {
+                item.element.remove();
+            }
+        });
+        // Clear internal state
+        this.items = [];
+        this.itemIdCounter = 0;
+        console.log('PanoramaGrid: Grid cleared.');
+    }
+
+    loadLayout(layoutData) {
+        if (!layoutData || typeof layoutData !== 'object' || !Array.isArray(layoutData.items)) {
+            console.error('PanoramaGrid: Invalid layoutData provided to loadLayout. Must include an "items" array.', layoutData);
+            return false;
+        }
+
+        this._clearGrid();
+
+        // Optional: Restore grid options if they were saved and are part of layoutData.options
+        if (layoutData.options) {
+            // Simple merge, could be more sophisticated if options affect DOM structure that needs rebuilding
+            Object.assign(this.options, layoutData.options);
+            // Re-apply dynamic CSS variables from options
+            if (this.containerElement) { // Ensure container exists
+                this.containerElement.style.setProperty('--pg-columns', this.options.columns);
+                this.containerElement.style.setProperty('--pg-gap', `${this.options.gap}px`);
+            }
+            console.log('PanoramaGrid: Grid options restored.', this.options);
+        }
+
+        layoutData.items.forEach(itemData => {
+            if (!itemData.layout || !itemData.config) {
+                console.warn('PanoramaGrid: Skipping item in loadLayout due to missing layout or config.', itemData);
+                return; // continue to next item
+            }
+            // addItem expects a single config object where 'layout' is a property.
+            // The structure from getLayout is { id, config, layout }.
+            // We need to pass an object to addItem that it expects, usually { ...actualConfig, layout: actualLayout }
+            // addItem will generate its own ID, so we don't pass itemData.id to it.
+            // We will rely on itemIdCounter being set correctly afterwards.
+            this.addItem({ ...itemData.config, layout: itemData.layout });
+        });
+
+        // Restore itemIdCounter, ensuring it's at least the max ID from loaded items
+        let maxIdInLoadedItems = 0;
+        if (this.items.length > 0) { // Check this.items as addItem populates it
+            maxIdInLoadedItems = this.items.reduce((max, itm) => Math.max(max, itm.id), 0);
+        }
+        // Prefer layoutData.itemIdCounter if provided and valid, otherwise ensure it's at least maxId
+        this.itemIdCounter = Math.max(layoutData.itemIdCounter || 0, maxIdInLoadedItems);
+
+
+        this._emit('layoutLoaded');
+        console.log('PanoramaGrid: Layout loaded successfully.');
+        return true;
+    }
+
+    getLayout() {
+        const serializableItems = this.items.map(itemObject => {
+            // Ensure we are creating deep enough copies if config or layout are complex
+            // For now, shallow copies via spread operator are used for layout.
+            // Deep copy for config to handle nested objects/arrays, assuming JSON serializable content.
+            // Functions or live DOM elements in config.content won't serialize with JSON.stringify.
+            let serializableConfig = {};
+            try {
+                // Attempt deep copy for config, but handle potential non-serializable content gracefully.
+                // This basic deep copy won't handle functions or DOM elements in config.
+                serializableConfig = JSON.parse(JSON.stringify(itemObject.config));
+            } catch (e) {
+                console.warn(`PanoramaGrid: Could not fully serialize config for item ID ${itemObject.id} due to non-JSON content. Proceeding with a shallow copy.`, e);
+                serializableConfig = { ...itemObject.config }; // Fallback to shallow copy
+            }
+
+            return {
+                id: itemObject.id,
+                config: serializableConfig,
+                layout: { ...itemObject.layout }
+            };
+        });
+
+        return {
+            items: serializableItems,
+            itemIdCounter: this.itemIdCounter,
+            options: { ...this.options } // Include a copy of the grid's constructor options
+        };
+    }
+
+    updateItemContent(itemId, newContent) {
+        const itemObject = this.items.find(item => item.id === itemId);
+
+        if (!itemObject) {
+            console.warn(`PanoramaGrid: Item with ID ${itemId} not found. Cannot update content.`);
+            return false;
+        }
+
+        if (!itemObject.element) {
+            console.warn(`PanoramaGrid: DOM element for item ID ${itemId} not found. Cannot update content visually.`);
+            // Still update config, but visual update won't happen.
+            itemObject.config.content = newContent; // Update the stored configuration
+            return false;
+        }
+
+        itemObject.config.content = newContent; // Update the stored configuration
+
+        const contentElement = itemObject.element.querySelector('.panorama-grid-custom-item-content');
+
+        if (contentElement) {
+            contentElement.innerHTML = ''; // Clear existing content
+
+            // Apply new content (logic borrowed from _renderItem)
+            if (typeof newContent === 'function') {
+                contentElement.appendChild(newContent(itemObject)); // Pass itemObject if function needs context
+            } else if (typeof newContent === 'string' || typeof newContent === 'number') {
+                contentElement.innerHTML = newContent;
+            } else if (newContent instanceof HTMLElement) {
+                contentElement.appendChild(newContent);
+            } else if (newContent) { // Check if newContent is not null/undefined
+                console.warn(`PanoramaGrid: Item ID ${itemObject.id} received unsupported newContent type.`, newContent);
+                contentElement.textContent = '[Unsupported Content Type]';
+            } else {
+                // Content is null or undefined, leave it empty
+            }
+            this._emit('itemContentUpdated', itemObject.id, itemObject.config.content);
+            console.log(`PanoramaGrid: Content updated for item ID ${itemId}.`);
+            return true;
+        } else {
+            console.warn(`PanoramaGrid: Content container element not found for item ID ${itemId}. Config updated, but DOM not.`);
+            return false; // Visual update failed
+        }
     }
 }
 
