@@ -167,7 +167,8 @@ class PureChart {
                     borderWidth: 1, 
                     borderColor: undefined, 
                     borderDarkenPercent: 20,
-                    fillLightenPercent: undefined // If > 0, activates the new "gauge" style
+                    fillLightenPercent: undefined, // If > 0, activates the new "gauge" style
+                    valuesArePercentages: false // <-- New property added here
                 },
                 // font: '12px Arial', // Global default font - autosize will manage this if not set at component level
                 gridColor: '#e0e0e0',
@@ -513,6 +514,16 @@ class PureChart {
                 });
             }
             if (!this.isValid) return;
+
+            // New validation for valuesArePercentages
+            if (this.config.options.percentageDistribution && this.config.options.percentageDistribution.valuesArePercentages) {
+                this.config.data.items.forEach((item, index) => {
+                    if (typeof item.value === 'number' && !isNaN(item.value) && (item.value < 0 || item.value > 100)) {
+                        console.warn(`PureChart Warning (percentageDistribution): Item '${item.label || `Index ${index}`}' has value ${item.value} which is outside the expected 0-100 range when valuesArePercentages is true.`);
+                    }
+                });
+            }
+
             // For percentageDistribution, axes and legend are typically off by default
             this.config.options.xAxis.display = this.config.options.xAxis.display ?? false;
             if (this.config.options.yAxes && this.config.options.yAxes.length > 0) { // Ensure yAxes exists
@@ -1493,12 +1504,19 @@ class PureChart {
         const drawArea = this.drawArea;
 
         let itemsToDraw = [...originalItems]; // Clone for sorting
-        const totalValue = itemsToDraw.reduce((sum, item) => sum + ((typeof item.value === 'number' && !isNaN(item.value)) ? item.value : 0), 0);
-        
-        itemsToDraw.forEach(item => { // Calculate percentage for each item
-            const value = (typeof item.value === 'number' && !isNaN(item.value)) ? item.value : 0;
-            item.percentage = (totalValue === 0) ? 0 : (value / totalValue) * 100;
-        });
+
+        if (options.valuesArePercentages) {
+            itemsToDraw.forEach(item => {
+                let directPercentage = (typeof item.value === 'number' && !isNaN(item.value)) ? item.value : 0;
+                item.percentage = Math.max(0, Math.min(100, directPercentage)); // Use value directly, clamp 0-100
+            });
+        } else {
+            const totalValue = itemsToDraw.reduce((sum, item) => sum + ((typeof item.value === 'number' && !isNaN(item.value)) ? item.value : 0), 0);
+            itemsToDraw.forEach(item => { // Calculate percentage for each item
+                const value = (typeof item.value === 'number' && !isNaN(item.value)) ? item.value : 0;
+                item.percentage = (totalValue === 0) ? 0 : (value / totalValue) * 100;
+            });
+        }
 
         if (options.sort === 'ascending') itemsToDraw.sort((a, b) => a.value - b.value);
         else if (options.sort === 'descending') itemsToDraw.sort((a, b) => b.value - a.value);

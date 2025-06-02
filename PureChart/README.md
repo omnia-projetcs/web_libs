@@ -140,6 +140,33 @@ Customizes chart appearance and behavior.
 **Type-Specific Options (`options.bar`, `options.line`, `options.percentageDistribution`):**
 * (Refer to existing documentation for these.)
 
+#### `percentageDistribution` Specific Options
+
+Under `options.percentageDistribution`:
+
+*   **`valuesArePercentages`** (boolean, default: `false`):
+    *   If set to `true`, the chart will interpret the `value` property of each object in `data.items` as a direct percentage (expected to be in the 0-100 range). The chart will not sum values to calculate percentages. Values outside the 0-100 range will be clamped for display purposes, and a console warning will be issued during chart initialization.
+    *   If `false` (the default), the chart calculates percentages by summing all `item.value`s and determining each item's share of that total.
+
+    Example:
+    ```javascript
+    new PureChart('myChart', {
+        type: 'percentageDistribution',
+        data: {
+            items: [
+                { label: 'Category A', value: 60 }, // Interpreted as 60%
+                { label: 'Category B', value: 40 }  // Interpreted as 40%
+            ]
+        },
+        options: {
+            percentageDistribution: {
+                valuesArePercentages: true
+                // ... other options like barHeight, colors, labelPosition, etc.
+            }
+        }
+    });
+    ```
+
 **NEW: `options.theme` (String):**
 *   Specifies the color theme for the chart.
 *   Possible values:
