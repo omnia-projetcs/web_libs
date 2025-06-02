@@ -94,7 +94,7 @@
 
 .pg-drag-placeholder {
     background-color: rgba(0, 123, 255, 0.1); /* Semi-transparent blue */
-    border: 2px dashed #007bff;
+    border: 1px dashed #007bff;   /* New border: 1px dashed */
     border-radius: 4px;
     box-sizing: border-box;
     z-index: 1; /* Below dragged item (which is ~1000), above other items */
