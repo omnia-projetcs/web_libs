@@ -36,86 +36,111 @@ class Panorama {
   }
 
   _renderPanoramaItemContent(type, config, contentContainerElement, itemId) {
+    console.log(`Panorama Debug: _renderPanoramaItemContent called for itemId: ${itemId}, type: ${type}`);
+    console.log(`Panorama Debug: received contentContainerElement:`, contentContainerElement);
+    if (contentContainerElement) {
+        console.log(`Panorama Debug: contentContainerElement.parentElement is:`, contentContainerElement.parentElement);
+        if (contentContainerElement.parentElement && !contentContainerElement.parentElement.classList.contains('panorama-grid-custom-item')) {
+            console.warn('Panorama Debug: contentContainerElement.parentElement does NOT have "panorama-grid-custom-item" class for itemId:', itemId, 'Parent:', contentContainerElement.parentElement);
+        }
+    } else {
+        console.warn('Panorama Debug: received contentContainerElement is null or undefined for itemId:', itemId);
+    }
+
     // The specific _render<Type> methods in Panorama.js might expect an 'item' object.
     // We need to provide it or adapt them. For now, let's create a mock 'item' for them.
     const mockItem = { id: itemId, type: type, config: config, layout: {} /* layout not directly needed for content (though might be useful for controls) */ };
     const itemElement = contentContainerElement.parentElement; // Get the main item element
 
     if (!itemElement) {
-        console.error("Panorama: Could not find parent itemElement for contentContainer.", contentContainerElement);
-        // Fallback: render content directly if itemElement is somehow missing
-        // This might happen if contentContainerElement is not yet in DOM or structure is unexpected.
-        // For now, we'll proceed assuming it's found, but this is a potential issue.
+        console.error("CRITICAL: Panorama - itemElement is NULL. Controls cannot be added for itemId:", itemId, "ContentContainer:", contentContainerElement);
+        // alert("Debug: itemElement is null for itemId " + itemId); // Optional: for immediate test feedback
+        // Potentially return or handle error appropriately if itemElement is crucial for subsequent rendering steps.
+        // For now, we'll let content rendering proceed if possible, but controls won't be added.
     }
 
     // --- Add Item Controls ---
     if (itemElement) { // Only add controls if we have the main item element
-        let controlsContainer = itemElement.querySelector('.panorama-item-controls');
-        if (!controlsContainer) {
-            controlsContainer = document.createElement('div');
-            controlsContainer.className = 'panorama-item-controls';
-            itemElement.insertBefore(controlsContainer, itemElement.firstChild); // Prepend to itemElement
-        } else {
-            controlsContainer.innerHTML = ''; // Clear old buttons if re-rendering
-        }
-
-        const menuButton = document.createElement('button');
-        menuButton.className = 'panorama-item-menu-btn';
-        menuButton.innerHTML = '⋮'; // Vertical ellipsis
-        menuButton.dataset.itemId = itemId.toString();
-        menuButton.setAttribute('aria-haspopup', 'true');
-        menuButton.setAttribute('aria-expanded', 'false');
-
-        const popupMenu = document.createElement('div');
-        popupMenu.className = 'panorama-item-menu-popup';
-        popupMenu.style.display = 'none';
-        popupMenu.dataset.itemId = itemId.toString();
-
-        const editAction = document.createElement('a');
-        editAction.href = '#';
-        editAction.className = 'panorama-edit-action';
-        editAction.textContent = 'Edit';
-        editAction.dataset.itemId = itemId.toString();
-        editAction.addEventListener('click', (event) => {
-            event.preventDefault();
-            const itemIdToEdit = parseInt(event.target.dataset.itemId);
-            const itemFromGrid = this.grid.items.find(i => i.id === itemIdToEdit);
-            if (itemFromGrid) {
-                this._showEditModal({ id: itemFromGrid.id, type: itemFromGrid.config.type, config: itemFromGrid.config });
-            }
-            popupMenu.style.display = 'none';
-            if (menuButton) menuButton.setAttribute('aria-expanded', 'false');
-        });
-        popupMenu.appendChild(editAction);
-
-        const deleteAction = document.createElement('a');
-        deleteAction.href = '#';
-        deleteAction.className = 'panorama-delete-action';
-        deleteAction.textContent = 'Delete';
-        deleteAction.dataset.itemId = itemId.toString();
-        deleteAction.addEventListener('click', (event) => {
-            event.preventDefault();
-            const itemIdToRemove = parseInt(event.target.dataset.itemId);
-            this.removeItem(itemIdToRemove); // This now calls this.grid.removeItem
-        });
-        popupMenu.appendChild(deleteAction);
-
-        controlsContainer.appendChild(menuButton);
-        controlsContainer.appendChild(popupMenu);
-
-        menuButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const currentlyVisible = popupMenu.style.display === 'block';
-            document.querySelectorAll('.panorama-item-menu-popup').forEach(p => p.style.display = 'none');
-            document.querySelectorAll('.panorama-item-menu-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
-            if (!currentlyVisible) {
-                popupMenu.style.display = 'block';
-                menuButton.setAttribute('aria-expanded', 'true');
+        try {
+            let controlsContainer = itemElement.querySelector('.panorama-item-controls');
+            if (!controlsContainer) {
+                controlsContainer = document.createElement('div');
+                controlsContainer.className = 'panorama-item-controls';
+                itemElement.appendChild(controlsContainer); // Changed from insertBefore
             } else {
-                popupMenu.style.display = 'none';
-                menuButton.setAttribute('aria-expanded', 'false');
+                controlsContainer.innerHTML = ''; // Clear old buttons if re-rendering
             }
-        });
+
+            const menuButton = document.createElement('button');
+            menuButton.className = 'panorama-item-menu-btn';
+            menuButton.textContent = '⋮'; 
+            menuButton.dataset.itemId = itemId.toString();
+            menuButton.setAttribute('aria-haspopup', 'true');
+            menuButton.setAttribute('aria-expanded', 'false');
+
+            const popupMenu = document.createElement('div');
+            popupMenu.className = 'panorama-item-menu-popup';
+            popupMenu.style.display = 'none';
+            popupMenu.dataset.itemId = itemId.toString();
+
+            const editAction = document.createElement('a');
+            editAction.href = '#';
+            editAction.className = 'panorama-edit-action';
+            editAction.textContent = 'Edit';
+            editAction.dataset.itemId = itemId.toString();
+            editAction.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation(); // Prevent menu click from closing itself immediately
+                const itemIdToEdit = parseInt(event.target.dataset.itemId);
+                const itemFromGrid = this.grid.items.find(i => i.id === itemIdToEdit);
+                if (itemFromGrid) {
+                    // Ensure type is correctly passed from itemFromGrid.config.type
+                    this._showEditModal({ id: itemFromGrid.id, type: itemFromGrid.config.type, config: itemFromGrid.config });
+                }
+                popupMenu.style.display = 'none';
+                if (menuButton) menuButton.setAttribute('aria-expanded', 'false');
+            });
+            popupMenu.appendChild(editAction);
+
+            const deleteAction = document.createElement('a');
+            deleteAction.href = '#';
+            deleteAction.className = 'panorama-delete-action';
+            deleteAction.textContent = 'Delete';
+            deleteAction.dataset.itemId = itemId.toString();
+            deleteAction.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation(); // Prevent menu click from closing itself immediately
+                const itemIdToRemove = parseInt(event.target.dataset.itemId);
+                this.removeItem(itemIdToRemove); // This now calls this.grid.removeItem
+                // Popup menu will be removed with the item, so no need to hide it explicitly here
+            });
+            popupMenu.appendChild(deleteAction);
+
+            controlsContainer.appendChild(menuButton);
+            controlsContainer.appendChild(popupMenu);
+
+            menuButton.addEventListener('click', (event) => {
+                event.stopPropagation(); // Important to prevent click from bubbling to document listener immediately
+                const currentlyVisible = popupMenu.style.display === 'block';
+                // Hide all other open popups
+                document.querySelectorAll('.panorama-item-menu-popup').forEach(p => {
+                    if (p !== popupMenu) p.style.display = 'none';
+                });
+                document.querySelectorAll('.panorama-item-menu-btn').forEach(b => {
+                    if (b !== menuButton) b.setAttribute('aria-expanded', 'false');
+                });
+
+                if (!currentlyVisible) {
+                    popupMenu.style.display = 'block';
+                    menuButton.setAttribute('aria-expanded', 'true');
+                } else {
+                    popupMenu.style.display = 'none';
+                    menuButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+        } catch (e) {
+            console.error("Error creating controls for item", itemId, e);
+        }
     }
     // --- End Item Controls ---
 
@@ -447,155 +472,284 @@ _renderChart(item, contentContainer) {
 
 
   _createEditModal() {
-    if (document.getElementById('panorama-edit-modal')) {
-      // Modal already exists, ensure listeners are correctly attached or re-attached if necessary
-      this.modalElement = document.getElementById('panorama-edit-modal');
-      this.modalTitleElement = this.modalElement.querySelector('.panorama-modal-header h2');
-      this.modalFormArea = this.modalElement.querySelector('.panorama-modal-form-area');
-      this.saveModalButton = this.modalElement.querySelector('.panorama-modal-save');
-      this.cancelModalButton = this.modalElement.querySelector('.panorama-modal-cancel');
+    // Check if modal already exists (e.g. from a previous instantiation or manual HTML)
+    let modal = document.getElementById('panorama-item-modal');
+    if (modal) {
+        this.modalElement = modal;
+        this.modalTitleElement = modal.querySelector('.panorama-modal-header h2');
+        this.modalFormArea = modal.querySelector('.panorama-modal-form-area');
+        this.saveModalButton = modal.querySelector('.panorama-modal-save');
+        this.cancelModalButton = modal.querySelector('.panorama-modal-cancel');
     } else {
-      // Create modal from scratch
-      this.modalElement = document.createElement('div');
-      this.modalElement.id = 'panorama-edit-modal';
-      this.modalElement.className = 'panorama-modal'; // Initially hidden by CSS
+        this.modalElement = document.createElement('div');
+        this.modalElement.id = 'panorama-item-modal'; // More generic ID
+        this.modalElement.className = 'panorama-modal';
 
-      const modalContent = document.createElement('div');
-      modalContent.className = 'panorama-modal-content';
+        const modalContent = document.createElement('div');
+        modalContent.className = 'panorama-modal-content';
 
-      const modalHeader = document.createElement('div');
-      modalHeader.className = 'panorama-modal-header';
-      this.modalTitleElement = document.createElement('h2');
-      modalHeader.appendChild(this.modalTitleElement);
+        const modalHeader = document.createElement('div');
+        modalHeader.className = 'panorama-modal-header';
+        this.modalTitleElement = document.createElement('h2');
+        modalHeader.appendChild(this.modalTitleElement);
 
-      this.modalFormArea = document.createElement('div');
-      this.modalFormArea.className = 'panorama-modal-form-area';
+        this.modalFormArea = document.createElement('div');
+        this.modalFormArea.className = 'panorama-modal-form-area';
 
-      const modalFooter = document.createElement('div');
-      modalFooter.className = 'panorama-modal-footer';
-      
-      this.saveModalButton = document.createElement('button');
-      this.saveModalButton.textContent = 'Save';
-      this.saveModalButton.className = 'panorama-modal-save';
+        const modalFooter = document.createElement('div');
+        modalFooter.className = 'panorama-modal-footer';
+        
+        this.saveModalButton = document.createElement('button');
+        this.saveModalButton.textContent = 'Save';
+        this.saveModalButton.className = 'panorama-modal-save';
 
-      this.cancelModalButton = document.createElement('button');
-      this.cancelModalButton.textContent = 'Cancel';
-      this.cancelModalButton.className = 'panorama-modal-cancel';
+        this.cancelModalButton = document.createElement('button');
+        this.cancelModalButton.textContent = 'Cancel';
+        this.cancelModalButton.className = 'panorama-modal-cancel';
 
-      modalFooter.appendChild(this.saveModalButton);
-      modalFooter.appendChild(this.cancelModalButton);
+        modalFooter.appendChild(this.saveModalButton);
+        modalFooter.appendChild(this.cancelModalButton);
 
-      modalContent.appendChild(modalHeader);
-      modalContent.appendChild(this.modalFormArea);
-      modalContent.appendChild(modalFooter);
-      this.modalElement.appendChild(modalContent);
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(this.modalFormArea);
+        modalContent.appendChild(modalFooter);
+        this.modalElement.appendChild(modalContent);
 
-      document.body.appendChild(this.modalElement);
+        document.body.appendChild(this.modalElement);
     }
 
-    // Ensure cancel button always has its listener
-    // Remove existing listener before adding a new one to prevent duplicates
+    // Standard event listener for cancel, remove if exists to avoid duplication
     const newCancelButton = this.cancelModalButton.cloneNode(true);
     this.cancelModalButton.parentNode.replaceChild(newCancelButton, this.cancelModalButton);
     this.cancelModalButton = newCancelButton;
-    this.cancelModalButton.addEventListener('click', () => this._hideEditModal());
+    this.cancelModalButton.addEventListener('click', () => this._hideModal());
 
-    // Save button listener is attached in _showEditModal because its behavior depends on the item type.
+    // Save button listener is attached in _showAddItemModal or _showEditModal 
+    // as its behavior (add vs edit) depends on the context.
+  }
+
+  // Helper to populate form fields based on type and mode
+  _populateModalFormForType(itemType, mode, currentConfig = {}, targetElementForAddMode = null) {
+    const formIdPrefix = mode === 'add' ? 'addItem' : 'editItem';
+    let formHTML = '';
+
+    switch (itemType) {
+      case 'text':
+        formHTML = `
+          <label for="${formIdPrefix}Content">Content:</label>
+          <textarea id="${formIdPrefix}Content" class="panorama-modal-textarea">${currentConfig.content || ''}</textarea>
+        `;
+        break;
+      case 'title':
+        formHTML = `
+          <label for="${formIdPrefix}Text">Text:</label>
+          <input type="text" id="${formIdPrefix}Text" class="panorama-modal-input" value="${currentConfig.text || ''}">
+          <label for="${formIdPrefix}Level">Level (1-6):</label>
+          <input type="number" id="${formIdPrefix}Level" class="panorama-modal-input" value="${currentConfig.level || 2}" min="1" max="6">
+        `;
+        break;
+      case 'image':
+        formHTML = `
+          <label for="${formIdPrefix}Url">Image URL:</label>
+          <input type="text" id="${formIdPrefix}Url" class="panorama-modal-input" value="${currentConfig.url || ''}">
+          <label for="${formIdPrefix}Alt">Alt Text:</label>
+          <input type="text" id="${formIdPrefix}Alt" class="panorama-modal-input" value="${currentConfig.alt || ''}">
+        `;
+        break;
+      case 'chart':
+      case 'table':
+        let jsonTemplate = {};
+        if (itemType === 'chart') {
+            jsonTemplate = { 
+                chartType: 'bar', 
+                chartData: { labels: ['A', 'B'], datasets: [{ label: 'Series 1', values: [10, 20] }] }, 
+                chartOptions: { title: 'New Chart' } 
+            };
+        } else { // table
+            jsonTemplate = { 
+                tableData: [{col1: 'Val1', col2: 'Val2'}], 
+                tableColumns: [{key: 'col1', header: 'Column 1'}, {key: 'col2', header: 'Column 2'}], 
+                tableOptions: {caption: 'New Table'} 
+            };
+        }
+        const jsonString = mode === 'add' ? JSON.stringify(jsonTemplate, null, 2) : JSON.stringify(currentConfig, null, 2);
+        formHTML = `
+          <label for="${formIdPrefix}JsonConfig">JSON Configuration:</label>
+          <textarea id="${formIdPrefix}JsonConfig" class="panorama-modal-textarea" rows="10">${jsonString}</textarea>
+          <p><small>Edit the JSON configuration directly. Be careful with syntax.</small></p>
+        `;
+        break;
+      default:
+        formHTML = '<p>Unknown item type selected.</p>';
+    }
+
+    if (mode === 'add' && targetElementForAddMode) {
+        targetElementForAddMode.innerHTML = formHTML;
+    } else if (mode === 'edit') { // Edit mode always targets the main modalFormArea
+        this.modalFormArea.innerHTML = formHTML;
+    } else if (mode === 'add' && !targetElementForAddMode) {
+        // Fallback for add mode if targetElementForAddMode is not provided (should not happen with new design)
+        console.warn("_populateModalFormForType called in 'add' mode without targetElementForAddMode. Using modalFormArea.");
+        this.modalFormArea.innerHTML = formHTML;
+    }
+  }
+
+  _showAddItemModal() {
+    this.editingItemId = null; // Ensure not in edit mode
+    this.modalTitleElement.textContent = 'Add New Item';
+    
+    this.modalFormArea.innerHTML = `
+      <div class="control-group" style="margin-bottom: 15px;">
+        <label for="new-item-type" style="display: block; margin-bottom: 5px; font-weight: bold;">Item Type:</label>
+        <select id="new-item-type" class="panorama-modal-select" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; width: 100%;">
+          <option value="">-- Select Type --</option>
+          <option value="text">Text</option>
+          <option value="title">Title</option>
+          <option value="image">Image</option>
+          <option value="chart">Chart</option>
+          <option value="table">Table</option>
+        </select>
+      </div>
+      <div id="item-specific-form-fields">
+        <p style="text-align:center; color:#777; margin-top:10px;">Select an item type to configure.</p>
+      </div>
+    `;
+
+    const itemTypeSelect = this.modalFormArea.querySelector('#new-item-type');
+    const itemSpecificFieldsContainer = this.modalFormArea.querySelector('#item-specific-form-fields');
+
+    itemTypeSelect.addEventListener('change', (event) => {
+      const selectedType = event.target.value;
+      if (selectedType) {
+        this._populateModalFormForType(selectedType, 'add', {}, itemSpecificFieldsContainer);
+      } else {
+        itemSpecificFieldsContainer.innerHTML = '<p style="text-align:center; color:#777; margin-top:10px;">Select an item type to configure.</p>';
+      }
+    });
+    
+    // Setup Save button listener for "add" mode
+    const oldSaveButton = this.saveModalButton;
+    this.saveModalButton = oldSaveButton.cloneNode(true);
+    oldSaveButton.parentNode.replaceChild(this.saveModalButton, oldSaveButton);
+    this.saveModalButton.addEventListener('click', () => this._handleSaveModal('add'));
+
+    this.modalElement.style.display = 'block';
   }
 
   _showEditModal(item) {
     this.editingItemId = item.id;
     this.modalTitleElement.textContent = `Edit ${item.type.charAt(0).toUpperCase() + item.type.slice(1)} Item (ID: ${item.id})`;
-    this.modalFormArea.innerHTML = ''; // Clear previous form content
+    
+    this._populateModalFormForType(item.type, 'edit', item.config);
 
-    // Populate form based on item type
-    switch (item.type) {
-      case 'text':
-        this.modalFormArea.innerHTML = `
-          <label for="editTextContent">Content:</label>
-          <textarea id="editTextContent" class="panorama-modal-textarea">${item.config.content}</textarea>
-        `;
-        break;
-      case 'title':
-        this.modalFormArea.innerHTML = `
-          <label for="editTitleText">Text:</label>
-          <input type="text" id="editTitleText" class="panorama-modal-input" value="${item.config.text}">
-          <label for="editTitleLevel">Level (1-6):</label>
-          <input type="number" id="editTitleLevel" class="panorama-modal-input" value="${item.config.level || 1}" min="1" max="6">
-        `;
-        break;
-      case 'image':
-        this.modalFormArea.innerHTML = `
-          <label for="editImageUrl">Image URL:</label>
-          <input type="text" id="editImageUrl" class="panorama-modal-input" value="${item.config.url}">
-          <label for="editImageAlt">Alt Text:</label>
-          <input type="text" id="editImageAlt" class="panorama-modal-input" value="${item.config.alt || ''}">
-        `;
-        break;
-      case 'chart':
-      case 'table':
-        this.modalFormArea.innerHTML = `
-          <label for="editJsonConfig">JSON Configuration:</label>
-          <textarea id="editJsonConfig" class="panorama-modal-textarea" rows="10">${JSON.stringify(item.config, null, 2)}</textarea>
-          <p><small>Edit the JSON configuration directly. Be careful with syntax.</small></p>
-        `;
-        break;
-      default:
-        this.modalFormArea.textContent = 'This item type cannot be edited in this way.';
-    }
-
-    // Setup Save button listener
-    // Clone and replace to remove old listeners, then add new one
+    // Setup Save button listener for "edit" mode
     const oldSaveButton = this.saveModalButton;
-    this.saveModalButton = oldSaveButton.cloneNode(true); // Save a true copy
+    this.saveModalButton = oldSaveButton.cloneNode(true); 
     oldSaveButton.parentNode.replaceChild(this.saveModalButton, oldSaveButton);
     
-    this.saveModalButton.addEventListener('click', () => this._handleSaveModal(item.type));
+    // Pass item.type to _handleSaveModal for context when editing
+    this.saveModalButton.addEventListener('click', () => this._handleSaveModal('edit', item.type)); 
 
     this.modalElement.style.display = 'block';
   }
 
-  _hideEditModal() {
+  _hideModal() { // Renamed from _hideEditModal for generic use
     this.modalElement.style.display = 'none';
     this.editingItemId = null;
     this.modalFormArea.innerHTML = ''; // Clear form for next time
   }
 
-  _handleSaveModal(itemType) {
-    if (!this.editingItemId) return;
-
+  _handleSaveModal(mode, itemTypeForEdit = null) { // itemTypeForEdit only used in 'edit' mode
     let newConfig = {};
+    let itemType = ''; // For 'add' mode, this will be from the dropdown
+
     try {
-      switch (itemType) {
-        case 'text':
-          newConfig.content = document.getElementById('editTextContent').value;
-          break;
-        case 'title':
-          newConfig.text = document.getElementById('editTitleText').value;
-          newConfig.level = parseInt(document.getElementById('editTitleLevel').value) || 1;
-          if (newConfig.level < 1 || newConfig.level > 6) newConfig.level = 1; // Basic validation
-          break;
-        case 'image':
-          newConfig.url = document.getElementById('editImageUrl').value;
-          newConfig.alt = document.getElementById('editImageAlt').value;
-          break;
-        case 'chart':
-        case 'table':
-          const jsonString = document.getElementById('editJsonConfig').value;
-          newConfig = JSON.parse(jsonString); // This can throw an error
-          break;
-        default:
-          console.warn("Attempted to save unhandled item type:", itemType);
-          this._hideEditModal();
+      if (mode === 'add') {
+        itemType = document.getElementById('new-item-type').value;
+        if (!itemType) {
+          alert('Please select an item type.');
           return;
+        }
+        const formIdPrefix = 'addItem';
+        switch (itemType) {
+          case 'text':
+            newConfig.content = document.getElementById(`${formIdPrefix}Content`).value;
+            break;
+          case 'title':
+            newConfig.text = document.getElementById(`${formIdPrefix}Text`).value;
+            newConfig.level = parseInt(document.getElementById(`${formIdPrefix}Level`).value) || 1;
+            if (newConfig.level < 1 || newConfig.level > 6) newConfig.level = 1;
+            break;
+          case 'image':
+            newConfig.url = document.getElementById(`${formIdPrefix}Url`).value;
+            newConfig.alt = document.getElementById(`${formIdPrefix}Alt`).value;
+            break;
+          case 'chart':
+          case 'table':
+            const jsonStringAdd = document.getElementById(`${formIdPrefix}JsonConfig`).value;
+            newConfig = JSON.parse(jsonStringAdd);
+            break;
+          default:
+            console.warn("Attempted to save unhandled new item type:", itemType);
+            this._hideModal();
+            return;
+        }
+      } else if (mode === 'edit') {
+        if (!this.editingItemId || !itemTypeForEdit) {
+          console.error("Save error: Editing item ID or type is missing.");
+          this._hideModal();
+          return;
+        }
+        itemType = itemTypeForEdit; // Use the passed itemType for edit
+        const formIdPrefix = 'editItem';
+        switch (itemType) {
+          case 'text':
+            newConfig.content = document.getElementById(`${formIdPrefix}Content`).value;
+            break;
+          case 'title':
+            newConfig.text = document.getElementById(`${formIdPrefix}Text`).value;
+            newConfig.level = parseInt(document.getElementById(`${formIdPrefix}Level`).value) || 1;
+            if (newConfig.level < 1 || newConfig.level > 6) newConfig.level = 1;
+            break;
+          case 'image':
+            newConfig.url = document.getElementById(`${formIdPrefix}Url`).value;
+            newConfig.alt = document.getElementById(`${formIdPrefix}Alt`).value;
+            break;
+          case 'chart':
+          case 'table':
+            const jsonStringEdit = document.getElementById(`${formIdPrefix}JsonConfig`).value;
+            newConfig = JSON.parse(jsonStringEdit);
+            break;
+          default:
+            console.warn("Attempted to save unhandled existing item type:", itemType);
+            this._hideModal();
+            return;
+        }
+      } else {
+        console.error("Unknown mode for _handleSaveModal:", mode);
+        this._hideModal();
+        return;
       }
     } catch (error) {
-      alert(`Error parsing configuration: ${error.message}\nPlease check the JSON syntax if editing chart/table.`);
+      alert(`Error parsing configuration: ${error.message}\nPlease check the JSON syntax if editing chart/table or providing new JSON.`);
       console.error("Error processing configuration for save:", error);
       return; // Don't close modal or save if there's an error
     }
 
-    this.updateItemConfig(this.editingItemId, newConfig, itemType);
-    this._hideEditModal();
+    if (mode === 'add') {
+      // Define default layout - can be more sophisticated later
+      let defaultLayout = { x: 0, y: 0, w: 4, h: 2 }; // Generic default
+      switch (itemType) {
+          case 'title': defaultLayout.h = 1; defaultLayout.w = 6; break;
+          case 'text': defaultLayout.h = 2; defaultLayout.w = 4; break;
+          case 'image': defaultLayout.h = 3; defaultLayout.w = 5; break;
+          case 'chart': defaultLayout.h = 4; defaultLayout.w = 6; break;
+          case 'table': defaultLayout.h = 3; defaultLayout.w = 6; break;
+      }
+      this.addItem(itemType, newConfig, defaultLayout);
+    } else if (mode === 'edit') {
+      this.updateItemConfig(this.editingItemId, newConfig, itemType);
+    }
+    this._hideModal();
   }
 }

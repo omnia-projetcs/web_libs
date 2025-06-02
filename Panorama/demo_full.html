@@ -39,36 +39,17 @@
 <div id="app-container">
   <h1>Panorama Dashboard Demo</h1>
 
-  <div class="controls">
-    <h2>Dashboard Controls</h2>
-    <div class="control-group">
-      <label for="item-type">Add Item:</label>
-      <select id="item-type">
-        <option value="text">Text</option>
-        <option value="title">Title</option>
-        <option value="image">Image</option>
-        <option value="chart">Chart</option>
-        <option value="table">Table</option>
-      </select>
-      <button id="add-item-btn">Add Item</button>
-    </div>
+  <button id="add-item-modal-btn">Add Item via Modal</button>
 
-    <div class="control-group">
-      <label>Save/Load Dashboard:</label>
-      <button id="save-dashboard-btn">Save Dashboard</button>
-      <!-- <button id="load-dashboard-btn">Load Dashboard</button> --> <!-- Commented out as per instructions -->
-      <button id="clear-dashboard-btn">Clear Dashboard</button>
+  <div class="dashboard-actions-controls" style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
+    <h3 style="margin-top:0;">Dashboard Actions</h3>
+    <button id="save-dashboard-btn-new" style="margin-right: 10px; padding: 8px 12px;">Save Dashboard</button>
+    <button id="load-dashboard-btn-new" style="margin-right: 10px; padding: 8px 12px;">Load Dashboard</button>
+    <button id="clear-dashboard-btn-new" style="padding: 8px 12px;">Clear Dashboard</button>
+    <div style="margin-top: 10px;">
+      <label for="json-dashboard-io" style="display:block; margin-bottom:5px;">Dashboard JSON:</label>
+      <textarea id="json-dashboard-io" style="width: 100%; min-height: 80px; box-sizing: border-box; padding: 8px;" rows="5" placeholder="Dashboard JSON will appear here when saved. Paste JSON here to load."></textarea>
     </div>
-    
-    <div class="control-group">
-      <label for="json-output">Dashboard JSON (Saved):</label>
-      <textarea id="json-output" readonly></textarea>
-    </div>
-
-    <!-- <div class="control-group">
-      <label for="json-input">Dashboard JSON (To Load):</label>
-      <textarea id="json-input"></textarea>
-    </div> --> <!-- Commented out as per instructions -->
   </div>
 
   <div id="dashboard-container">
@@ -99,83 +80,62 @@
       const panorama = new Panorama('panorama-grid-container');
       panorama.loadDashboard(JSON.stringify(autoLoadData)); // Pass the stringified object
 
-      // Add Item Button Handler
-      document.getElementById('add-item-btn').addEventListener('click', () => {
-        const itemType = document.getElementById('item-type').value;
-        let defaultConfig;
-        const defaultLayout = { x: 0, y: 0, w: 4, h: 2 };
+      // Add Item via Modal Button Handler
+      document.getElementById('add-item-modal-btn').addEventListener('click', () => {
+        panorama._showAddItemModal();
+      });
 
-        switch (itemType) {
-          case 'text':
-            defaultConfig = { content: 'New Text Block - Edit me!' };
-            defaultLayout.h = 2;
-            break;
-          case 'title':
-            defaultConfig = { text: 'New Title', level: 2 };
-            defaultLayout.h = 1;
-            break;
-          case 'image':
-            defaultConfig = { url: 'https://via.placeholder.com/300x150.png?text=Placeholder', alt: 'Placeholder Image' };
-            defaultLayout.h = 3;
-            break;
-          case 'chart':
-            defaultConfig = {
-              chartType: 'bar',
-              chartData: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-                datasets: [
-                  {
-                    label: 'Sample Series',
-                    values: [120, 180, 220, 150]
-                  }
-                ]
-              },
-              chartOptions: { title: 'Sample Sales Chart', responsive: true, height: "100%", width: "100%" }
-            };
-            defaultLayout.w = 6;
-            defaultLayout.h = 4;
-            break;
-          case 'table':
-            defaultConfig = {
-              tableData: [
-                { id: 1, name: 'Product A', price: 29.99, stock: 150 },
-                { id: 2, name: 'Product B', price: 49.50, stock: 80 },
-                { id: 3, name: 'Service C', price: 199.00, stock: 'N/A' }
-              ],
-              tableColumns: [
-                { key: 'id', header: 'ID', sortable: true, filterable: true },
-                { key: 'name', header: 'Name', sortable: true, filterable: true },
-                { key: 'price', header: 'Price', sortable: true, filterable: false, format: 'currency:USD' },
-                { key: 'stock', header: 'Stock', sortable: true, filterable: false }
-              ],
-              tableOptions: { caption: 'Sample Inventory Table' }
-            };
-            defaultLayout.w = 6;
-            defaultLayout.h = 3;
-            break;
-          default:
-            console.error("Unknown item type selected");
+      // New Dashboard Action Button Handlers
+      const saveBtn = document.getElementById('save-dashboard-btn-new');
+      const loadBtn = document.getElementById('load-dashboard-btn-new');
+      const clearBtn = document.getElementById('clear-dashboard-btn-new');
+      const jsonIOTextarea = document.getElementById('json-dashboard-io');
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          const jsonData = panorama.saveDashboard();
+          jsonIOTextarea.value = jsonData;
+        });
+      }
+
+      if (loadBtn) {
+        loadBtn.addEventListener('click', () => {
+          const jsonDataFromTextarea = jsonIOTextarea.value;
+          if (!jsonDataFromTextarea.trim()) {
+            alert("Textarea is empty. Paste dashboard JSON to load.");
             return;
-        }
-        panorama.addItem(itemType, defaultConfig, defaultLayout);
-      });
+          }
+          try {
+            // Basic validation, Panorama.loadDashboard also does validation
+            JSON.parse(jsonDataFromTextarea); 
+            if (panorama.loadDashboard(jsonDataFromTextarea)) {
+              // Optionally clear textarea after successful load
+              // jsonIOTextarea.value = ''; 
+            } else {
+              alert("Failed to load dashboard. The data might be invalid or incomplete.");
+            }
+          } catch (error) {
+            alert(`Error parsing Dashboard JSON: ${error.message}`);
+            console.error("Error parsing Dashboard JSON from textarea:", error);
+          }
+        });
+      }
 
-      // Save Dashboard Button Handler
-      document.getElementById('save-dashboard-btn').addEventListener('click', () => {
-        const jsonData = panorama.saveDashboard();
-        document.getElementById('json-output').value = jsonData;
-      });
-
-      // Clear Dashboard Button Handler
-      document.getElementById('clear-dashboard-btn').addEventListener('click', () => {
-        if (confirm("Are you sure you want to clear the entire dashboard?")) {
-          panorama.items = [];
-          panorama.itemIdCounter = 0;
-          panorama.renderDashboard();
-          document.getElementById('json-output').value = '';
-          // document.getElementById('json-input').value = ''; // Already commented out
-        }
-      });
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          if (confirm("Are you sure you want to clear the entire dashboard? This action cannot be undone.")) {
+            // Construct a valid empty dashboard state, preserving current grid options
+            const emptyDashboardState = {
+              items: [],
+              itemIdCounter: 0,
+              options: panorama.grid ? { ...panorama.grid.options } : undefined // Preserve options if grid exists
+            };
+            panorama.loadDashboard(JSON.stringify(emptyDashboardState));
+            jsonIOTextarea.value = ''; // Clear the textarea
+            console.log("Dashboard cleared via loadDashboard with empty state.");
+          }
+        });
+      }
       
       // The old initialDashboardData load is removed as autoLoadData takes precedence.
     });
