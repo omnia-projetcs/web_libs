@@ -1004,20 +1004,31 @@ class PanoramaGrid {
             // For now, shallow copies via spread operator are used for layout.
             // Deep copy for config to handle nested objects/arrays, assuming JSON serializable content.
             // Functions or live DOM elements in config.content won't serialize with JSON.stringify.
-            let serializableConfig = {};
+            let specificConfig = {};
             try {
                 // Attempt deep copy for config, but handle potential non-serializable content gracefully.
-                // This basic deep copy won't handle functions or DOM elements in config.
-                serializableConfig = JSON.parse(JSON.stringify(itemObject.config));
+                specificConfig = JSON.parse(JSON.stringify(itemObject.config));
             } catch (e) {
                 console.warn(`PanoramaGrid: Could not fully serialize config for item ID ${itemObject.id} due to non-JSON content. Proceeding with a shallow copy.`, e);
-                serializableConfig = { ...itemObject.config }; // Fallback to shallow copy
+                specificConfig = { ...itemObject.config }; // Fallback to shallow copy
             }
+
+            // Extract type from the original config (less prone to issues if type was complex)
+            const itemType = itemObject.config.type; 
+            
+            // The authoritative layout is itemObject.layout
+            const authoritativeLayout = { ...itemObject.layout };
+
+            // Remove 'type' and 'layout' from the specificConfig object
+            // as they are now top-level properties in the serialized item.
+            delete specificConfig.type;
+            delete specificConfig.layout; // Deletes layout if it was part of the itemObject.config structure
 
             return {
                 id: itemObject.id,
-                config: serializableConfig,
-                layout: { ...itemObject.layout }
+                type: itemType,
+                config: specificConfig, // This is now the type-specific config
+                layout: authoritativeLayout
             };
         });
 
