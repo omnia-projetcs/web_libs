@@ -220,11 +220,30 @@ class PureChart {
                         });
                         return html;
                     }
+                },
+                periodHighlights: {
+                    display: false, // Global toggle for showing/hiding all period highlights
+                    legendLabel: "Periods", // Text for the legend item that will toggle display
+                    periods: [], // Array to hold period definition objects
+                    defaultStyle: {
+                        fillColor: 'rgba(255, 0, 0, 0.1)', // Default fill for the highlight rectangle
+                        borderColor: 'rgba(255, 0, 0, 0.3)', // Default border color for the rectangle
+                        borderWidth: 1, // Default border width for the rectangle
+                        label: {
+                            font: '10px Arial', // Default font for the period name
+                            color: '#000000',   // Default color for the period name
+                            angle: -30,         // Default rotation angle in degrees for the period name
+                            position: 'above',  // Default position of the label (e.g., 'above', 'center' of the rectangle)
+                            offset: 5,          // Default offset in pixels from the rectangle edge/center
+                            textAlign: 'center' // Default text alignment for the label
+                        }
+                    }
                 }
             }
         };
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
+        this.showPeriodHighlights = this.config.options.periodHighlights && this.config.options.periodHighlights.display;
 
         // Autosize specific logic - If autosize is true, canvas dimensions might be overridden by container.
         // For the default setup, we assume if autosize is true, the user might NOT provide
@@ -779,6 +798,7 @@ class PureChart {
         else { // Bar, Line, or Mixed
             if (this.config.options.legend.display) this._drawLegend();
             this._drawAxesAndGrid();
+            this._drawPeriodHighlights(); // Draw period highlights after grid, before data/annotations
             
             // Draw annotations if there are any yAxes and scales available
             if (this.config.options.yAxes && this.config.options.yAxes.length > 0 && this.yAxisScales && Object.keys(this.yAxisScales).length > 0) {
@@ -948,6 +968,24 @@ class PureChart {
             datasetIndex: index
         }));
 
+        // Add legend item for period highlights toggle
+        if (this.config.options.periodHighlights && 
+            this.config.options.periodHighlights.display && // Check if global display is true
+            this.config.options.periodHighlights.periods && 
+            this.config.options.periodHighlights.periods.length > 0 && 
+            this.config.options.periodHighlights.legendLabel) {
+            
+            const phLegendLabel = this.config.options.periodHighlights.legendLabel;
+            const phColor = this.config.options.periodHighlights.defaultStyle?.fillColor || '#888888'; // Use default fill or fallback
+            legendItemsData.push({
+                label: phLegendLabel,
+                color: phColor,
+                textWidth: this.ctx.measureText(phLegendLabel).width,
+                isPeriodToggle: true,
+                dataset: { _hidden: !this.showPeriodHighlights } // Use internal state for visual feedback
+            });
+        }
+
         const totalLegendItemWidth = legendItemsData.reduce((sum,item) => sum + markerSize + 5 + item.textWidth + 15, 0) - 15; // Calculate total width for centering
         currentX = Math.max(this.drawArea.x, this.drawArea.x + (this.drawArea.width - totalLegendItemWidth) / 2); // Center legend items
         const maxLegendX = this.drawArea.x + this.drawArea.width; // Right boundary for legend items
@@ -1016,10 +1054,16 @@ class PureChart {
             if (mousePos.x >= item.rect.x && mousePos.x <= item.rect.x + item.rect.w &&
                 mousePos.y >= item.rect.y && mousePos.y <= item.rect.y + item.rect.h) {
                 
-                // Toggle visibility of the dataset
-                item.dataset._hidden = !item.dataset._hidden;
-                legendItemClicked = true;
-                break; // Handle only the first clicked item
+                if (item.isPeriodToggle) {
+                    this.showPeriodHighlights = !this.showPeriodHighlights;
+                    item.dataset._hidden = !this.showPeriodHighlights; // Update visual state
+                    legendItemClicked = true;
+                } else if (item.dataset) { // Regular dataset legend item
+                    item.dataset._hidden = !item.dataset._hidden;
+                    legendItemClicked = true;
+                }
+                
+                if (legendItemClicked) break; // Handle only the first clicked item
             }
         }
 
@@ -1895,6 +1939,48 @@ class PureChart {
         return { x, y };
     }
 
+    _findXCoordinateForDate(dateString) {
+        const labels = this.config.data.labels;
+        const drawArea = this.drawArea;
+
+        if (!labels || labels.length === 0 || !drawArea || drawArea.width === undefined) {
+            return null;
+        }
+
+        const targetTime = new Date(dateString).getTime();
+        if (isNaN(targetTime)) {
+            // console.warn(`PureChart: Invalid dateString provided to _findXCoordinateForDate: ${dateString}`);
+            return null;
+        }
+
+        let nearestLabelIndex = -1;
+        let minDiff = Infinity;
+
+        for (let i = 0; i < labels.length; i++) {
+            const labelTime = new Date(labels[i]).getTime();
+            if (isNaN(labelTime)) {
+                // console.warn(`PureChart: Invalid date in data.labels at index ${i}: ${labels[i]}`);
+                continue; // Skip invalid labels
+            }
+
+            const diff = Math.abs(labelTime - targetTime);
+            if (diff < minDiff) {
+                minDiff = diff;
+                nearestLabelIndex = i;
+            }
+        }
+
+        if (nearestLabelIndex === -1) {
+            return null;
+        }
+
+        const numLabels = labels.length;
+        const xSpacing = (numLabels > 1) ? drawArea.width / (numLabels - 1) : drawArea.width / 2;
+        const x = drawArea.x + (nearestLabelIndex * xSpacing);
+
+        return x;
+    }
+
     _getMousePos(event) {
         const rect = this.canvas.getBoundingClientRect();
         return { x: event.clientX - rect.left, y: event.clientY - rect.top };
@@ -2247,6 +2333,95 @@ class PureChart {
             }
         });
         this.ctx.restore(); // Restore context for all annotations
+    }
+
+    _drawPeriodHighlights() {
+        if (!this.showPeriodHighlights) {
+            return;
+        }
+
+        const periodHighlightsConfig = this.config.options.periodHighlights;
+        if (!periodHighlightsConfig || !periodHighlightsConfig.periods || periodHighlightsConfig.periods.length === 0) {
+            return;
+        }
+
+        const drawArea = this.drawArea;
+        if (!drawArea) return;
+
+        periodHighlightsConfig.periods.forEach(period => {
+            const startX = this._findXCoordinateForDate(period.startDate);
+            const endX = this._findXCoordinateForDate(period.endDate);
+
+            if (startX === null || endX === null || startX >= endX) {
+                // console.warn(`PureChart: Skipping period highlight "${period.name}" due to invalid/unmappable dates or zero/negative width.`);
+                return;
+            }
+
+            // Style merging
+            const defaultStyle = periodHighlightsConfig.defaultStyle || {};
+            const periodStyle = period.style || {};
+            const finalStyle = {
+                ...defaultStyle,
+                ...periodStyle,
+                label: {
+                    ...(defaultStyle.label || {}),
+                    ...(periodStyle.label || {})
+                }
+            };
+            
+            // Draw Rectangle
+            if (finalStyle.fillColor) {
+                this.ctx.fillStyle = finalStyle.fillColor;
+                this.ctx.fillRect(startX, drawArea.y, endX - startX, drawArea.height);
+            }
+
+            if (finalStyle.borderWidth > 0 && finalStyle.borderColor) {
+                this.ctx.strokeStyle = finalStyle.borderColor;
+                this.ctx.lineWidth = finalStyle.borderWidth;
+                this.ctx.strokeRect(startX, drawArea.y, endX - startX, drawArea.height);
+            }
+
+            // Draw Label
+            if (period.name && finalStyle.label) {
+                this.ctx.save();
+                this.ctx.font = finalStyle.label.font || '10px Arial';
+                this.ctx.fillStyle = finalStyle.label.color || '#000000';
+                this.ctx.textAlign = finalStyle.label.textAlign || 'center';
+                this.ctx.textBaseline = 'middle';
+
+                let labelX, labelY;
+                const rectCenterX = startX + (endX - startX) / 2;
+                const rectCenterY = drawArea.y + drawArea.height / 2;
+                const offset = finalStyle.label.offset || 5;
+
+                switch (finalStyle.label.position) {
+                    case 'center':
+                        labelX = rectCenterX;
+                        labelY = rectCenterY;
+                        break;
+                    case 'below':
+                        labelX = rectCenterX;
+                        labelY = drawArea.y + drawArea.height + offset + (this.ctx.measureText('M').width / 2); // Approximate text height for offset
+                         if (finalStyle.label.angle && (finalStyle.label.angle % 360 !== 0) ) { // Adjust if rotated to not overlap as much
+                            labelY += Math.abs(Math.sin(finalStyle.label.angle * Math.PI / 180) * (this.ctx.measureText(period.name).width /2) );
+                         }
+                        break;
+                    case 'above':
+                    default:
+                        labelX = rectCenterX;
+                        labelY = drawArea.y - offset - (this.ctx.measureText('M').width / 2); // Approximate text height for offset
+                        if (finalStyle.label.angle && (finalStyle.label.angle % 360 !== 0) ) {
+                           labelY -= Math.abs(Math.sin(finalStyle.label.angle * Math.PI / 180) * (this.ctx.measureText(period.name).width /2) );
+                        }
+                        break;
+                }
+                
+                this.ctx.translate(labelX, labelY);
+                this.ctx.rotate((finalStyle.label.angle || 0) * Math.PI / 180);
+                this.ctx.fillText(period.name, 0, 0);
+                this.ctx.restore();
+            }
+        });
     }
 
     _preprocessDatasetValues() {

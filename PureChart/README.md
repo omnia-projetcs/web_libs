@@ -276,6 +276,87 @@ data: {
 }
 ```
 
+### Period Highlighting (for Line Charts)
+
+Line charts can display highlighted periods on the X-axis, useful for indicating events, crises, or other significant time ranges. This is configured via the `options.periodHighlights` object.
+This feature is primarily designed for charts with a continuous X-axis where labels represent dates (e.g., 'YYYY-MM-DD').
+
+**`options.periodHighlights` Object Properties:**
+
+*   **`display`**: `boolean` (Default: `false`)
+    *   Set to `true` to enable period highlighting and show the corresponding legend item (if `legendLabel` is also provided).
+*   **`legendLabel`**: `string` (Default: `"Periods"`)
+    *   The text label for the legend item that globally toggles the visibility of all period highlights.
+*   **`periods`**: `Array<Object>` (Default: `[]`)
+    *   An array of period definition objects. Each object defines a single highlighted region.
+*   **`defaultStyle`**: `Object`
+    *   Defines the default appearance for all period highlights and their labels.
+    *   **`fillColor`**: `string` (e.g., `'rgba(255, 0, 0, 0.1)'`) - Fill color of the rectangle.
+    *   **`borderColor`**: `string` (e.g., `'rgba(255, 0, 0, 0.3)'`) - Border color of the rectangle.
+    *   **`borderWidth`**: `number` (e.g., `1`) - Border width of the rectangle.
+    *   **`label`**: `Object` - Default styling for the period name labels.
+        *   **`font`**: `string` (e.g., `'10px Arial'`)
+        *   **`color`**: `string` (e.g., `'#000000'`)
+        *   **`angle`**: `number` (e.g., `-30`) - Rotation angle in degrees.
+        *   **`position`**: `string` (e.g., `'above'`, `'center'`, `'below'`) - Label's position relative to the rectangle.
+        *   **`offset`**: `number` (e.g., `5`) - Pixel offset from the rectangle's edge or center.
+        *   **`textAlign`**: `string` (e.g., `'center'`)
+
+**Period Object Properties (within the `periods` array):**
+
+*   **`name`**: `string` (Required)
+    *   The name of the period, displayed as a label.
+*   **`startDate`**: `string` (Required, format: 'YYYY-MM-DD')
+    *   The start date of the period. The highlight will snap to the nearest date found in `data.labels`.
+*   **`endDate`**: `string` (Required, format: 'YYYY-MM-DD')
+    *   The end date of the period. The highlight will snap to the nearest date found in `data.labels`.
+*   **`style`**: `Object` (Optional)
+    *   Allows overriding any of the `defaultStyle` properties (including nested `defaultStyle.label` properties) for this specific period.
+
+**Example Configuration:**
+
+```javascript
+options: {
+    // ... other chart options for a line chart with date labels ...
+    periodHighlights: {
+        display: true,
+        legendLabel: "Key Economic Events",
+        periods: [
+            {
+                name: "Tech Boom",
+                startDate: "2023-03-01", // Example: assumes "2023-03-01" is in your data.labels
+                endDate: "2023-04-15"   // Example: assumes "2023-04-15" is in your data.labels
+                // Uses defaultStyle defined globally in PureChart.js or overridden in this chart's periodHighlights.defaultStyle
+            },
+            {
+                name: "Market Correction",
+                startDate: "2023-05-01",
+                endDate: "2023-06-15",
+                style: {
+                    fillColor: 'rgba(255, 165, 0, 0.15)', // Light orange
+                    borderColor: 'rgba(255, 165, 0, 0.4)',
+                    label: {
+                        color: '#B22222', // Firebrick
+                        angle: 0,         // Horizontal label
+                        position: 'center',
+                        font: 'bold 10px sans-serif'
+                    }
+                }
+            }
+        ],
+        defaultStyle: { // Example of overriding global defaults for this specific chart instance
+            fillColor: 'rgba(128, 0, 128, 0.08)', // Light purple default
+            borderColor: 'rgba(128, 0, 128, 0.25)',
+            label: {
+                color: '#555555',
+                angle: -20,
+                position: 'above'
+            }
+        }
+    }
+}
+```
+
 ## Loading Configuration from JSON (`PureChart.fromJSON()`)
 
 You can load chart configurations from an external JSON file. The JSON structure should mirror the JavaScript configuration object.

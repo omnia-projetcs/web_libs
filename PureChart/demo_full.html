@@ -106,6 +106,14 @@
 
     <hr style="margin-top: 40px; margin-bottom: 40px;">
 
+    <div class="chart-container">
+        <h2>Line Chart with Period Highlighting</h2>
+        <p>Demonstrates a line chart with date-based X-axis and highlighted historical periods using the <code>periodHighlights</code> option.</p>
+        <canvas id="periodHighlightChartCanvas" width="700" height="400"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
     <h2>Chart Destroy Demo</h2>
     <div id="destroyableContainer_full" style="width: 500px; height: 300px; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
         <canvas id="destroyableChartCanvas_full"></canvas>
@@ -888,6 +896,76 @@
                 }
             };
             new PureChart('directPercentageChartCanvas', directPercentageChartConfig);
+
+            // Line Chart with Period Highlighting Demo
+            const periodHighlightChartConfig = {
+                type: 'line',
+                data: {
+                    labels: [
+                        "2023-01-01", "2023-01-15", "2023-02-01", "2023-02-15", 
+                        "2023-03-01", "2023-03-15", "2023-04-01", "2023-04-15",
+                        "2023-05-01", "2023-05-15", "2023-06-01", "2023-06-15",
+                        "2023-07-01", "2023-07-15", "2023-08-01"
+                    ],
+                    datasets: [{
+                        label: "Stock XYZ",
+                        values: [100, 102, 105, 103, 107, 110, 115, 112, 108, 105, 100, 98, 101, 103, 105],
+                        borderColor: 'rgba(0,123,255,1)', // Bootstrap Primary Blue
+                        backgroundColor: 'rgba(0,123,255,0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    title: { text: "Stock Prices with Highlighted Economic Periods" },
+                    xAxis: { title: 'Date' },
+                    yAxis: { title: 'Price', beginAtZero: false },
+                    periodHighlights: {
+                        display: true, 
+                        legendLabel: "Economic Events",
+                        periods: [
+                            {
+                                name: "Q1 Rally",
+                                startDate: "2023-01-15",
+                                endDate: "2023-03-30"
+                                // Uses defaultStyle from PureChart.js
+                            },
+                            {
+                                name: "Correction",
+                                startDate: "2023-04-01",
+                                endDate: "2023-05-31",
+                                style: {
+                                    fillColor: 'rgba(255, 193, 7, 0.15)', // Light warning yellow
+                                    borderColor: 'rgba(255, 193, 7, 0.4)',
+                                    label: {
+                                        color: '#721c24', // Dark red for contrast
+                                        angle: 0, 
+                                        position: 'center',
+                                        font: 'bold 10px Arial'
+                                    }
+                                }
+                            },
+                            {
+                                name: "Recovery Speculation",
+                                startDate: "2023-06-10",
+                                endDate: "2023-07-10",
+                                style: {
+                                    fillColor: 'rgba(40, 167, 69, 0.1)', // Light success green
+                                    borderColor: 'rgba(40, 167, 69, 0.3)',
+                                    label: {
+                                        color: '#155724', // Dark green
+                                        angle: -25,
+                                        position: 'above',
+                                        offset: 8,
+                                        font: 'italic 9px Verdana'
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            };
+            new PureChart('periodHighlightChartCanvas', periodHighlightChartConfig);
         });
     </script>
 </body>
