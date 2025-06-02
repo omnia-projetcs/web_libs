@@ -1054,13 +1054,17 @@ class PureChart {
             if (mousePos.x >= item.rect.x && mousePos.x <= item.rect.x + item.rect.w &&
                 mousePos.y >= item.rect.y && mousePos.y <= item.rect.y + item.rect.h) {
                 
+                legendItemClicked = true; // Assume a click happened if inside rect
                 if (item.isPeriodToggle) {
                     this.showPeriodHighlights = !this.showPeriodHighlights;
-                    item.dataset._hidden = !this.showPeriodHighlights; // Update visual state
-                    legendItemClicked = true;
+                    // Ensure item.dataset exists before trying to set _hidden
+                    if (item.dataset) {
+                       item.dataset._hidden = !this.showPeriodHighlights;
+                    }
                 } else if (item.dataset) { // Regular dataset legend item
                     item.dataset._hidden = !item.dataset._hidden;
-                    legendItemClicked = true;
+                } else {
+                    legendItemClicked = false; // Not a processable legend item
                 }
                 
                 if (legendItemClicked) break; // Handle only the first clicked item
