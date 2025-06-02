@@ -60,13 +60,14 @@ class Panorama {
     }
 
     // --- Add Item Controls ---
-    if (itemElement) { // Only add controls if we have the main item element
+    // Ensure contentContainerElement itself is valid before proceeding
+    if (contentContainerElement) {
         try {
-            let controlsContainer = itemElement.querySelector('.panorama-item-controls');
+            let controlsContainer = contentContainerElement.querySelector('.panorama-item-controls'); // Query from contentContainerElement
             if (!controlsContainer) {
                 controlsContainer = document.createElement('div');
                 controlsContainer.className = 'panorama-item-controls';
-                itemElement.appendChild(controlsContainer); // Changed from insertBefore
+                contentContainerElement.insertBefore(controlsContainer, contentContainerElement.firstChild); // Prepend to contentContainerElement
             } else {
                 controlsContainer.innerHTML = ''; // Clear old buttons if re-rendering
             }
@@ -141,6 +142,8 @@ class Panorama {
         } catch (e) {
             console.error("Error creating controls for item", itemId, e);
         }
+    } else {
+        console.warn('Panorama Debug: contentContainerElement is null or undefined. Cannot add controls for itemId:', itemId);
     }
     // --- End Item Controls ---
 
