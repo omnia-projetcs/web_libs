@@ -131,12 +131,41 @@ class Panorama {
                     if (b !== menuButton) b.setAttribute('aria-expanded', 'false');
                 });
 
+                // --- BEGIN DYNAMIC POPUP POSITIONING LOGIC ---
+                if (!currentlyVisible) { // Only calculate position if we are about to show it
+                    // 1. Temporarily make popup visible for measurement
+                    const originalVisibility = popupMenu.style.visibility;
+                    const originalDisplay = popupMenu.style.display;
+                    
+                    popupMenu.style.visibility = 'hidden';
+                    popupMenu.style.display = 'block';
+
+                    const popupHeight = popupMenu.offsetHeight;
+                    const buttonRect = menuButton.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+
+                    const spaceBelow = viewportHeight - buttonRect.bottom;
+                    const spaceAbove = buttonRect.top;
+
+                    // 2. Reset temporary styles before actual display
+                    popupMenu.style.visibility = originalVisibility;
+                    popupMenu.style.display = originalDisplay; // Will be set to 'block' or 'none' below
+
+                    // 3. Decision logic
+                    popupMenu.classList.remove('open-upwards'); // Reset first
+                    if (spaceBelow < popupHeight && spaceAbove >= popupHeight) {
+                        popupMenu.classList.add('open-upwards');
+                    }
+                }
+                // --- END DYNAMIC POPUP POSITIONING LOGIC ---
+
                 if (!currentlyVisible) {
                     popupMenu.style.display = 'block';
                     menuButton.setAttribute('aria-expanded', 'true');
                 } else {
                     popupMenu.style.display = 'none';
                     menuButton.setAttribute('aria-expanded', 'false');
+                    popupMenu.classList.remove('open-upwards'); // Clean up class when hiding
                 }
             });
         } catch (e) {
@@ -346,8 +375,17 @@ class Panorama {
   }
 
 _renderChart(item, contentContainer) {
-    // PureChart requires a CANVAS element. We create one inside the contentContainer.
-    contentContainer.innerHTML = ''; // Clear any placeholder text like "Chart: line"
+    let chartHostDiv = contentContainer.querySelector('.chart-host');
+    if (!chartHostDiv) {
+        chartHostDiv = document.createElement('div');
+        chartHostDiv.className = 'chart-host';
+        chartHostDiv.style.width = '100%'; 
+        chartHostDiv.style.height = '100%';
+        contentContainer.appendChild(chartHostDiv);
+    } else {
+        chartHostDiv.innerHTML = ''; // Clear only the host for re-renders
+    }
+
     const canvas = document.createElement('canvas');
     canvas.id = `chart-canvas-${item.id}`; // Unique ID for the canvas itself
 
@@ -356,7 +394,7 @@ _renderChart(item, contentContainer) {
     canvas.style.width = '100%';
     canvas.style.height = '100%'; 
     
-    contentContainer.appendChild(canvas);
+    chartHostDiv.appendChild(canvas); // Append canvas to the new chartHostDiv
 
     // Original debug check (keep this)
     const checkCanvas = document.getElementById(canvas.id);
@@ -375,7 +413,7 @@ _renderChart(item, contentContainer) {
     // Check for valid chartType and data *before* rAF, to avoid rAF if config is bad
     if (!chartConfig.type || !chartConfig.data.datasets || chartConfig.data.datasets.length === 0) {
         console.error(`Chart item ${item.id} is missing 'chartType' or 'chartData.datasets'. Cannot render.`);
-        contentContainer.innerHTML = "<p style='color:red;'>Error: Chart type or data is missing.</p>";
+        chartHostDiv.innerHTML = "<p style='color:red;'>Error: Chart type or data is missing.</p>"; // Target chartHostDiv
         return;
     }
 
@@ -386,8 +424,8 @@ _renderChart(item, contentContainer) {
             if (!canvasInRAF) {
                 console.error(`PANORAMA DEBUG (in-rAF): Canvas ${canvas.id} NOT found for item ${item.id} even in rAF.`);
                 // Attempt to provide a more helpful error message in the UI
-                if (contentContainer) { // Ensure contentContainer is still valid
-                     contentContainer.innerHTML = `<p style='color:red;'>Error: Chart canvas (ID: ${canvas.id}) not found in DOM for item ${item.id} during rAF. Chart cannot be rendered.</p>`;
+                if (chartHostDiv) { // Ensure chartHostDiv is still valid
+                     chartHostDiv.innerHTML = `<p style='color:red;'>Error: Chart canvas (ID: ${canvas.id}) not found in DOM for item ${item.id} during rAF. Chart cannot be rendered.</p>`;
                 }
                 return; // Don't proceed if canvas is still not found
             }
@@ -397,28 +435,39 @@ _renderChart(item, contentContainer) {
                 console.log(`Rendering chart on canvas ${canvas.id} for item ${item.id} (via rAF).`);
             } else {
                 console.error("Error: PureChart is not defined (rAF). Ensure PureChart.js is loaded.");
-                if (contentContainer) {
-                    contentContainer.innerHTML = "<p style='color:red;'>Error: Chart library (PureChart) not found (rAF).</p>";
+                if (chartHostDiv) { // Target chartHostDiv
+                    chartHostDiv.innerHTML = "<p style='color:red;'>Error: Chart library (PureChart) not found (rAF).</p>";
                 }
             }
         } catch (e) {
             console.error(`Error rendering chart for item ${item.id} (via rAF):`, e);
-            if (contentContainer) {
+            if (chartHostDiv) { // Target chartHostDiv
                 // Display error in the item content area
-                contentContainer.innerHTML = `<p style='color:red;'>Error rendering chart (ID: ${item.id}) via rAF: ${e.message}. Check console.</p>`;
+                chartHostDiv.innerHTML = `<p style='color:red;'>Error rendering chart (ID: ${item.id}) via rAF: ${e.message}. Check console.</p>`;
             }
         }
     });
   }
   _renderTable(item, contentContainer) {
-    if (!contentContainer.id) {
-      contentContainer.id = `table-container-${item.id}`;
+    let tableHostDiv = contentContainer.querySelector('.table-host');
+    if (!tableHostDiv) {
+        tableHostDiv = document.createElement('div');
+        tableHostDiv.className = 'table-host';
+        tableHostDiv.style.width = '100%'; 
+        tableHostDiv.style.height = '100%'; 
+        contentContainer.appendChild(tableHostDiv);
+    } else {
+        tableHostDiv.innerHTML = ''; // Clear only the host for re-renders
     }
-    const containerId = contentContainer.id; // Store for use in rAF
+
+    if (!tableHostDiv.id) {
+      tableHostDiv.id = `table-specific-container-${item.id}`; // Ensure the host has an ID
+    }
+    const actualTableContainerId = tableHostDiv.id;
 
     // Define tableConfig outside rAF if its parts don't depend on things inside rAF
     const tableConfig = {
-        containerId: containerId, // Use the stored ID
+        containerId: actualTableContainerId, // Use new host's ID
         jsonData: item.config.tableData,
         columns: item.config.tableColumns,
         ...(item.config.tableOptions || {})
@@ -427,29 +476,24 @@ _renderChart(item, contentContainer) {
     // Preliminary checks before rAF
     if (!tableConfig.columns || tableConfig.columns.length === 0) {
       console.error(`Table item ${item.id} is missing 'tableColumns' in its configuration. Cannot render.`);
-      contentContainer.textContent = "Error: Table column configuration is missing.";
+      tableHostDiv.textContent = "Error: Table column configuration is missing."; // Target tableHostDiv
       return;
     }
     if (!tableConfig.jsonData) { // Or other essential checks for tableData
         console.error(`Table item ${item.id} is missing 'tableData'. Cannot render.`);
-        contentContainer.textContent = "Error: Table data is missing.";
+        tableHostDiv.textContent = "Error: Table data is missing."; // Target tableHostDiv
         return;
     }
     
-    // Ensure contentContainer is empty before rAF might populate it
-    contentContainer.innerHTML = ''; 
+    // tableHostDiv.innerHTML = ''; // Already done above or not needed if createDynamicTable handles clearing
 
     requestAnimationFrame(() => {
         try {
-            const tableContainerInRAF = document.getElementById(containerId);
+            const tableContainerInRAF = document.getElementById(actualTableContainerId); // Use actualTableContainerId
             if (!tableContainerInRAF) {
-                console.error(`PANORAMA DEBUG (in-rAF): Table container ${containerId} NOT found for item ${item.id} even in rAF.`);
-                // contentContainer might be the one that's supposed to be found.
-                // If contentContainer itself is the target, and it's passed to _renderTable,
-                // it should exist. The issue is whether getElementById can find it by its NEW ID.
-                // Let's assume contentContainer is the element that should have containerId.
-                if (contentContainer) { // Check if the original contentContainer reference is still valid
-                     contentContainer.innerHTML = `<p style='color:red;'>Error: Table container (ID: ${containerId}) not found in DOM for item ${item.id} during rAF. Table cannot be rendered.</p>`;
+                console.error(`PANORAMA DEBUG (in-rAF): Table container ${actualTableContainerId} NOT found for item ${item.id} even in rAF.`);
+                if (tableHostDiv) { // Check if the tableHostDiv reference is still valid
+                     tableHostDiv.innerHTML = `<p style='color:red;'>Error: Table container (ID: ${actualTableContainerId}) not found in DOM for item ${item.id} during rAF. Table cannot be rendered.</p>`;
                 }
                 return; 
             }
@@ -457,17 +501,17 @@ _renderChart(item, contentContainer) {
             if (typeof createDynamicTable === 'function') {
                 // Pass the config, ensuring containerId within it is correct
                 createDynamicTable(tableConfig); 
-                console.log(`Rendering table in container ${containerId} for item ${item.id} (via rAF) with config:`, item.config);
+                console.log(`Rendering table in container ${actualTableContainerId} for item ${item.id} (via rAF) with config:`, item.config);
             } else {
                 console.error("Error: createDynamicTable function is not defined globally (rAF). Check Dynamic-table.js.");
-                if (contentContainer) {
-                    contentContainer.textContent = "Error: Table library function not found (rAF).";
+                if (tableHostDiv) { // Target tableHostDiv
+                    tableHostDiv.textContent = "Error: Table library function not found (rAF).";
                 }
             }
         } catch (e) {
             console.error(`Error rendering table for item ${item.id} (via rAF):`, e);
-            if (contentContainer) {
-                 contentContainer.textContent = `Error rendering table (ID: ${item.id}) via rAF: ${e.message}. Check console.`;
+            if (tableHostDiv) { // Target tableHostDiv
+                 tableHostDiv.textContent = `Error rendering table (ID: ${item.id}) via rAF: ${e.message}. Check console.`;
             }
         }
     });

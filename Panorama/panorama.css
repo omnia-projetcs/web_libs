@@ -131,19 +131,23 @@ html, body {
 }
 
 .panorama-item-menu-btn {
-  background-color: #f8f9fa; 
-  border: 1px solid #ced4da; 
-  color: #495057; 
-  padding: 4px 8px; 
-  font-size: 1.2em; /* Standard font size for '⋮' */
+  background-color: transparent;
+  border: none;
+  color: #495057; /* Keep original icon color */
+  padding: 2px; /* Significantly reduce padding */
+  font-size: 1.2em; 
   line-height: 1; 
-  border-radius: 4px;
+  border-radius: 4px; /* Keep for slightly rounded hover effect if color changes */
   cursor: pointer;
+  /* Adding position relative and z-index to ensure it's clickable if other elements overlap */
+  position: relative; 
+  z-index: 1;
 }
 
 .panorama-item-menu-btn:hover {
-  background-color: #e9ecef;
-  border-color: #adb5bd; 
+  background-color: transparent; /* Ensure no background on hover */
+  border: none; /* Ensure no border on hover */
+  color: #007bff; /* Change icon color on hover for feedback */
 }
 
 .panorama-item-menu-popup {
@@ -171,6 +175,11 @@ html, body {
 
 .panorama-item-menu-popup a:hover {
   background-color: #f8f9fa;
+}
+
+.panorama-item-menu-popup.open-upwards {
+  top: auto; /* Override the default top */
+  bottom: 100%; /* Position bottom of popup at the top of the button's container */
 }
 
 /* New Resize Handles Styling */
