@@ -120,6 +120,100 @@ class Panorama {
             controlsContainer.appendChild(menuButton);
             controlsContainer.appendChild(popupMenu);
 
+            // --- Add "Fit to Text" Button for text items ---
+            if (type === 'text') {
+                const fitButton = document.createElement('button');
+                fitButton.textContent = 'Fit'; // Or use an icon like '↕'
+                fitButton.className = 'panorama-fit-text-btn';
+                fitButton.setAttribute('title', 'Fit height to text');
+                controlsContainer.appendChild(fitButton);
+
+                fitButton.addEventListener('click', () => {
+                    if (!this.grid) {
+                        console.error("Fit to Text: this.grid is not available.");
+                        return;
+                    }
+
+                    const pElement = contentContainerElement.querySelector('.text-host p');
+                    if (!pElement) {
+                        console.error("Fit to Text: Text element (p) not found within .text-host.");
+                        return;
+                    }
+                    const textHostElement = contentContainerElement.querySelector('.text-host');
+                     if (!textHostElement) {
+                        console.error("Fit to Text: .text-host element not found.");
+                        return;
+                    }
+
+                    const textToMeasure = mockItem.config.content;
+                    const pStyle = window.getComputedStyle(pElement);
+                    const contentContainerStyle = window.getComputedStyle(contentContainerElement); // Parent of text-host
+
+                    // Available width for text is the clientWidth of its direct container (textHost)
+                    const availableWidth = textHostElement.clientWidth;
+
+                    const tempDiv = document.createElement('div');
+                    // Apply styles that affect layout and sizing from the pElement
+                    tempDiv.style.width = availableWidth + 'px';
+                    tempDiv.style.fontFamily = pStyle.fontFamily;
+                    tempDiv.style.fontSize = pStyle.fontSize;
+                    tempDiv.style.lineHeight = pStyle.lineHeight;
+                    tempDiv.style.wordWrap = pStyle.wordWrap; // or overflowWrap
+                    tempDiv.style.wordBreak = pStyle.wordBreak;
+                    tempDiv.style.whiteSpace = pStyle.whiteSpace; // Important for how text wraps/flows
+
+                    // Include pElement's own padding in the measurement
+                    tempDiv.style.paddingTop = pStyle.paddingTop;
+                    tempDiv.style.paddingBottom = pStyle.paddingBottom;
+                    tempDiv.style.paddingLeft = pStyle.paddingLeft;
+                    tempDiv.style.paddingRight = pStyle.paddingRight;
+                    tempDiv.style.boxSizing = pStyle.boxSizing; // Crucial for width & padding interaction
+
+                    tempDiv.textContent = textToMeasure;
+
+                    // Off-screen styling for tempDiv
+                    tempDiv.style.position = 'absolute';
+                    tempDiv.style.left = '-9999px';
+                    tempDiv.style.top = '-9999px';
+                    tempDiv.style.visibility = 'hidden';
+
+                    document.body.appendChild(tempDiv);
+                    const requiredPInternalHeight = tempDiv.scrollHeight; // Height of p's content + p's padding
+                    document.body.removeChild(tempDiv);
+
+                    // The total height needed for the contentContainerElement's content area
+                    // includes the measured P height AND the contentContainerElement's own vertical padding.
+                    // textHostElement is assumed to have no vertical padding/margin itself.
+                    const totalPixelHeightForContentArea = requiredPInternalHeight +
+                                                         parseFloat(contentContainerStyle.paddingTop) +
+                                                         parseFloat(contentContainerStyle.paddingBottom);
+
+                    const rowTotalHeight = this.grid.currentRowHeight + this.grid.options.gap;
+                    if (rowTotalHeight <= 0) {
+                        console.error("Fit to Text: Invalid rowTotalHeight calculation.");
+                        return;
+                    }
+                    let newH = Math.ceil(totalPixelHeightForContentArea / rowTotalHeight);
+                    newH = Math.max(newH, this.grid.options.minItemH || 2); // Ensure min height
+
+                    const gridItem = this.grid.items.find(it => it.id === itemId);
+                    if (!gridItem) {
+                        console.error("Fit to Text: Grid item not found for ID:", itemId);
+                        return;
+                    }
+                    const currentLayout = gridItem.layout;
+                    if (currentLayout.h !== newH) {
+                        this.grid.updateItemLayout(itemId, { 
+                            x: currentLayout.x, 
+                            y: currentLayout.y, 
+                            w: currentLayout.w, 
+                            h: newH 
+                        });
+                    }
+                });
+            }
+            // --- End "Fit to Text" Button ---
+
             menuButton.addEventListener('click', (event) => {
                 event.stopPropagation(); // Important to prevent click from bubbling to document listener immediately
                 const currentlyVisible = popupMenu.style.display === 'block';
@@ -352,9 +446,26 @@ class Panorama {
    */
   // Placeholder for specific rendering functions
   _renderText(item, contentContainer) {
-    const textElement = document.createElement('p');
-    textElement.textContent = item.config.content;
-    contentContainer.appendChild(textElement);
+    // contentContainer is .panorama-grid-custom-item-content
+    // It has .panorama-item-controls as its first child.
+
+    let textHost = contentContainer.querySelector('.text-host');
+    if (!textHost) {
+        textHost = document.createElement('div');
+        textHost.className = 'text-host';
+        // Ensure text-host can grow if needed, but parent (.panorama-grid-custom-item-content) has overflow:hidden
+        // textHost.style.flexGrow = '1'; // If contentContainer is flex and text-host should fill remaining space
+        // textHost.style.overflow = 'hidden'; // Not strictly needed if parent clips
+        contentContainer.appendChild(textHost); // Appended AFTER controls.
+    }
+    textHost.innerHTML = ''; // Clear previous text content from the host.
+
+    const pElement = document.createElement('p');
+    pElement.textContent = item.config.content;
+    pElement.style.margin = '0'; // Remove default p margin for better control.
+    // pElement.style.whiteSpace = 'pre-wrap'; // Preserve whitespace and wrap -> for accurate measurement
+    // pElement.style.wordBreak = 'break-word'; // Break words if necessary -> for accurate measurement
+    textHost.appendChild(pElement);
   }
 
   _renderTitle(item, contentContainer) {

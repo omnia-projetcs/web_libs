@@ -13,7 +13,9 @@ class PanoramaGrid {
             rowHeight: 50, // Initial/fallback fixed row height
             gap: 5,
             targetRowCount: 20, // New option: number of rows to aim for in container height
-            renderItemContent: null
+            renderItemContent: null,
+            minItemW: 2, // Default minimum width in grid units
+            minItemH: 2  // Default minimum height in grid units
         }, options);
 
         if (this.options.renderItemContent && typeof this.options.renderItemContent !== 'function') {
@@ -177,6 +179,10 @@ class PanoramaGrid {
         }
 
         let currentLayout = { ...itemConfig.layout }; // Use a mutable copy for placement
+
+        // Enforce minimum dimensions from options early
+        currentLayout.w = Math.max(currentLayout.w, this.options.minItemW);
+        currentLayout.h = Math.max(currentLayout.h, this.options.minItemH);
 
         // Ensure layout positions are positive (1-based for CSS Grid)
         currentLayout.x = Math.max(1, currentLayout.x);
@@ -708,6 +714,28 @@ class PanoramaGrid {
              newW = this.options.columns - newX + 1;
         }
 
+        // Enforce minimum dimensions
+        newW = Math.max(newW, this.options.minItemW);
+        newH = Math.max(newH, this.options.minItemH);
+
+        // Re-check boundaries if min dimensions changed things, especially position if size grew
+        // Example: If minItemW made it wider, ensure it doesn't overflow columns
+        if (newX + newW > this.options.columns + 1) {
+            if (dir.includes('w')) { // If dragging from west, X might need to shift right if possible
+                newX = this.options.columns - newW + 1;
+                if (newX < 1) { // If shifting X makes it invalid, clamp W and set X to 1
+                    newX = 1;
+                    newW = this.options.columns;
+                }
+            } else { // If dragging from east or not horizontally affecting X, just clamp W
+                newW = this.options.columns - newX + 1;
+            }
+        }
+        // A similar check for newY + newH against max rows could be added if applicable.
+        // Ensure X and Y are still valid after potential adjustments
+        if (newX < 1) newX = 1;
+        if (newY < 1) newY = 1;
+
 
         this.resizeItem.potentialLayout = {
             x: newX,
@@ -758,8 +786,6 @@ class PanoramaGrid {
             } else {
                 // No collision, apply the new layout from potentialLayout
                 this.resizeItem.layout = { ...finalTargetLayout };
-            this._emit('itemResized', this.resizeItem.id, { ...this.resizeItem.layout });
-                console.log(`PanoramaGrid: Item ID ${this.resizeItem.id} resized to`, this.resizeItem.layout);
             }
         } else {
             // If no potentialLayout (e.g. click without move), revert to ensure consistency
@@ -767,8 +793,40 @@ class PanoramaGrid {
             // console.log(`PanoramaGrid: No resize changes for item ID ${this.resizeItem.id}. Reverted to initial.`);
         }
 
+        // Enforce minimums on the final layout before updating DOM and emitting event
+        this.resizeItem.layout.w = Math.max(this.resizeItem.layout.w, this.options.minItemW);
+        this.resizeItem.layout.h = Math.max(this.resizeItem.layout.h, this.options.minItemH);
+        
+        // Boundary checks after enforcing minimums (especially if item was at edge and min size made it larger)
+        if (this.resizeItem.layout.x + this.resizeItem.layout.w > this.options.columns + 1) {
+            // If width made it overflow, try to shift X left. If X is already 1, then clamp width.
+            let newX = this.options.columns - this.resizeItem.layout.w + 1;
+            if (newX < 1) {
+                this.resizeItem.layout.x = 1;
+                this.resizeItem.layout.w = this.options.columns;
+            } else {
+                this.resizeItem.layout.x = newX;
+            }
+        }
+        // Similar check for Y and H if max rows are a constraint.
+        // Ensure x and y are at least 1
+        if (this.resizeItem.layout.x < 1) this.resizeItem.layout.x = 1;
+        if (this.resizeItem.layout.y < 1) this.resizeItem.layout.y = 1;
+
+
         // Update the item's actual grid positioning in the DOM to reflect final layout
         this._updateItemDOMPosition(this.resizeItem);
+        
+        // Emit event only if there was a change from initial or potential layout was applied
+        // For simplicity, we'll emit if layout potentially changed, could be refined.
+        // Check if the (potentially min-size-adjusted) layout is different from the initial.
+        const initialLayoutStr = JSON.stringify(this.resizeItemInitialLayout);
+        const finalLayoutStr = JSON.stringify(this.resizeItem.layout);
+        if (initialLayoutStr !== finalLayoutStr) {
+            this._emit('itemResized', this.resizeItem.id, { ...this.resizeItem.layout });
+            console.log(`PanoramaGrid: Item ID ${this.resizeItem.id} resized to`, this.resizeItem.layout);
+        }
+
 
         // --- Existing Cleanup ---
         if (this.resizeItem.element) {
