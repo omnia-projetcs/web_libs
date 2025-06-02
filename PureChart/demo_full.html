@@ -98,6 +98,14 @@
 
     <hr style="margin-top: 40px; margin-bottom: 40px;">
 
+    <div class="chart-container">
+        <h2>Percentage Chart (Direct Values)</h2>
+        <p>Demonstrates <code>percentageDistribution</code> type with <code>valuesArePercentages: true</code>. Input values are used directly as percentages.</p>
+        <canvas id="directPercentageChartCanvas" width="700" height="250"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
     <h2>Chart Destroy Demo</h2>
     <div id="destroyableContainer_full" style="width: 500px; height: 300px; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
         <canvas id="destroyableChartCanvas_full"></canvas>
@@ -852,6 +860,34 @@
                 });
             }
             // --- Appended Demos End ---
+
+            // Percentage Chart (Direct Values) Demo
+            const directPercentageChartConfig = {
+                type: "percentageDistribution",
+                data: {
+                    items: [
+                        { "label": "Task A Progress", "value": 80 },
+                        { "label": "Task B Progress", "value": 55.7 },
+                        { "label": "Task C Blocked", "value": 10.3 },
+                        { "label": "Task D Critical", "value": 150 }, // Example of value > 100
+                        { "label": "Task E Negative", "value": -10 }  // Example of value < 0
+                    ]
+                },
+                options: {
+                    title: { text: "Project Status (Direct Percentages)" },
+                    percentageDistribution: {
+                        valuesArePercentages: true, // Key option for this demo
+                        colors: ["#4CAF50", "#FFC107", "#F44336", "#795548", "#00BCD4"], // Example colors
+                        barHeight: 25,
+                        barBorderRadius: 5,
+                        labelPosition: 'left',
+                        maxLabelWidth: 180,
+                        valuePosition: 'insideEnd',
+                        valueFont: "12px Arial Black"
+                    }
+                }
+            };
+            new PureChart('directPercentageChartCanvas', directPercentageChartConfig);
         });
     </script>
 </body>
