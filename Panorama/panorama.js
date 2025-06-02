@@ -67,7 +67,7 @@ class Panorama {
             if (!controlsContainer) {
                 controlsContainer = document.createElement('div');
                 controlsContainer.className = 'panorama-item-controls';
-                contentContainerElement.insertBefore(controlsContainer, contentContainerElement.firstChild); // Prepend to contentContainerElement
+                const itemElement = contentContainerElement.parentElement; itemElement.appendChild(controlsContainer);
             } else {
                 controlsContainer.innerHTML = ''; // Clear old buttons if re-rendering
             }

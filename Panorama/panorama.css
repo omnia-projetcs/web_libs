@@ -119,13 +119,16 @@ html, body {
   flex-grow: 1;
 }
 
-/* Item Controls Styling (Menu Button and Popup) - Placed inside panorama-item-content */
+/* Item Controls Styling (Menu Button and Popup) - Positioned absolutely within .panorama-item */
 .panorama-item-controls {
-  position: relative; 
+  position: absolute; /* Changed from relative */
+  top: 0; /* Added */
+  right: 0; /* Added */
+  z-index: 10; /* Added */
   display: flex;
-  justify-content: flex-end; /* Changed to flex-end to align button to the right */
+  justify-content: flex-end; /* Align button to the right */
   align-items: flex-start; /* Ensure alignment to the top */
-  padding: 5px; /* Uniform padding for spacing from top and right */
+  padding: 5px; /* Kept for spacing from edges and for button */
   background-color: transparent; 
   border-top: none; 
 }
