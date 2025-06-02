@@ -286,7 +286,7 @@ class Panorama {
 
     // Call PanoramaGrid's method, which will update its internal config and re-render content.
     if (this.grid) { // Check if grid exists before calling its method
-        this.grid.updateItemContent(itemId, fullNewConfig);
+        this.grid.updateItemConfiguration(itemId, fullNewConfig);
     } else {
         console.error("Panorama.updateItemConfig: this.grid is not initialized.");
     }
