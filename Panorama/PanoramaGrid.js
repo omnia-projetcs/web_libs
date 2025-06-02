@@ -891,6 +891,57 @@ class PanoramaGrid {
         return true;
     }
 
+    updateItemConfiguration(itemId, newFullConfig) {
+        const itemObject = this.items.find(item => item.id === itemId);
+        if (!itemObject) {
+            console.warn(`PanoramaGrid: Item with ID ${itemId} not found. Cannot update configuration.`);
+            return false;
+        }
+
+        if (!itemObject.element) {
+            console.warn(`PanoramaGrid: DOM element for item ID ${itemId} not found. Configuration updated, but cannot re-render content visually.`);
+            // Still update config, but visual update won't happen if element is missing.
+        }
+        
+        if (!this.options.renderItemContent || typeof this.options.renderItemContent !== 'function') {
+            console.warn(`PanoramaGrid: renderItemContent callback is not valid. Cannot re-render content for item ID ${itemId}. Configuration will be updated.`);
+            itemObject.config = { ...itemObject.config, ...newFullConfig };
+            this._emit('itemConfigUpdated', itemId, { ...itemObject.config }); 
+            return true; 
+        }
+
+        itemObject.config = { ...itemObject.config, ...newFullConfig };
+
+        if (itemObject.element) {
+            const contentElement = itemObject.element.querySelector('.panorama-grid-custom-item-content');
+            if (!contentElement) {
+                console.warn(`PanoramaGrid: Content element (.panorama-grid-custom-item-content) not found for item ID ${itemId}. Cannot re-render content.`);
+                this._emit('itemConfigUpdated', itemId, { ...itemObject.config });
+                return false; 
+            }
+
+            contentElement.innerHTML = '';
+
+            try {
+                if (itemObject.config && typeof itemObject.config.type !== 'undefined') {
+                    this.options.renderItemContent(itemObject.config.type, itemObject.config, contentElement, itemId);
+                } else {
+                     console.error(`PanoramaGrid: Item ID ${itemId} is missing 'type' in its updated config. Cannot re-render content.`);
+                     contentElement.innerHTML = `<p style="color:red;">Error: Item config missing 'type' after update.</p>`;
+                }
+            } catch (e) {
+                console.error(`Error executing renderItemContent for item ID ${itemId} after config update:`, e);
+                contentElement.innerHTML = `<p style="color:red;">Error re-rendering content. Type: ${itemObject.config.type}</p>`;
+            }
+        } else {
+             console.log(`PanoramaGrid: DOM element for item ${itemId} was missing. Configuration updated, content not re-rendered.`);
+        }
+        
+        this._emit('itemConfigUpdated', itemId, { ...itemObject.config });
+        console.log(`PanoramaGrid: Configuration updated for item ID ${itemId}. Content re-rendering attempted if element was present.`);
+        return true;
+    }
+
     _clearGrid() {
         // Remove DOM elements
         this.items.forEach(item => {
