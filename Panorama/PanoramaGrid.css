@@ -28,8 +28,8 @@
     padding: 10px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; /* Changed from center to allow natural top-to-bottom flow */
-    align-items: stretch;       /* Changed from center to allow content to take full width */
+    justify-content: center; /* Align items vertically to the center */
+    align-items: center;       /* Align items horizontally to the center */
     flex-grow: 1;
     overflow: hidden; /* Prevent scrollbars on the content area itself */
     height: 100%; /* Ensure it utilizes the height of .panorama-grid-custom-item */
