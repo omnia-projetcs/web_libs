@@ -756,6 +756,8 @@
             if (fixedSizeCtx_full) {
                 new PureChart(fixedSizeCtx_full.id, {
                     type: 'bar', // Changed from pie for safety
+                    width: 450,
+                    height: 280,
                     data: {
                         labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple'],
                         datasets: [{
@@ -766,8 +768,6 @@
                     },
                     options: {
                         autosize: false,
-                        width: 450,
-                        height: 280,
                         title: { text: 'Fixed Size Chart (450x280)' }
                     }
                 });
