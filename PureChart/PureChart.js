@@ -244,6 +244,7 @@ class PureChart {
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
         this.showPeriodHighlights = this.config.options.periodHighlights && this.config.options.periodHighlights.display;
+        console.log("CONSTRUCTOR: Initial this.showPeriodHighlights:", this.showPeriodHighlights);
 
         // Autosize specific logic - If autosize is true, canvas dimensions might be overridden by container.
         // For the default setup, we assume if autosize is true, the user might NOT provide
@@ -740,7 +741,7 @@ class PureChart {
         // Ensure activePalette is available (Defensive check from subtask description - already present)
         // This was added in a previous step and is good to keep.
         if (!this.activePalette) {
-            console.warn("PureChart: activePalette was undefined in _draw. Re-initializing from config.theme.");
+            // console.warn("PureChart: activePalette was undefined in _draw. Re-initializing from config.theme.");
             if (this.config && this.config.theme) { // Check this.config exists
                 if (this.config.theme === 'dark') {
                     this.activePalette = { ...PC_DARK_THEME_PALETTE };
@@ -984,6 +985,7 @@ class PureChart {
                 isPeriodToggle: true,
                 dataset: { _hidden: !this.showPeriodHighlights } // Use internal state for visual feedback
             });
+            console.log("_drawLegend: Creating period toggle. Current this.showPeriodHighlights:", this.showPeriodHighlights, "Legend item _hidden state:", !this.showPeriodHighlights);
         }
 
         const totalLegendItemWidth = legendItemsData.reduce((sum,item) => sum + markerSize + 5 + item.textWidth + 15, 0) - 15; // Calculate total width for centering
@@ -1056,10 +1058,13 @@ class PureChart {
                 
                 legendItemClicked = true; // Assume a click happened if inside rect
                 if (item.isPeriodToggle) {
+                    console.log("_onCanvasClick: Period toggle clicked. OLD this.showPeriodHighlights:", this.showPeriodHighlights);
                     this.showPeriodHighlights = !this.showPeriodHighlights;
+                    console.log("_onCanvasClick: Period toggle clicked. NEW this.showPeriodHighlights:", this.showPeriodHighlights);
                     // Ensure item.dataset exists before trying to set _hidden
                     if (item.dataset) {
                        item.dataset._hidden = !this.showPeriodHighlights;
+                       console.log("_onCanvasClick: Updated legend item._hidden to:", item.dataset._hidden);
                     }
                 } else if (item.dataset) { // Regular dataset legend item
                     item.dataset._hidden = !item.dataset._hidden;
@@ -2340,6 +2345,7 @@ class PureChart {
     }
 
     _drawPeriodHighlights() {
+        console.log("_drawPeriodHighlights: Called. Current this.showPeriodHighlights:", this.showPeriodHighlights);
         if (!this.showPeriodHighlights) {
             return;
         }
