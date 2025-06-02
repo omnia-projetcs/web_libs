@@ -412,13 +412,12 @@
 /* Classes for coloring percentage values */
 .dynamic-table tbody td.dt-value-positive {
     color: var(--dt-light-accent-secondary, #28a745); /* Green */
-    font-weight: bold; /* Optional: make more visible */
+    /*font-weight: bold; /* Optional: make more visible */
 }
 .dynamic-table tbody td.dt-value-negative {
     color: var(--dt-light-accent-negative, #dc3545); /* Red */
-    font-weight: bold; /* Optional */
+    /*font-weight: bold; /* Optional */
 }
-
 
 .dynamic-table tbody tr:nth-child(even) {
     background-color: var(--dt-light-bg-secondary, #f9fafa);
