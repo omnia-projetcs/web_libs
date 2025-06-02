@@ -182,21 +182,6 @@ html, body {
   bottom: 100%; /* Position bottom of popup at the top of the button's container */
 }
 
-.panorama-fit-text-btn {
-  background-color: transparent;
-  border: none;
-  color: #495057; /* Match menu button color */
-  padding: 2px; /* Match menu button padding */
-  font-size: 1em; /* Adjust as needed, might be smaller than menu icon */
-  line-height: 1;
-  cursor: pointer;
-  margin-left: 5px; /* Space it from the menu button */
-}
-
-.panorama-fit-text-btn:hover {
-  color: #007bff; /* Match menu button hover color */
-}
-
 /* New Resize Handles Styling */
 .panorama-item .resize-handle-base { /* Base style for all handles */
   position: absolute;
