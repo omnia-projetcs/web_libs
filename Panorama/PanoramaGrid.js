@@ -54,26 +54,11 @@ class PanoramaGrid {
     }
 
     _calculateCurrentRowHeight() {
-        if (!this.containerElement || this.containerElement.clientHeight <= 0 || this.options.targetRowCount <= 0) {
-            this.currentRowHeight = this.options.rowHeight; // Fallback to initial fixed option
-            // console.warn("PanoramaGrid: Could not calculate dynamic row height (clientHeight or targetRowCount invalid), using fallback:", this.currentRowHeight);
-            return;
-        }
-        const containerHeight = this.containerElement.clientHeight;
-        // Assuming gap is only between rows, so (targetRowCount - 1) gaps.
-        // Also assuming container clientHeight does not include its own top/bottom padding. If it does, those should be subtracted.
-        const totalGapSpace = Math.max(0, (this.options.targetRowCount - 1) * this.options.gap);
-        const heightAvailableForRowContent = containerHeight - totalGapSpace;
-
-        let calculatedHeight = heightAvailableForRowContent / this.options.targetRowCount;
-        // Apply lower bound
-        calculatedHeight = Math.max(10, calculatedHeight);
-
-        // Apply upper cap
-        const maxAllowedRowHeight = this.options.rowHeight * 1.5;
-        this.currentRowHeight = Math.min(calculatedHeight, maxAllowedRowHeight);
-        
-        // console.log('PanoramaGrid: Calculated new currentRowHeight:', this.currentRowHeight);
+        // With a fixed container height and desire for fixed row heights,
+        // directly use the rowHeight option.
+        // The container will scroll if items exceed its fixed height.
+        this.currentRowHeight = this.options.rowHeight;
+        // console.log('PanoramaGrid: Set currentRowHeight to fixed value:', this.currentRowHeight);
     }
 
     _debounce(func, delay) {
