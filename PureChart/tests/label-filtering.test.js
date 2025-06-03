@@ -131,164 +131,173 @@ class TestPureChart {
              this.ctx.stroke();
         }
 
-        // X-Axis (Logic copied from PureChart.js, version after label filtering was added)
-        const oX = options.xAxis;
-        if (oX.display && this.drawArea.width > 0 && data.labels && data.labels.length > 0) {
+        // X-Axis
+        const oX = options.xAxis; // options = this.config.options, data = this.config.data
+        if (oX.display && this.drawArea.width > 0) {
+            // Set styles for X-axis line
             this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
-            this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor;
-            this.ctx.font = oX.labelFont;
+            this.ctx.lineWidth = 1; // Default line width for the axis itself
 
+            // Draw X-Axis Line (drawn if X-axis is displayed)
             this.ctx.beginPath();
             this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height);
             this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
             this.ctx.stroke();
 
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'top';
-
-            const labels = data.labels;
-            const numLabels = labels.length;
-            const forceShowFirstAndLast = oX.forceShowFirstAndLastLabel !== undefined ? oX.forceShowFirstAndLastLabel : true;
-            let maxLabelsToShow = oX.maxLabelsToShow;
-            const minSpacingBetweenLabels = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5; // Ensure this is defined for the mock
-            const labelYOffset = oX.labelYOffset || 8; // Ensure this is defined for the mock
-            const labelYPos = this.drawArea.y + this.drawArea.height + labelYOffset;
-            let lastDrawnLabelXEnd = -Infinity;
-
-            const xLabelSlotWidth = numLabels > 0 ? this.drawArea.width / numLabels : this.drawArea.width;
-
-            // Calculate maxLabelsToShow dynamically if not explicitly set by user
-            if (maxLabelsToShow === undefined && numLabels > 0) {
-                let totalTextWidth = 0;
-                const originalFont = this.ctx.font;
+            // Logic for drawing labels and their associated grid lines
+            if (data.labels && data.labels.length > 0) {
+                // Set styles for X-axis labels
+                this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor; // Prioritize dedicated labelColor
                 this.ctx.font = oX.labelFont;
-                labels.forEach(l => { totalTextWidth += this.ctx.measureText(String(l)).width; });
-                this.ctx.font = originalFont;
+                // textAlign is set per label later, textBaseline is top for X-axis labels
+                this.ctx.textBaseline = 'top';
 
-                const avgLabelWidth = numLabels > 0 ? totalTextWidth / numLabels : 0;
-                if (avgLabelWidth + minSpacingBetweenLabels > 0) {
-                    maxLabelsToShow = Math.floor(this.drawArea.width / (avgLabelWidth + minSpacingBetweenLabels));
-                } else {
-                    maxLabelsToShow = numLabels;
-                }
-                maxLabelsToShow = Math.max(1, maxLabelsToShow); // Ensure at least one label if possible
-            } else if (maxLabelsToShow === undefined && numLabels === 0) {
-                maxLabelsToShow = 0;
-            }
+                const labels = data.labels;
+                const numLabels = labels.length;
+                const forceShowFirstAndLast = oX.forceShowFirstAndLastLabel !== undefined ? oX.forceShowFirstAndLastLabel : true;
+                let maxLabelsToShow = oX.maxLabelsToShow;
+                const minSpacingBetweenLabels = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
+                const labelYOffset = oX.labelYOffset || 8;
+                // const labelYPos = this.drawArea.y + this.drawArea.height + labelYOffset; // Defined later based on context
+                // let lastDrawnLabelXEnd = -Infinity; // Not used in new label logic
 
-            let indexesToDraw = [];
-            if (numLabels > 0 && maxLabelsToShow > 0) {
-                if (numLabels <= maxLabelsToShow) {
-                    indexesToDraw = labels.map((_, i) => i);
-                } else {
-                    if (forceShowFirstAndLast) {
-                        indexesToDraw.push(0);
-                        if (numLabels > 1) {
-                            indexesToDraw.push(numLabels - 1);
-                        }
+                const xLabelSlotWidth = numLabels > 0 ? this.drawArea.width / numLabels : this.drawArea.width;
+
+                // Calculate maxLabelsToShow dynamically if not explicitly set by user
+                if (maxLabelsToShow === undefined && numLabels > 0) {
+                    let totalTextWidth = 0;
+                    const originalFont = this.ctx.font;
+                    this.ctx.font = oX.labelFont;
+                    labels.forEach(l => { totalTextWidth += this.ctx.measureText(String(l)).width; });
+                    this.ctx.font = originalFont;
+
+                    const avgLabelWidth = numLabels > 0 ? totalTextWidth / numLabels : 0;
+                    if (avgLabelWidth + minSpacingBetweenLabels > 0) {
+                        maxLabelsToShow = Math.floor(this.drawArea.width / (avgLabelWidth + minSpacingBetweenLabels));
+                    } else {
+                        maxLabelsToShow = numLabels;
                     }
-                    const remainingSlots = maxLabelsToShow - indexesToDraw.length;
-                    if (remainingSlots > 0) {
-                        let availableInnerLabels = [];
-                        for(let i = 0; i < numLabels; i++) {
-                            if (!indexesToDraw.includes(i)) {
-                                availableInnerLabels.push(i);
+                    maxLabelsToShow = Math.max(1, maxLabelsToShow);
+                } else if (maxLabelsToShow === undefined && numLabels === 0) {
+                    maxLabelsToShow = 0;
+                }
+
+                let indexesToDraw = [];
+                if (numLabels > 0 && maxLabelsToShow > 0) {
+                    if (numLabels <= maxLabelsToShow) {
+                        indexesToDraw = labels.map((_, i) => i);
+                    } else {
+                        if (forceShowFirstAndLast) {
+                            indexesToDraw.push(0);
+                            if (numLabels > 1) {
+                                indexesToDraw.push(numLabels - 1);
                             }
                         }
-                        if (availableInnerLabels.length > 0) {
-                             const step = Math.max(1, Math.floor(availableInnerLabels.length / remainingSlots));
-                             for (let i = 0; i < availableInnerLabels.length && indexesToDraw.length < maxLabelsToShow; i += step) {
-                                if (!indexesToDraw.includes(availableInnerLabels[i])) {
-                                    indexesToDraw.push(availableInnerLabels[i]);
+                        const remainingSlots = maxLabelsToShow - indexesToDraw.length;
+                        if (remainingSlots > 0) {
+                            let availableInnerLabels = [];
+                            for(let i = 0; i < numLabels; i++) {
+                                if (!indexesToDraw.includes(i)) {
+                                    availableInnerLabels.push(i);
                                 }
-                             }
+                            }
+                            if (availableInnerLabels.length > 0) {
+                                 const step = Math.max(1, Math.floor(availableInnerLabels.length / remainingSlots));
+                                 for (let i = 0; i < availableInnerLabels.length && indexesToDraw.length < maxLabelsToShow; i += step) {
+                                    if (!indexesToDraw.includes(availableInnerLabels[i])) {
+                                        indexesToDraw.push(availableInnerLabels[i]);
+                                    }
+                                 }
+                            }
+                        }
+                        indexesToDraw = [...new Set(indexesToDraw)].sort((a, b) => a - b);
+                    }
+                }
+
+                // Draw X-Axis Grid Lines (aligned with original slots)
+                if (oX.gridLines) {
+                    indexesToDraw.forEach(index => {
+                        if (index > 0) { // Typically no grid line on the Y-axis itself (index 0)
+                            const xPosGrid = this.drawArea.x + (index * xLabelSlotWidth);
+                            if (xPosGrid > this.drawArea.x + 0.5 && xPosGrid < this.drawArea.x + this.drawArea.width - 0.5) {
+                                this.ctx.save();
+                                this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor; // Use general options.gridColor
+                                this.ctx.lineWidth = 0.5;
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(xPosGrid, this.drawArea.y);
+                                this.ctx.lineTo(xPosGrid, this.drawArea.y + this.drawArea.height - (this.ctx.lineWidth % 2 === 0 ? 0 : 0.5) );
+                                this.ctx.stroke();
+                                this.ctx.restore();
+                            }
+                        }
+                    });
+                }
+
+                // New X-Axis Label Drawing Logic (Uniform Spacing)
+                if (indexesToDraw.length === 0) {
+                    // No labels to draw
+                } else {
+                    this.ctx.font = oX.labelFont; // Ensure font is set
+                    const labelsToDisplay = indexesToDraw.map(index => {
+                        const text = String(labels[index]);
+                        return {
+                            text: text,
+                            width: this.ctx.measureText(text).width,
+                            originalIndex: index
+                        };
+                    }).filter(label => label.width > 0);
+
+                    if (labelsToDisplay.length > 0) {
+                        this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor;
+                        const labelYPos = this.drawArea.y + this.drawArea.height + (oX.labelYOffset || 8);
+
+                        if (labelsToDisplay.length === 1) {
+                            const label = labelsToDisplay[0];
+                            let xPosSingleLabel = this.drawArea.x + (this.drawArea.width - label.width) / 2;
+                            if (label.width > this.drawArea.width) {
+                                xPosSingleLabel = this.drawArea.x;
+                            }
+                            this.ctx.textAlign = 'left';
+                            this.ctx.fillText(label.text, xPosSingleLabel, labelYPos);
+                        } else {
+                            const totalLabelsWidth = labelsToDisplay.reduce((sum, l) => sum + l.width, 0);
+                            const numberOfGaps = labelsToDisplay.length - 1;
+                            let spacing = (this.drawArea.width - totalLabelsWidth) / numberOfGaps;
+
+                            const minEffectiveSpacing = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
+                            if (spacing < minEffectiveSpacing) {
+                                // console.warn in actual PureChart, but not needed for test mock's console
+                            }
+
+                            let currentX = this.drawArea.x;
+                            const totalContentWidth = totalLabelsWidth + (spacing * numberOfGaps);
+                            if (totalContentWidth > this.drawArea.width || spacing < 0) {
+                                currentX = this.drawArea.x + (this.drawArea.width - totalContentWidth) / 2;
+                            }
+                            currentX = Math.max(this.drawArea.x, currentX);
+
+                            this.ctx.textAlign = 'left';
+                            labelsToDisplay.forEach(label => {
+                                const xPosLabel = currentX;
+                                if (xPosLabel < this.drawArea.x + this.drawArea.width && xPosLabel + label.width > this.drawArea.x) {
+                                    this.ctx.fillText(label.text, xPosLabel, labelYPos);
+                                }
+                                currentX += label.width + spacing;
+                            });
                         }
                     }
-                    indexesToDraw = [...new Set(indexesToDraw)].sort((a, b) => a - b);
                 }
+            } // End of if (data.labels && data.labels.length > 0) for label/grid drawing
+
+            // Draw X-Axis Title
+            if (oX.displayTitle && oX.title) {
+                this.ctx.font = oX.titleFont;
+                this.ctx.fillStyle = oX.titleColor || this.activePalette.titleColor || this.activePalette.axisColor;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'bottom';
+                this.ctx.fillText(oX.title, this.drawArea.x + this.drawArea.width / 2, this.config.height - (options.padding.bottom / 2)); // Adjusted for test mock if canvas height is not full config.height
             }
-
-            indexesToDraw.forEach(index => {
-                const labelText = String(labels[index]);
-                this.ctx.font = oX.labelFont; // Ensure font is set before measureText
-                const labelWidth = this.ctx.measureText(labelText).width;
-
-                let xPos = this.drawArea.x + (index * xLabelSlotWidth) + (xLabelSlotWidth / 2);
-
-                if (forceShowFirstAndLast) {
-                    if (index === 0) {
-                        xPos = this.drawArea.x + labelWidth / 2;
-                        if (numLabels === 1) {
-                            xPos = this.drawArea.x + this.drawArea.width / 2;
-                        }
-                    } else if (index === numLabels - 1) {
-                        xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
-                    }
-                }
-
-                let currentLabelStartX = xPos - labelWidth / 2;
-                let currentLabelEndX = xPos + labelWidth / 2;
-
-                if (currentLabelStartX < this.drawArea.x) {
-                    xPos = this.drawArea.x + labelWidth / 2;
-                    if (labelWidth > this.drawArea.width) {
-                         xPos = this.drawArea.x + this.drawArea.width / 2;
-                    }
-                }
-                else if (currentLabelEndX > this.drawArea.x + this.drawArea.width) {
-                    xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
-                    if (labelWidth > this.drawArea.width) {
-                        xPos = this.drawArea.x + this.drawArea.width / 2;
-                    }
-                }
-
-                currentLabelStartX = xPos - labelWidth / 2;
-                currentLabelEndX = xPos + labelWidth / 2;
-
-                let drawThisLabel = true;
-                if (lastDrawnLabelXEnd !== -Infinity && currentLabelStartX < lastDrawnLabelXEnd + minSpacingBetweenLabels) {
-                    drawThisLabel = false;
-                }
-
-                if (drawThisLabel) {
-                    const visiblePortionStart = Math.max(this.drawArea.x, currentLabelStartX);
-                    const visiblePortionEnd = Math.min(this.drawArea.x + this.drawArea.width, currentLabelEndX);
-                    const visibleWidth = visiblePortionEnd - visiblePortionStart;
-                    if (visibleWidth < 1) {
-                        drawThisLabel = false;
-                    }
-                }
-
-                if (drawThisLabel) {
-                    this.ctx.textAlign = 'center';
-                    this.ctx.fillText(labelText, xPos, labelYPos);
-                    lastDrawnLabelXEnd = currentLabelEndX;
-
-                    // Grid lines drawing (copied from original, simplified for test context if needed)
-                    if (oX.gridLines && index > 0) { // Typically not for index 0
-                        const xPosGrid = this.drawArea.x + (index * xLabelSlotWidth);
-                        // Ensure grid line is within bounds and not too close to axis lines
-                        if (xPosGrid > this.drawArea.x + 0.5 && xPosGrid < this.drawArea.x + this.drawArea.width - 0.5) {
-                            this.ctx.save();
-                            this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor;
-                            this.ctx.lineWidth = 0.5; // Standard grid line width
-                            this.ctx.beginPath();
-                            this.ctx.moveTo(xPosGrid, this.drawArea.y);
-                            this.ctx.lineTo(xPosGrid, this.drawArea.y + this.drawArea.height - (this.ctx.lineWidth % 2 === 0 ? 0 : 0.5) ); // Adjust for crisp lines
-                            this.ctx.stroke();
-                            this.ctx.restore();
-                        }
-                    }
-                }
-            });
-        } else if (oX.display && this.drawArea.width > 0 && (!data.labels || data.labels.length === 0)) {
-            this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
-            this.ctx.lineWidth = 1;
-            this.ctx.beginPath();
-            this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height);
-            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
-            this.ctx.stroke();
-        }
+        } // End of if (oX.display && this.drawArea.width > 0)
         this.ctx.restore();
     }
 
@@ -495,21 +504,16 @@ for(let i=0; i < drawn10.length; i++) {
 }
 
 
-// Test 11: Verify first/last label positioning with forceShowFirstAndLastLabel = true
+// Test 11: Verify UNIFORM SPACING with multiple labels
 let chart11Config = {
     data: { labels: ["Start", "Middle1", "Middle2", "End"] }, // 4 labels
-    options: { xAxis: { forceShowFirstAndLastLabel: true, maxLabelsToShow: undefined } }
+    options: { xAxis: { maxLabelsToShow: undefined } } // Using default behavior for label selection
 };
-let chart11DrawArea = { x: 10, y: 0, width: 400, height: 50 }; // Ample width for labels
+let chart11DrawArea = { x: 10, y: 0, width: 400, height: 50 };
 let chart11 = new TestPureChart(chart11Config, chart11DrawArea);
 
-chart11.ctx.measureText = (text) => { // Mock measureText for predictable widths
-    if (text === "Start") return { width: 40 };
-    if (text === "Middle1") return { width: 50 };
-    if (text === "Middle2") return { width: 50 };
-    if (text === "End") return { width: 30 };
-    return { width: String(text).length * 8 }; // Fallback
-};
+const labelWidths11 = { "Start": 40, "Middle1": 50, "Middle2": 50, "End": 30 };
+chart11.ctx.measureText = (text) => ({ width: labelWidths11[text] || String(text).length * 8 });
 
 chart11._drawAxesAndGrid();
 let drawn11 = chart11.getDrawnLabels();
@@ -517,43 +521,82 @@ let drawn11 = chart11.getDrawnLabels();
 assertEquals(4, drawn11.length, "Test 11: All 4 labels should be drawn.");
 
 if (drawn11.length === 4) {
-    const firstLabelData = drawn11.find(l => l.text === "Start");
-    assertTrue(firstLabelData !== undefined, "Test 11: 'Start' label should be drawn.");
-    if (firstLabelData) {
-        const firstLabelWidth = chart11.ctx.measureText(firstLabelData.text).width;
-        const expectedFirstX = chart11DrawArea.x + firstLabelWidth / 2;
-        assertTrue(Math.abs(firstLabelData.x - expectedFirstX) < 0.01, `Test 11: First label "Start" x position. Expected: ~${expectedFirstX.toFixed(1)}, Actual: ${firstLabelData.x.toFixed(1)}`);
+    // Ensure labels are sorted by their x position for correct spacing calculation
+    drawn11.sort((a, b) => a.x - b.x);
+
+    const totalLabelsWidth11 = drawn11.reduce((sum, label) => sum + labelWidths11[label.text], 0);
+    const numGaps11 = drawn11.length - 1;
+
+    // Expected spacing based on the new logic
+    const expectedSpacing11 = (chart11DrawArea.width - totalLabelsWidth11) / numGaps11;
+
+    // Determine the expected starting X of the first label.
+    // The new logic might center the block if spacing is negative or too small.
+    // For this test, space is ample: 400 (drawArea) - (40+50+50+30=170) = 230. Spacing = 230/3 = 76.66
+    let expectedStartX = chart11DrawArea.x;
+    const minEffectiveSpacing = chart11.config.options.xAxis.minSpacingBetweenLabels || 5;
+    if (expectedSpacing11 < minEffectiveSpacing || (totalLabelsWidth11 + expectedSpacing11 * numGaps11 > chart11DrawArea.width) ) {
+         // If content overflows or spacing is too small, the block is centered
+        expectedStartX = chart11DrawArea.x + (chart11DrawArea.width - (totalLabelsWidth11 + expectedSpacing11 * numGaps11)) / 2;
+        expectedStartX = Math.max(chart11DrawArea.x, expectedStartX); // Ensure it doesn't start left of draw area
     }
 
-    const lastLabelData = drawn11.find(l => l.text === "End");
-    assertTrue(lastLabelData !== undefined, "Test 11: 'End' label should be drawn.");
-    if (lastLabelData) {
-        const lastLabelWidth = chart11.ctx.measureText(lastLabelData.text).width;
-        const expectedLastX = chart11DrawArea.x + chart11DrawArea.width - lastLabelWidth / 2;
-        assertTrue(Math.abs(lastLabelData.x - expectedLastX) < 0.01, `Test 11: Last label "End" x position. Expected: ~${expectedLastX.toFixed(1)}, Actual: ${lastLabelData.x.toFixed(1)}`);
-    }
 
-    const middle1LabelData = drawn11.find(l => l.text === "Middle1");
-    assertTrue(middle1LabelData !== undefined, "Test 11: 'Middle1' label should be drawn.");
-    if (middle1LabelData) {
-        const numLabels_t11 = chart11Config.data.labels.length;
-        const xLabelSlotWidth_t11 = chart11DrawArea.width / numLabels_t11;
-        const middle1Index = chart11Config.data.labels.indexOf("Middle1");
-        const expectedMiddle1X_calc = chart11DrawArea.x + (middle1Index * xLabelSlotWidth_t11) + (xLabelSlotWidth_t11 / 2);
-        assertTrue(Math.abs(middle1LabelData.x - expectedMiddle1X_calc) < 0.01, `Test 11: Middle1 label x position. Expected: ~${expectedMiddle1X_calc.toFixed(1)}, Actual: ${middle1LabelData.x.toFixed(1)}`);
-    }
+    assertTrue(Math.abs(drawn11[0].x - expectedStartX) < 2.01, `Test 11: First label "Start" x position. Expected near: ${expectedStartX.toFixed(1)}, Actual: ${drawn11[0].x.toFixed(1)}`);
 
-    const middle2LabelData = drawn11.find(l => l.text === "Middle2");
-    assertTrue(middle2LabelData !== undefined, "Test 11: 'Middle2' label should be drawn.");
-    if (middle2LabelData) {
-        const numLabels_t11 = chart11Config.data.labels.length;
-        const xLabelSlotWidth_t11 = chart11DrawArea.width / numLabels_t11;
-        const middle2Index = chart11Config.data.labels.indexOf("Middle2");
-        const expectedMiddle2X_calc = chart11DrawArea.x + (middle2Index * xLabelSlotWidth_t11) + (xLabelSlotWidth_t11 / 2);
-        assertTrue(Math.abs(middle2LabelData.x - expectedMiddle2X_calc) < 0.01, `Test 11: Middle2 label x position. Expected: ~${expectedMiddle2X_calc.toFixed(1)}, Actual: ${middle2LabelData.x.toFixed(1)}`);
+    for (let i = 0; i < drawn11.length - 1; i++) {
+        const currentLabel = drawn11[i];
+        const nextLabel = drawn11[i+1];
+        const currentLabelWidth = labelWidths11[currentLabel.text];
+        const actualSpacing = nextLabel.x - (currentLabel.x + currentLabelWidth);
+        assertTrue(Math.abs(actualSpacing - expectedSpacing11) < 0.01,
+                   `Test 11: Spacing between "${currentLabel.text}" and "${nextLabel.text}". Expected: ~${expectedSpacing11.toFixed(1)}, Actual: ${actualSpacing.toFixed(1)}`);
     }
 }
-console.log(`Test 11: Drawn ${drawn11.length} labels: ${drawn11.map(l=>l.text + '@' + (l.x !== undefined ? l.x.toFixed(0) : 'undef')).join(', ')}`);
+console.log(`Test 11: Drawn ${drawn11.length} labels. Expected spacing: ~${((chart11DrawArea.width - drawn11.reduce((sum, label) => sum + labelWidths11[label.text], 0)) / (drawn11.length - 1)).toFixed(1)}. Actual positions: ${drawn11.map(l=>l.text + '@' + (l.x !== undefined ? l.x.toFixed(0) : 'undef')).join(', ')}`);
+
+// Test 12: Verify UNIFORM SPACING with 3 labels of varying widths
+let chart12Config = {
+    data: { labels: ["Short", "VeryLongLabelText", "Mid"] }, // 3 labels
+    options: { xAxis: {} } // Default options
+};
+let chart12DrawArea = { x: 5, y: 0, width: 500, height: 50 }; // Ample width
+let chart12 = new TestPureChart(chart12Config, chart12DrawArea);
+
+const labelWidths12 = { "Short": 30, "VeryLongLabelText": 150, "Mid": 50 };
+chart12.ctx.measureText = (text) => ({ width: labelWidths12[text] || String(text).length * 8 });
+
+chart12._drawAxesAndGrid();
+let drawn12 = chart12.getDrawnLabels();
+
+assertEquals(3, drawn12.length, "Test 12: All 3 labels should be drawn.");
+
+if (drawn12.length === 3) {
+    drawn12.sort((a, b) => a.x - b.x); // Sort by x position
+
+    const totalLabelsWidth12 = drawn12.reduce((sum, label) => sum + labelWidths12[label.text], 0);
+    const numGaps12 = drawn12.length - 1;
+    const expectedSpacing12 = (chart12DrawArea.width - totalLabelsWidth12) / numGaps12;
+
+    let expectedStartX12 = chart12DrawArea.x;
+    const minEffectiveSpacing12 = chart12.config.options.xAxis.minSpacingBetweenLabels || 5;
+     if (expectedSpacing12 < minEffectiveSpacing12 || (totalLabelsWidth12 + expectedSpacing12 * numGaps12 > chart12DrawArea.width) ) {
+        expectedStartX12 = chart12DrawArea.x + (chart12DrawArea.width - (totalLabelsWidth12 + expectedSpacing12 * numGaps12)) / 2;
+        expectedStartX12 = Math.max(chart12DrawArea.x, expectedStartX12);
+    }
+
+    assertTrue(Math.abs(drawn12[0].x - expectedStartX12) < 2.01, `Test 12: First label "Short" x position. Expected near: ${expectedStartX12.toFixed(1)}, Actual: ${drawn12[0].x.toFixed(1)}`);
+
+    for (let i = 0; i < drawn12.length - 1; i++) {
+        const currentLabel = drawn12[i];
+        const nextLabel = drawn12[i+1];
+        const currentLabelWidth = labelWidths12[currentLabel.text];
+        const actualSpacing = nextLabel.x - (currentLabel.x + currentLabelWidth);
+        assertTrue(Math.abs(actualSpacing - expectedSpacing12) < 0.01,
+                   `Test 12: Spacing between "${currentLabel.text}" and "${nextLabel.text}". Expected: ~${expectedSpacing12.toFixed(1)}, Actual: ${actualSpacing.toFixed(1)}`);
+    }
+}
+console.log(`Test 12: Drawn ${drawn12.length} labels. Expected spacing: ~${((chart12DrawArea.width - drawn12.reduce((sum, label) => sum + labelWidths12[label.text], 0)) / (drawn12.length - 1)).toFixed(1)}. Actual positions: ${drawn12.map(l=>l.text + '@' + (l.x !== undefined ? l.x.toFixed(0) : 'undef')).join(', ')}`);
 
 printTestSummary();
 // To run this in a browser, you'd save it as an HTML file or include this script
