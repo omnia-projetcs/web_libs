@@ -1397,7 +1397,30 @@ class PureChart {
                 // Inside _drawAxesAndGrid, after 'indexesToDraw' is determined.
                 // Assumes variables like oX, labels, numLabels, labelYPos, forceShowFirstAndLast, drawArea, activePalette are available.
 
-                if (data.labels && data.labels.length > 0 && indexesToDraw.length > 0) {
+                // BAR CHART X-AXIS LABELS
+                if (this.config.type === 'bar') {
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'top';
+                    this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor;
+                    this.ctx.font = oX.labelFont;
+
+                    const numBarLabels = data.labels.length;
+                    if (numBarLabels > 0) {
+                        // Calculations from _drawBarChart needed for label positioning
+                        const groupTotalWidth = this.drawArea.width / numBarLabels;
+                        const actualGroupSpacing = groupTotalWidth * (this.config.options.bar.groupSpacingFactor || 0.2);
+                        const groupDrawableWidth = groupTotalWidth - actualGroupSpacing;
+
+                        for (let i = 0; i < numBarLabels; i++) {
+                            const groupCanvasXStart = this.drawArea.x + (i * groupTotalWidth) + (actualGroupSpacing / 2);
+                            const labelXPos = groupCanvasXStart + groupDrawableWidth / 2;
+                            const labelText = String(data.labels[i]);
+                            this.ctx.fillText(labelText, labelXPos, labelYPos);
+                        }
+                    }
+                }
+                // NON-BAR CHART X-AXIS LABELS (EXISTING LOGIC)
+                else if (data.labels && data.labels.length > 0 && indexesToDraw.length > 0) {
                     this.ctx.font = oX.labelFont; // Set font for width measurements
                     const initialLabelCandidates = indexesToDraw.map(index => {
                         const text = String(labels[index]);
