@@ -58,6 +58,8 @@ html, body {
   background-color: #e9ecef; 
   border: 1px solid #ced4da; 
   border-radius: 4px;
+  height: 600px;
+  overflow: auto;
   /* New CSS Grid styles -- These are now controlled by PanoramaGrid.js and PanoramaGrid.css */
   /* display: grid; */
   /* grid-template-columns: repeat(12, 1fr); */ /* 12-column grid */
