@@ -460,6 +460,27 @@ class PanoramaGrid {
             const phHeight = (phLayout.h * this.currentRowHeight) + ((phLayout.h - 1) * this.options.gap); // Use currentRowHeight
             this.dragPlaceholderElement.style.height = `${phHeight}px`;
 
+            // Check for collisions to update placeholder color
+            let collisionWithOtherItems = false;
+            for (const existingItem of this.items) {
+                if (existingItem.id === this.draggedItem.id) continue; // Skip self
+                if (this._isCollision(phLayout, existingItem.layout)) {
+                    collisionWithOtherItems = true;
+                    break;
+                }
+            }
+
+            if (collisionWithOtherItems) {
+                this.dragPlaceholderElement.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+                this.dragPlaceholderElement.style.borderColor = 'rgba(200, 0, 0, 0.7)';
+                this.dragPlaceholderElement.style.borderStyle = 'solid'; // Ensure border is solid for invalid
+            } else {
+                // Revert to default placeholder styles from PanoramaGrid.css
+                this.dragPlaceholderElement.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+                this.dragPlaceholderElement.style.borderColor = '#007bff';
+                this.dragPlaceholderElement.style.borderStyle = 'dashed'; // Default is dashed
+            }
+
             if (!this.dragPlaceholderElement.parentNode) {
                 this.containerElement.appendChild(this.dragPlaceholderElement);
             }
