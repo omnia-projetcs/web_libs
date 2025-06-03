@@ -1393,82 +1393,14 @@ class PureChart {
                     }
                 }
 
-                indexesToDraw.forEach(index => {
-                    const labelText = String(labels[index]);
-                    this.ctx.font = oX.labelFont;
-                    const labelWidth = this.ctx.measureText(labelText).width;
-
-                    // Default xPos for all labels, calculated based on their slot.
-                    // xLabelSlotWidth is (this.drawArea.width / numLabels)
-                    let xPos = this.drawArea.x + (index * xLabelSlotWidth) + (xLabelSlotWidth / 2);
-
-                    // If forcing first/last, specifically adjust their xPos.
-                    // Intermediate labels will keep their slot-based xPos.
-                    if (forceShowFirstAndLast) {
-                        if (index === 0) {
-                            // Align first label's center so its left edge is near drawArea.x.
-                            xPos = this.drawArea.x + labelWidth / 2;
-                            // If it's the only label, ensure it's centered in the drawArea.
-                            if (numLabels === 1) {
-                                xPos = this.drawArea.x + this.drawArea.width / 2;
-                            }
-                        } else if (index === numLabels - 1) {
-                            // Align last label's center so its right edge is near drawArea.x + drawArea.width.
-                            xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
-                        }
-                    }
-
-                    // Recalculate currentLabelStartX and currentLabelEndX based on the potentially adjusted xPos.
-                    let currentLabelStartX = xPos - labelWidth / 2;
-                    let currentLabelEndX = xPos + labelWidth / 2;
-
-                    // Boundary collision checks and adjustments.
-                    // Applied to all labels, but especially important for first/last after pinning.
-
-                    // Case 1: Label is pushed too far left
-                    if (currentLabelStartX < this.drawArea.x) {
-                        xPos = this.drawArea.x + labelWidth / 2;
-                        if (labelWidth > this.drawArea.width) { // If label is wider than draw area
-                             xPos = this.drawArea.x + this.drawArea.width / 2; // Center the huge label
-                        }
-                    }
-                    // Case 2: Label is pushed too far right
-                    else if (currentLabelEndX > this.drawArea.x + this.drawArea.width) {
-                        xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
-                        if (labelWidth > this.drawArea.width) { // If label is wider than draw area
-                            xPos = this.drawArea.x + this.drawArea.width / 2; // Center the huge label
-                        }
-                    }
-
-                    // Final recalculation of start/end after all adjustments
-                    currentLabelStartX = xPos - labelWidth / 2;
-                    currentLabelEndX = xPos + labelWidth / 2;
-
-                    let drawThisLabel = true;
-
-                    if (lastDrawnLabelXEnd !== -Infinity && currentLabelStartX < lastDrawnLabelXEnd + minSpacingBetweenLabels) {
-                        drawThisLabel = false;
-                    }
-
-                    if (drawThisLabel) {
-                        const visiblePortionStart = Math.max(this.drawArea.x, currentLabelStartX);
-                        const visiblePortionEnd = Math.min(this.drawArea.x + this.drawArea.width, currentLabelEndX);
-                        const visibleWidth = visiblePortionEnd - visiblePortionStart;
-                        if (visibleWidth < 1) { // Or a more generous minimum like labelWidth * 0.25
-                            drawThisLabel = false;
-                        }
-                    }
-
-                    // The previous "Special consideration" for forced labels to allow partial overlap has been removed
-                    // in favor of the xPos adjustment and the standard visibility/overlap checks.
-                    // A forced label, after xPos adjustment, must still pass visibility and not overlap the *previous* drawn label.
-
-                    if (drawThisLabel) {
-                        this.ctx.textAlign = 'center'; // Ensure it's center for xPos
-                        this.ctx.fillText(labelText, xPos, labelYPos);
-                        lastDrawnLabelXEnd = currentLabelEndX;
-
-                        if (oX.gridLines && index > 0) {
+                // Draw X-Axis Grid Lines (aligned with original slots)
+                if (oX.gridLines) {
+                    // Option 1: Iterate all original labels if grid lines are for all, respecting display options
+                    // Option 2: Iterate `indexesToDraw` if grid lines should only appear for "candidate" labels
+                    // For now, let's assume grid lines are tied to the `indexesToDraw` (labels that *could* be shown)
+                    // This seems more consistent with previous behavior where grid lines were tied to drawn labels.
+                    indexesToDraw.forEach(index => {
+                        if (index > 0) { // Typically no grid line on the Y-axis itself (index 0)
                             const xPosGrid = this.drawArea.x + (index * xLabelSlotWidth);
                             if (xPosGrid > this.drawArea.x + 0.5 && xPosGrid < this.drawArea.x + this.drawArea.width - 0.5) {
                                 this.ctx.save();
@@ -1481,9 +1413,69 @@ class PureChart {
                                 this.ctx.restore();
                             }
                         }
+                    });
+                }
+
+                // New X-Axis Label Drawing Logic (Uniform Spacing)
+                if (indexesToDraw.length === 0) {
+                    // No labels to draw, but X-axis line is already drawn. Title will be drawn after this block.
+                } else {
+                    this.ctx.font = oX.labelFont;
+                    const labelsToDisplay = indexesToDraw.map(index => {
+                        const text = String(labels[index]);
+                        return {
+                            text: text,
+                            width: this.ctx.measureText(text).width,
+                            originalIndex: index
+                        };
+                    }).filter(label => label.width > 0);
+
+                    if (labelsToDisplay.length > 0) {
+                        this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor;
+                        const labelYPos = this.drawArea.y + this.drawArea.height + (oX.labelYOffset || 8);
+
+                        if (labelsToDisplay.length === 1) {
+                            const label = labelsToDisplay[0];
+                            let xPosSingleLabel = this.drawArea.x + (this.drawArea.width - label.width) / 2;
+                            if (label.width > this.drawArea.width) { // If label wider than draw area
+                                xPosSingleLabel = this.drawArea.x; // Align to start
+                            }
+                            this.ctx.textAlign = 'left'; // Consistent with multiple labels
+                            this.ctx.fillText(label.text, xPosSingleLabel, labelYPos);
+                        } else {
+                            const totalLabelsWidth = labelsToDisplay.reduce((sum, l) => sum + l.width, 0);
+                            const numberOfGaps = labelsToDisplay.length - 1;
+                            let spacing = (this.drawArea.width - totalLabelsWidth) / numberOfGaps;
+
+                            const minEffectiveSpacing = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
+                            if (spacing < minEffectiveSpacing) {
+                                // console.warn("PureChart Warning: X-axis label spacing is less than minEffectiveSpacing. Labels might overlap.", `Calculated: ${spacing.toFixed(1)}`, `Min: ${minEffectiveSpacing}`);
+                                // Proceed with calculated spacing as per requirement.
+                            }
+
+                            let currentX = this.drawArea.x;
+                            // If total content width (labels + gaps) is greater than draw area, or if spacing is negative (overflow)
+                            // then center the entire block of labels.
+                            const totalContentWidth = totalLabelsWidth + (spacing * numberOfGaps);
+                            if (totalContentWidth > this.drawArea.width || spacing < 0) {
+                                currentX = this.drawArea.x + (this.drawArea.width - totalContentWidth) / 2;
+                            }
+                            // Ensure the block doesn't start before drawArea.x if it's wider than the area
+                            currentX = Math.max(this.drawArea.x, currentX);
+
+                            this.ctx.textAlign = 'left';
+                            labelsToDisplay.forEach(label => {
+                                const xPosLabel = currentX;
+                                // Draw only if at least partially visible
+                                if (xPosLabel < this.drawArea.x + this.drawArea.width && xPosLabel + label.width > this.drawArea.x) {
+                                    this.ctx.fillText(label.text, xPosLabel, labelYPos);
+                                }
+                                currentX += label.width + spacing;
+                            });
+                        }
                     }
-                });
-            } // End of if (data.labels && data.labels.length > 0) for label drawing
+                }
+            } // End of if (data.labels && data.labels.length > 0) for label/grid drawing
 
             // Draw X-Axis Title
             if (oX.displayTitle && oX.title) {
