@@ -1397,20 +1397,52 @@ class PureChart {
                     const labelText = String(labels[index]);
                     this.ctx.font = oX.labelFont;
                     const labelWidth = this.ctx.measureText(labelText).width;
+
+                    // Default xPos for all labels, calculated based on their slot.
+                    // xLabelSlotWidth is (this.drawArea.width / numLabels)
                     let xPos = this.drawArea.x + (index * xLabelSlotWidth) + (xLabelSlotWidth / 2);
 
+                    // If forcing first/last, specifically adjust their xPos.
+                    // Intermediate labels will keep their slot-based xPos.
+                    if (forceShowFirstAndLast) {
+                        if (index === 0) {
+                            // Align first label's center so its left edge is near drawArea.x.
+                            xPos = this.drawArea.x + labelWidth / 2;
+                            // If it's the only label, ensure it's centered in the drawArea.
+                            if (numLabels === 1) {
+                                xPos = this.drawArea.x + this.drawArea.width / 2;
+                            }
+                        } else if (index === numLabels - 1) {
+                            // Align last label's center so its right edge is near drawArea.x + drawArea.width.
+                            xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
+                        }
+                    }
+
+                    // Recalculate currentLabelStartX and currentLabelEndX based on the potentially adjusted xPos.
                     let currentLabelStartX = xPos - labelWidth / 2;
                     let currentLabelEndX = xPos + labelWidth / 2;
 
-                    if (forceShowFirstAndLast) {
-                        if (index === 0 && currentLabelStartX < this.drawArea.x) {
-                            xPos = this.drawArea.x + labelWidth / 2;
-                        } else if (index === numLabels - 1 && currentLabelEndX > this.drawArea.x + this.drawArea.width) {
-                            xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
+                    // Boundary collision checks and adjustments.
+                    // Applied to all labels, but especially important for first/last after pinning.
+
+                    // Case 1: Label is pushed too far left
+                    if (currentLabelStartX < this.drawArea.x) {
+                        xPos = this.drawArea.x + labelWidth / 2;
+                        if (labelWidth > this.drawArea.width) { // If label is wider than draw area
+                             xPos = this.drawArea.x + this.drawArea.width / 2; // Center the huge label
                         }
-                        currentLabelStartX = xPos - labelWidth / 2; // Recalculate after potential xPos adjustment
-                        currentLabelEndX = xPos + labelWidth / 2;
                     }
+                    // Case 2: Label is pushed too far right
+                    else if (currentLabelEndX > this.drawArea.x + this.drawArea.width) {
+                        xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
+                        if (labelWidth > this.drawArea.width) { // If label is wider than draw area
+                            xPos = this.drawArea.x + this.drawArea.width / 2; // Center the huge label
+                        }
+                    }
+
+                    // Final recalculation of start/end after all adjustments
+                    currentLabelStartX = xPos - labelWidth / 2;
+                    currentLabelEndX = xPos + labelWidth / 2;
 
                     let drawThisLabel = true;
 
