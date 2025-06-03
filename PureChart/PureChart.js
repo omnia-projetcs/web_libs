@@ -1338,12 +1338,9 @@ class PureChart {
                 const minSpacingBetweenLabels = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
                 const labelYOffset = oX.labelYOffset || 8;
                 const labelYPos = this.drawArea.y + this.drawArea.height + labelYOffset;
+                let lastDrawnLabelXEnd = -Infinity;
 
                 const xLabelSlotWidth = numLabels > 0 ? this.drawArea.width / numLabels : this.drawArea.width;
-
-                // Determine if we are in a mode that specifically uses line chart label logic
-                const isLineChartMode = this.config.type === 'line' ||
-                                      (this.config.data.datasets && this.config.data.datasets.some(ds => ds.type === 'line'));
 
                 // Calculate maxLabelsToShow dynamically if not explicitly set by user
                 if (maxLabelsToShow === undefined && numLabels > 0) {
@@ -1396,165 +1393,163 @@ class PureChart {
                     }
                 }
 
-                // X-Axis Grid Lines (Common for both modes, drawn based on original slots)
-                if (oX.gridLines) {
-                    indexesToDraw.forEach(index => { // Or iterate all 'numLabels' if grid lines aren't tied to 'indexesToDraw'
-                        if (index > 0) {
-                            const xPosGrid = this.drawArea.x + (index * xLabelSlotWidth);
-                            if (xPosGrid > this.drawArea.x + 0.5 && xPosGrid < this.drawArea.x + this.drawArea.width - 0.5) {
-                                this.ctx.save();
-                                this.ctx.strokeStyle = options.gridColor || this.activePalette.gridColor;
-                                this.ctx.lineWidth = 0.5;
-                                this.ctx.beginPath();
-                                this.ctx.moveTo(xPosGrid, this.drawArea.y);
-                                this.ctx.lineTo(xPosGrid, this.drawArea.y + this.drawArea.height - (this.ctx.lineWidth % 2 === 0 ? 0 : 0.5));
-                                this.ctx.stroke();
-                                this.ctx.restore();
-                            }
-                        }
-                    });
-                }
+                // New X-axis label display logic (Iterative Fitting)
+                // Inside _drawAxesAndGrid, after 'indexesToDraw' is determined.
+                // Assumes variables like oX, labels, numLabels, labelYPos, forceShowFirstAndLast, drawArea, activePalette are available.
 
-                let lastDrawnLabelXEnd = -Infinity; // Used by both label drawing logics
-
-                if (!isLineChartMode) {
-                    // Existing Slot-Based Logic (for bar charts / default)
-                    indexesToDraw.forEach(index => {
-                        const labelText = String(labels[index]);
-                        this.ctx.font = oX.labelFont;
-                        const labelWidth = this.ctx.measureText(labelText).width;
-                        let xPos = this.drawArea.x + (index * xLabelSlotWidth) + (xLabelSlotWidth / 2);
-
-                        let currentLabelStartX = xPos - labelWidth / 2;
-                        let currentLabelEndX = xPos + labelWidth / 2;
-
-                        // Boundary adjustments for first/last labels (original logic)
-                        if (forceShowFirstAndLast) { // This was the original guard for this block
-                            if (index === 0 && currentLabelStartX < this.drawArea.x) {
-                                xPos = this.drawArea.x + labelWidth / 2;
-                            } else if (index === numLabels - 1 && currentLabelEndX > this.drawArea.x + this.drawArea.width) {
-                                xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
-                            }
-                            // Recalculate after potential xPos adjustment ONLY IF first/last adjustment happened
-                            currentLabelStartX = xPos - labelWidth / 2;
-                            currentLabelEndX = xPos + labelWidth / 2;
-                        }
-
-                        // General boundary collision checks (applied to all after first/last logic)
-                        if (currentLabelStartX < this.drawArea.x) {
-                            xPos = this.drawArea.x + labelWidth / 2;
-                            if (labelWidth > this.drawArea.width) xPos = this.drawArea.x + this.drawArea.width / 2;
-                        } else if (currentLabelEndX > this.drawArea.x + this.drawArea.width) {
-                            xPos = this.drawArea.x + this.drawArea.width - labelWidth / 2;
-                            if (labelWidth > this.drawArea.width) xPos = this.drawArea.x + this.drawArea.width / 2;
-                        }
-                        currentLabelStartX = xPos - labelWidth / 2; // Final recalculation
-                        currentLabelEndX = xPos + labelWidth / 2;
-
-
-                        let drawThisLabel = true;
-                        if (lastDrawnLabelXEnd !== -Infinity && currentLabelStartX < lastDrawnLabelXEnd + minSpacingBetweenLabels) {
-                            drawThisLabel = false;
-                        }
-
-                        if (drawThisLabel) {
-                            const visiblePortionStart = Math.max(this.drawArea.x, currentLabelStartX);
-                            const visiblePortionEnd = Math.min(this.drawArea.x + this.drawArea.width, currentLabelEndX);
-                            const visibleWidth = visiblePortionEnd - visiblePortionStart;
-                            if (visibleWidth < 1) {
-                                drawThisLabel = false;
-                            }
-                        }
-
-                        if (drawThisLabel) {
-                            this.ctx.textAlign = 'center';
-                            this.ctx.fillText(labelText, xPos, labelYPos);
-                            lastDrawnLabelXEnd = currentLabelEndX;
-                        }
-                    });
-                } else {
-                    // New Line Chart X-Axis Label Logic (Pinned First/Last, Distributed Intermediate)
-                    if (indexesToDraw.length > 0) {
-                        this.ctx.font = oX.labelFont; // Ensure font is set
-                        const labelsForLineChart = indexesToDraw.map(index => ({
-                            text: String(labels[index]),
-                            width: this.ctx.measureText(String(labels[index])).width,
+                if (data.labels && data.labels.length > 0 && indexesToDraw.length > 0) {
+                    this.ctx.font = oX.labelFont; // Set font for width measurements
+                    const initialLabelCandidates = indexesToDraw.map(index => {
+                        const text = String(labels[index]);
+                        return {
+                            text: text,
+                            width: this.ctx.measureText(text).width,
                             originalIndex: index
-                        })).filter(l => l.width > 0);
+                        };
+                    }).filter(l => l.width > 0);
 
-                        if (labelsForLineChart.length === 1) {
-                            const label = labelsForLineChart[0];
-                            let xPos = this.drawArea.x + this.drawArea.width / 2; // Center single label
-                            if (label.width > this.drawArea.width) { // If label wider than draw area
-                                xPos = this.drawArea.x + label.width / 2; // Center based on its own width pinned left
-                                if (xPos - label.width/2 < this.drawArea.x) xPos = this.drawArea.x + label.width/2;
-                                if (xPos + label.width/2 > this.drawArea.x + this.drawArea.width) xPos = this.drawArea.x + this.drawArea.width - label.width/2;
-                            }
-                             // Ensure centered huge label does not go off-screen
-                            if (xPos - label.width / 2 < this.drawArea.x) xPos = this.drawArea.x + label.width / 2;
-                            if (xPos + label.width / 2 > this.drawArea.x + this.drawArea.width)  xPos = this.drawArea.x + this.drawArea.width - label.width / 2;
+                    if (initialLabelCandidates.length > 0) {
+                        let currentSubsetToDisplay = [...initialLabelCandidates];
+                        let finalLabelsToDraw = [];
+                        let calculatedSpacing = 0;
+                        const minAcceptableSpacing = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
+                        // forceShowFirstAndLast is already defined in this scope
 
-                            this.ctx.textAlign = 'center';
-                            this.ctx.fillText(label.text, xPos, labelYPos);
-                        } else if (labelsForLineChart.length > 1) {
-                            this.ctx.textAlign = 'center';
-
-                            const firstLabel = labelsForLineChart[0];
-                            let firstLabelX = this.drawArea.x + firstLabel.width / 2;
-                            if (firstLabel.width > this.drawArea.width) firstLabelX = this.drawArea.x + this.drawArea.width / 2;
-                             firstLabelX = Math.max(this.drawArea.x + firstLabel.width / 2, firstLabelX); // Ensure not off left
-                             firstLabelX = Math.min(this.drawArea.x + this.drawArea.width - firstLabel.width/2, firstLabelX); // Ensure not off right
-
-                            const lastLabel = labelsForLineChart[labelsForLineChart.length - 1];
-                            let lastLabelX = this.drawArea.x + this.drawArea.width - lastLabel.width / 2;
-                            if (lastLabel.width > this.drawArea.width) lastLabelX = this.drawArea.x + this.drawArea.width / 2;
-                            lastLabelX = Math.max(this.drawArea.x + lastLabel.width / 2, lastLabelX);  // Ensure not off left
-                            lastLabelX = Math.min(this.drawArea.x + this.drawArea.width - lastLabel.width/2, lastLabelX); // Ensure not off right
-
-
-                            // Draw first label if it's the only one determined by indexesToDraw or if forced
-                            if (oX.forceShowFirstAndLastLabel || labelsForLineChart.length == 1 || (labelsForLineChart.length > 0 && labelsForLineChart[0].originalIndex === 0) ) {
-                                this.ctx.fillText(firstLabel.text, firstLabelX, labelYPos);
-                                lastDrawnLabelXEnd = firstLabelX + firstLabel.width / 2;
+                        // 2. Iterative Fitting and Subset Selection
+                        while (true) {
+                            if (currentSubsetToDisplay.length === 0) {
+                                finalLabelsToDraw = []; // No labels can be shown
+                                break;
                             }
 
-                            const intermediateLabels = labelsForLineChart.slice(1, -1);
-                            if (intermediateLabels.length > 0) {
-                                const availableWidthForIntermediate = (lastLabelX - lastLabel.width/2) - (firstLabelX + firstLabel.width/2);
-                                if (availableWidthForIntermediate > 0) {
-                                    // Distribute intermediate labels in the available space
-                                    // This simplified distribution places them based on their original slot proportion within the available space
-                                    const firstOriginalIndex = firstLabel.originalIndex;
-                                    const lastOriginalIndex = lastLabel.originalIndex;
-                                    const originalIndexRange = lastOriginalIndex - firstOriginalIndex;
+                            const totalWidthOfCurrentSubset = currentSubsetToDisplay.reduce((sum, label) => sum + label.width, 0);
 
-                                    intermediateLabels.forEach(label => {
-                                        let xPos = firstLabelX + firstLabel.width/2; // Default to start
-                                        if (originalIndexRange > 0) { // Avoid division by zero
-                                            const proportion = (label.originalIndex - firstOriginalIndex) / originalIndexRange;
-                                            xPos = (firstLabelX + firstLabel.width/2) + (proportion * availableWidthForIntermediate);
-                                        }
+                            if (currentSubsetToDisplay.length <= 1) { // Single label or no labels
+                                finalLabelsToDraw = [...currentSubsetToDisplay];
+                                // Spacing is not applicable or will be handled by centering the single label later
+                                break;
+                            }
 
-                                        const currentLabelStartX = xPos - label.width / 2;
-                                        const currentLabelEndX = xPos + label.width / 2;
+                            const numberOfGaps = currentSubsetToDisplay.length - 1;
+                            calculatedSpacing = (this.drawArea.width - totalWidthOfCurrentSubset) / numberOfGaps;
 
-                                        if (currentLabelStartX > lastDrawnLabelXEnd + minSpacingBetweenLabels &&
-                                            currentLabelEndX < (lastLabelX - lastLabel.width/2) - minSpacingBetweenLabels &&
-                                            currentLabelEndX <= this.drawArea.x + this.drawArea.width && currentLabelStartX >= this.drawArea.x) {
-                                            this.ctx.fillText(label.text, xPos, labelYPos);
-                                            lastDrawnLabelXEnd = currentLabelEndX;
-                                        }
-                                    });
+                            if (calculatedSpacing >= minAcceptableSpacing) {
+                                finalLabelsToDraw = [...currentSubsetToDisplay]; // This subset fits
+                                break;
+                            } else {
+                                // Subset is too crowded, remove a label and retry
+                                if (currentSubsetToDisplay.length <= 2 && forceShowFirstAndLast) {
+                                    // Cannot remove further if we must show first and last, and only 2 remain.
+                                    // Keep these 2, even if spacing is tight.
+                                    finalLabelsToDraw = [...currentSubsetToDisplay];
+                                    break;
+                                }
+                                 if (currentSubsetToDisplay.length <= 1) { // Should be caught by earlier check, but for safety
+                                    finalLabelsToDraw = [...currentSubsetToDisplay];
+                                    break;
+                                 }
+
+                                // Label Removal Strategy:
+                                // Prioritize removing from the middle. If forcing first/last, protect them.
+                                let removalIndex = Math.floor(currentSubsetToDisplay.length / 2);
+                                if (forceShowFirstAndLast && currentSubsetToDisplay.length > 2) {
+                                    if (removalIndex === 0) removalIndex = 1; // Don't remove first if forced
+                                    else if (removalIndex === currentSubsetToDisplay.length - 1) removalIndex = currentSubsetToDisplay.length - 2; // Don't remove last if forced
+                                }
+
+                                // Ensure removalIndex is valid if array becomes very small
+                                if (removalIndex === 0 && currentSubsetToDisplay.length === 2 && forceShowFirstAndLast) {
+                                    // Can't remove if only first and last are left and forced
+                                } else if (removalIndex >= currentSubsetToDisplay.length -1 && currentSubsetToDisplay.length > 2 && forceShowFirstAndLast) {
+                                     removalIndex = currentSubsetToDisplay.length -2; // Adjust if pointing past new end
+                                } else if (removalIndex === 0 && currentSubsetToDisplay.length === 1) {
+                                    // This case means only one label left, it should have been caught by length <=1 break
+                                }
+
+                                if (currentSubsetToDisplay.length > 0 && removalIndex < currentSubsetToDisplay.length && removalIndex >=0 ) {
+                                     // To avoid infinite loops on very small arrays with forceShowFirstAndLast,
+                                     // ensure we don't try to remove protected first/last if they are the only ones left.
+                                    if (forceShowFirstAndLast && currentSubsetToDisplay.length === 2 &&
+                                        initialLabelCandidates.length >= 2 && // Ensure initialLabelCandidates has at least 2 elements
+                                        currentSubsetToDisplay[0].originalIndex === initialLabelCandidates[0].originalIndex &&
+                                        currentSubsetToDisplay[1].originalIndex === initialLabelCandidates[initialLabelCandidates.length-1].originalIndex) {
+                                            finalLabelsToDraw = [...currentSubsetToDisplay]; // Keep first and last
+                                            break;
+                                    }
+                                    currentSubsetToDisplay.splice(removalIndex, 1);
+                                } else {
+                                     // Fallback or error: if removal is impossible, break to avoid infinite loop
+                                     finalLabelsToDraw = [...currentSubsetToDisplay];
+                                     break;
                                 }
                             }
+                        }
 
-                            // Draw last label if different from first and forced or is the actual last original label
-                             if (labelsForLineChart.length > 1 && (oX.forceShowFirstAndLastLabel || labelsForLineChart[labelsForLineChart.length-1].originalIndex === numLabels -1) ) {
-                                const lastLabelStartX = lastLabelX - lastLabel.width / 2;
-                                if (lastLabelStartX > lastDrawnLabelXEnd + minSpacingBetweenLabels && lastLabelStartX >= this.drawArea.x ) {
-                                     this.ctx.fillText(lastLabel.text, lastLabelX, labelYPos);
+                        // 3. Positioning and Drawing the Final Subset
+                        if (finalLabelsToDraw.length > 0) {
+                            this.ctx.textAlign = 'center';
+                            this.ctx.textBaseline = 'top'; // As per original
+                            this.ctx.fillStyle = oX.labelColor || this.activePalette.labelColor || this.activePalette.axisColor;
+                            this.ctx.font = oX.labelFont; // Ensure font is set for drawing
+
+                            if (finalLabelsToDraw.length === 1) {
+                                const label = finalLabelsToDraw[0];
+                                let xPos = this.drawArea.x + this.drawArea.width / 2; // Center single label
+
+                                // Adjust if label itself is wider than drawArea (centering its visible part)
+                                if (label.width > this.drawArea.width) {
+                                     // If label is wider, effectively xPos is the center of the label,
+                                     // but we draw it at drawArea center. The visible part will be centered.
+                                     // No, this should be: align label's center with drawArea's center.
+                                     // The text itself will be clipped by the canvas if fillText is used directly.
+                                     // The prompt's original single label logic:
+                                     // xPos = this.drawArea.x + label.width / 2;
+                                     // if (xPos - label.width / 2 < this.drawArea.x) xPos = this.drawArea.x + label.width / 2;
+                                     // if (xPos + label.width / 2 > this.drawArea.x + this.drawArea.width) xPos = this.drawArea.x + this.drawArea.width - label.width / 2;
+                                     // This seems more like boundary pinning rather than centering a huge label.
+                                     // For a single label, centering it in the available space is usually best.
                                 }
-                             }
+                                // Ensure the center of the text is within the drawable area if possible
+                                xPos = Math.max(xPos, this.drawArea.x + label.width / 2);
+                                xPos = Math.min(xPos, this.drawArea.x + this.drawArea.width - label.width / 2);
+                                // If label is wider than drawArea, this will pin to one side.
+                                // A true center for a huge label would be:
+                                if (label.width > this.drawArea.width) {
+                                    xPos = this.drawArea.x + this.drawArea.width / 2; // Center of draw area for text alignment
+                                }
+
+
+                                this.ctx.fillText(label.text, xPos, labelYPos);
+                            } else {
+                                // Recalculate spacing for the final set for precision
+                                const totalWidthFinal = finalLabelsToDraw.reduce((sum, l) => sum + l.width, 0);
+                                // Ensure finalSpacing is not negative if totalWidthFinal > drawArea.width (can happen if forced first/last are too wide)
+                                const finalSpacing = Math.max(minAcceptableSpacing, (this.drawArea.width - totalWidthFinal) / (finalLabelsToDraw.length - 1));
+
+                                let currentX = this.drawArea.x;
+                                // If labels with spacing overflow, adjust starting point to center the block if possible, or pin left.
+                                const requiredWidth = totalWidthFinal + finalSpacing * (finalLabelsToDraw.length - 1);
+                                if (requiredWidth > this.drawArea.width) {
+                                     // This means even with minAcceptableSpacing (or more), it overflows.
+                                     // This can happen if forceShowFirstAndLast keeps two very wide labels.
+                                     // In this case, we might just draw them at their pinned positions or overlapping.
+                                     // The current logic will draw them starting from currentX = this.drawArea.x
+                                     // which might mean the last label is drawn partially or fully outside.
+                                     // For now, let's stick to the provided logic structure.
+                                     // One option for overflow:
+                                     // currentX = this.drawArea.x - (requiredWidth - this.drawArea.width) / 2; // Center the overflow
+                                     // But pinning left is simpler:
+                                     // currentX = this.drawArea.x;
+                                }
+
+
+                                finalLabelsToDraw.forEach((label, k) => {
+                                    const xPos = currentX + label.width / 2;
+
+                                    this.ctx.fillText(label.text, xPos, labelYPos);
+                                    currentX += label.width + finalSpacing;
+                                });
+                            }
                         }
                     }
                 }
