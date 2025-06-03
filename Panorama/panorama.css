@@ -53,7 +53,6 @@ html, body {
 
 /* Grid Container Styling */
 #panorama-grid-container {
-  flex-grow: 1; 
   width: 100%;  
   background-color: #e9ecef; 
   border: 1px solid #ced4da; 
