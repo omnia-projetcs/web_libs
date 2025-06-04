@@ -244,7 +244,6 @@ class PureChart {
 
         this.config = PureChart._mergeDeep(defaults, userOptions);
         this.showPeriodHighlights = this.config.options.periodHighlights && this.config.options.periodHighlights.display;
-        console.log("CONSTRUCTOR: Initial this.showPeriodHighlights:", this.showPeriodHighlights);
 
         // Autosize specific logic - If autosize is true, canvas dimensions might be overridden by container.
         // For the default setup, we assume if autosize is true, the user might NOT provide
@@ -297,7 +296,7 @@ class PureChart {
         }
 
         // Initialize activePalette based on the theme
-        // console.log("PureChart Constructor: Theme for palette initialization:", JSON.stringify(this.config.theme)); // For debugging
+        //
         if (typeof this.config.theme === 'object' && this.config.theme !== null) {
             const basePaletteName = this.config.theme.extends;
             let basePaletteInstance;
@@ -330,7 +329,7 @@ class PureChart {
         } else { // Includes 'light', undefined, null, or any other string
             this.activePalette = { ...PC_LIGHT_THEME_PALETTE }; // Use a copy, default to light
         }
-        // console.log("PureChart Constructor: Active palette set to:", this.activePalette.name);
+        //
 
 
         // Default yAxisID for Datasets
@@ -385,7 +384,7 @@ class PureChart {
 
     _handleResize(newRect) {
         if (!this.isValid) {
-            // console.warn("PureChart: Attempted to call _handleResize on a destroyed instance.");
+            //
             return;
         }
         if (!newRect) return;
@@ -734,14 +733,14 @@ class PureChart {
 
     _draw() {
         if (!this.isValid) {
-            // console.warn("PureChart: Attempted to call _draw on a destroyed instance.");
+            //
             return;
         }
 
         // Ensure activePalette is available (Defensive check from subtask description - already present)
         // This was added in a previous step and is good to keep.
         if (!this.activePalette) {
-            // console.warn("PureChart: activePalette was undefined in _draw. Re-initializing from config.theme.");
+            //
             if (this.config && this.config.theme) { // Check this.config exists
                 if (this.config.theme === 'dark') {
                     this.activePalette = { ...PC_DARK_THEME_PALETTE };
@@ -831,13 +830,13 @@ class PureChart {
 
             const yAxisID = dataset.yAxisID || (this.config.options.yAxes && this.config.options.yAxes.length > 0 ? this.config.options.yAxes[0].id : null);
             if (!yAxisID) {
-                // console.warn(`PureChart _drawAverageLines: Dataset '${dataset.label}' has no yAxisID.`);
+                //
                 return;
             }
 
             const yAxisScaleInfo = this.yAxisScales[yAxisID];
             if (!yAxisScaleInfo || !yAxisScaleInfo.scale || yAxisScaleInfo.scale <= 0 || !isFinite(yAxisScaleInfo.scale) || !yAxisScaleInfo.axisConfig.display) {
-                // console.warn(`PureChart _drawAverageLines: Invalid or non-displayed Y-axis scale for dataset '${dataset.label}' on yAxisID '${yAxisID}'.`);
+                //
                 return;
             }
 
@@ -984,7 +983,6 @@ class PureChart {
                 isPeriodToggle: true,
                 dataset: { _hidden: !this.showPeriodHighlights } // Use internal state for visual feedback
             });
-            console.log("_drawLegend: Creating period toggle. Current this.showPeriodHighlights:", this.showPeriodHighlights, "Legend item _hidden state:", !this.showPeriodHighlights);
         }
 
         const totalLegendItemWidth = legendItemsData.reduce((sum,item) => sum + markerSize + 5 + item.textWidth + 15, 0) - 15; // Calculate total width for centering
@@ -1057,13 +1055,10 @@ class PureChart {
                 
                 legendItemClicked = true; // Assume a click happened if inside rect
                 if (item.isPeriodToggle) {
-                    console.log("_onCanvasClick: Period toggle clicked. OLD this.showPeriodHighlights:", this.showPeriodHighlights);
                     this.showPeriodHighlights = !this.showPeriodHighlights;
-                    console.log("_onCanvasClick: Period toggle clicked. NEW this.showPeriodHighlights:", this.showPeriodHighlights);
                     // Ensure item.dataset exists before trying to set _hidden
                     if (item.dataset) {
                        item.dataset._hidden = !this.showPeriodHighlights;
-                       console.log("_onCanvasClick: Updated legend item._hidden to:", item.dataset._hidden);
                     }
                 } else if (item.dataset) { // Regular dataset legend item
                     item.dataset._hidden = !item.dataset._hidden;
@@ -1113,7 +1108,7 @@ class PureChart {
             let minValue, maxValue;
 
             if (allValuesForCurrentAxis.length === 0) {
-                // console.warn(`PureChart _calculateScale: No valid data for yAxis ID '${currentAxisID}'. Using default scale [0,1].`);
+                //
                 minValue = 0;
                 maxValue = 1;
             } else {
@@ -1150,10 +1145,10 @@ class PureChart {
 
             let yScale;
             if (this.drawArea.height <= 0) {
-                // console.warn(`PureChart _calculateScale: drawArea.height is ${this.drawArea.height} for yAxis ID '${currentAxisID}'. Defaulting yScale to 1.`);
+                //
                 yScale = 1;
             } else if (maxValue - minValue === 0) { // This case should ideally be handled by the minValue === maxValue logic above
-                // console.warn(`PureChart _calculateScale: Value range is 0 for yAxis ID '${currentAxisID}'. Defaulting yScale to 1.`);
+                //
                 yScale = 1;
             }
             else {
@@ -1831,7 +1826,7 @@ class PureChart {
     _drawBarChart() {
         const { data, options: chartOptions, type: globalType } = this.config;
         if (!data.labels || data.labels.length === 0 || !data.datasets || data.datasets.length === 0) {
-            // console.warn("PureChart _drawBarChart: Missing labels or datasets."); // This can be noisy if only line charts are present
+            //
             return;
         }
 
@@ -1932,7 +1927,7 @@ class PureChart {
     _drawLineChart() {
         const { data: d, options: o, type: globalType } = this.config; const lO = o.line;
         if (!d.datasets || d.datasets.length === 0) {
-            // console.warn("PureChart _drawLineChart: Missing datasets."); // Can be noisy if only bar charts
+            //
             return;
         }
 
@@ -2082,7 +2077,7 @@ class PureChart {
 
         const targetTime = new Date(dateString).getTime();
         if (isNaN(targetTime)) {
-            // console.warn(`PureChart: Invalid dateString provided to _findXCoordinateForDate: ${dateString}`);
+            //
             return null;
         }
 
@@ -2092,7 +2087,7 @@ class PureChart {
         for (let i = 0; i < labels.length; i++) {
             const labelTime = new Date(labels[i]).getTime();
             if (isNaN(labelTime)) {
-                // console.warn(`PureChart: Invalid date in data.labels at index ${i}: ${labels[i]}`);
+                //
                 continue; // Skip invalid labels
             }
 
@@ -2320,7 +2315,7 @@ class PureChart {
 
             if (!currentAxisScale || !currentAxisScale.scale || currentAxisScale.scale <= 0 || !isFinite(currentAxisScale.scale) ||
                 !currentAxisScale.axisConfig || !currentAxisScale.axisConfig.display) {
-                // console.warn(`PureChart Annotation: Skipping annotation for Y-axis ID '${targetYAxisId}' due to invalid/hidden target Y-axis or scale.`, annotation);
+                //
                 return; // Skip this annotation
             }
             
@@ -2469,7 +2464,6 @@ class PureChart {
     }
 
     _drawPeriodHighlights() {
-        console.log("_drawPeriodHighlights: Called. Current this.showPeriodHighlights:", this.showPeriodHighlights);
         if (!this.showPeriodHighlights) {
             return;
         }
@@ -2487,7 +2481,7 @@ class PureChart {
             const endX = this._findXCoordinateForDate(period.endDate);
 
             if (startX === null || endX === null || startX >= endX) {
-                // console.warn(`PureChart: Skipping period highlight "${period.name}" due to invalid/unmappable dates or zero/negative width.`);
+                //
                 return;
             }
 
@@ -2593,7 +2587,7 @@ class PureChart {
                 if (validSma && sourceDs) {
                     if (sourceDs._hidden) { // If source dataset is hidden, SMA becomes an empty line
                         ds.values = numLabels > 0 ? new Array(numLabels).fill(null) : [];
-                        // console.log(`PureChart SMA Info: Source dataset for '${ds.label}' is hidden. SMA will be empty.`);
+                        //
                     } else if (!sourceDs.values || sourceDs.values.length === 0) {
                         console.warn(`PureChart SMA Error: Source dataset ${ds.sourceDatasetIndex} ('${sourceDs.label}') for SMA dataset ${index} ('${ds.label}') has no values.`);
                         ds.values = numLabels > 0 ? new Array(numLabels).fill(null) : [];
@@ -2668,6 +2662,6 @@ class PureChart {
         this._boundOnCanvasClick = null;
 
         this.isValid = false; // Mark as no longer valid
-        // console.log("PureChart instance destroyed.");
+        //
     }
 }

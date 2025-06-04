@@ -40,10 +40,6 @@
     };
 
     function handleSuggestionItemClick(symbol, name, price) {
-        console.log("Suggestion clicked!"); // Translated
-        console.log("  Symbol:", symbol); // Translated
-        console.log("  Name  :", name); // Translated
-        console.log("  Price :", price, "(type:", typeof price, ")"); // Translated
         // Customize this function.
         // Example: searchInput.value = name; // Fill the field with the name
         hideSuggestions();
@@ -177,7 +173,6 @@
     };
 
     const fetchSuggestionsFromServer = async (query) => {
-        console.log(`Fetching suggestions for query: "${query}"`); // Translated
         suggestionsBox.innerHTML = '<p class="loading-message">Loading...</p>'; // Translated
         suggestionsBox.classList.add('visible');
         try {
@@ -193,7 +188,6 @@
                 throw new Error(errorText);
             }
             const suggestionsData = await response.json();
-            console.log('Suggestions received from server:', suggestionsData); // Translated
             if (suggestionsData && suggestionsData.length > 0) {
                 displaySuggestions(suggestionsData);
             } else {
@@ -271,5 +265,4 @@
             }
         }
     });
-    console.log("Advanced search script (server-side) initialized."); // Translated
 });

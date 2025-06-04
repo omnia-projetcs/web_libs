@@ -1,3 +1,8 @@
+## Extended-search
+A fast and light advanced search input field with flags and multi-line information.
+![Search Example](search.jpg)
+
+---
 # Advanced Search Suggestion Component
 
 ## Overview

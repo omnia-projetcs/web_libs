@@ -58,7 +58,7 @@ class PanoramaGrid {
         // directly use the rowHeight option.
         // The container will scroll if items exceed its fixed height.
         this.currentRowHeight = this.options.rowHeight;
-        // console.log('PanoramaGrid: Set currentRowHeight to fixed value:', this.currentRowHeight);
+        //
     }
 
     _debounce(func, delay) {
@@ -70,7 +70,6 @@ class PanoramaGrid {
     }
 
     _handleGridResize() {
-        console.log('PanoramaGrid: Window resize detected.');
         this._calculateCurrentRowHeight(); // Recalculate current row height first
 
         // Log new cellWidth (optional, as it's not stored directly as a class property impacting row height)
@@ -80,9 +79,8 @@ class PanoramaGrid {
             const containerPaddingRight = parseFloat(containerStyle.paddingRight) || 0;
             const contentWidth = this.containerElement.clientWidth - containerPaddingLeft - containerPaddingRight;
             const cellWidth = (contentWidth - (this.options.columns - 1) * this.options.gap) / this.options.columns;
-            // console.log('PanoramaGrid: cellWidth for reference on resize:', cellWidth);
+            //
         }
-        console.log('PanoramaGrid: Recalculated currentRowHeight:', this.currentRowHeight, 'Updating item DOM positions.');
 
         // Re-apply styles to all items
         this.items.forEach(itemObject => {
@@ -93,7 +91,6 @@ class PanoramaGrid {
     }
 
     destroy() {
-        console.log('PanoramaGrid: Destroying grid instance and cleaning up listeners.');
         if (this._debouncedResizeHandler) {
             window.removeEventListener('resize', this._debouncedResizeHandler);
         }
@@ -145,8 +142,6 @@ class PanoramaGrid {
         // Note: this.options.rowHeight will be used by JavaScript for item placement logic,
         // rather than directly setting a CSS grid-auto-rows property that might conflict with dynamic content.
 
-        console.log('PanoramaGrid initialized for:', this.containerElement.id, 'with options:', this.options);
-        console.log('CSS variables --pg-columns and --pg-gap set on container.');
     }
 
     addItem(itemConfig) {
@@ -205,7 +200,7 @@ class PanoramaGrid {
                 if (collisionDetected) {
                     currentLayout.y++; // Move down one row
                     placementAttempts++;
-                    // console.log(`PanoramaGrid: Collision, trying y=${currentLayout.y}`);
+                    //
                 }
 
                 if (placementAttempts >= maxPlacementAttempts) {
@@ -228,7 +223,6 @@ class PanoramaGrid {
         this._renderItem(newItemObject);
 
         this._emit('itemAdded', { ...newItemObject, element: undefined }); // Don't emit DOM element directly
-        console.log(`PanoramaGrid: Added item ID ${newItemId} with layout:`, newItemObject.layout, `(Attempts: ${placementAttempts})`);
         return newItemId;
     }
 
@@ -254,7 +248,6 @@ class PanoramaGrid {
         // Remove the item from the internal array
         this.items.splice(itemIndex, 1);
         this._emit('itemRemoved', itemId, { ...itemObject, element: undefined }); // Emit data of removed item
-        console.log(`PanoramaGrid: Removed item ID ${itemId}.`);
         return true;
     }
 
@@ -307,12 +300,6 @@ class PanoramaGrid {
         itemObject.element = itemElement; // Store reference to the DOM element
 
         // Debug logs before calling renderItemContent
-        console.log(`PanoramaGrid Debug: Preparing to call renderItemContent for itemId: ${itemObject.id}`);
-        console.log(`PanoramaGrid Debug: itemElement:`, itemElement);
-        console.log(`PanoramaGrid Debug: contentElement:`, contentElement);
-        console.log(`PanoramaGrid Debug: Is contentElement child of itemElement?`, itemElement.contains(contentElement));
-        console.log(`PanoramaGrid Debug: Is itemElement child of this.containerElement?`, this.containerElement.contains(itemElement));
-        console.log(`PanoramaGrid Debug: parent of contentElement:`, contentElement.parentElement);
         // Ensure itemElement has its expected class
         if (!itemElement.classList.contains('panorama-grid-custom-item')) {
             console.warn('PanoramaGrid Debug: itemElement is missing "panorama-grid-custom-item" class before renderItemContent call for ID:', itemObject.id);
@@ -345,7 +332,7 @@ class PanoramaGrid {
             this._handleDragStart(event, itemObject);
         });
 
-        // console.log(`PanoramaGrid: Rendered item ID ${itemObject.id}`, itemElement.style.cssText);
+        //
     }
 
     _handleDragStart(event, itemObject) {
@@ -385,7 +372,6 @@ class PanoramaGrid {
         document.addEventListener('mousemove', this._boundHandleDragMove);
         document.addEventListener('mouseup', this._boundHandleDragEnd);
 
-        console.log(`PanoramaGrid: Drag start on item ID ${itemObject.id}`, this.dragInitialMousePos);
     }
 
     _handleDragMove(event) {
@@ -471,7 +457,7 @@ class PanoramaGrid {
             }
         }
 
-        // console.log(`PanoramaGrid: Drag Move - dx:${dx}, dy:${dy}, gridDeltaX:${gridDeltaX}, gridDeltaY:${gridDeltaY}, Potential:`, this.draggedItem.potentialLayout);
+        //
     }
 
     _updateItemDOMPosition(itemObject) {
@@ -488,7 +474,7 @@ class PanoramaGrid {
         const itemHeight = (itemObject.layout.h * this.currentRowHeight) + ((itemObject.layout.h - 1) * this.options.gap); // Use currentRowHeight
         itemObject.element.style.height = `${itemHeight}px`;
 
-        // console.log(`PanoramaGrid: Updated DOM position for item ID ${itemObject.id} to`, itemObject.layout, `New itemHeight: ${itemHeight}px`);
+        //
     }
 
     _handleDragEnd(event) {
@@ -544,7 +530,6 @@ class PanoramaGrid {
                     if (!attemptCollision) {
                         finalLayout = { ...currentAttemptLayout }; // Found a non-colliding spot
                         foundNewSpot = true;
-                        console.log(`PanoramaGrid: Found non-colliding spot for item ID ${this.draggedItem.id} at y=${finalLayout.y} after ${attempt + 1} attempts.`);
                         break;
                     }
                 }
@@ -563,17 +548,14 @@ class PanoramaGrid {
 
             if (isActualMove) {
             this._emit('itemMoved', this.draggedItem.id, { ...this.draggedItem.layout });
-                console.log(`PanoramaGrid: Item ID ${this.draggedItem.id} final position:`, this.draggedItem.layout, initialCollision ? "(resolved after collision)" : "(direct placement)");
             } else if (initialCollision) { // Reverted or y-scan ended up at the same place as initial
                 console.warn(`PanoramaGrid: Item ID ${this.draggedItem.id} reverted to or resolved to initial position after collision. Layout:`, this.draggedItem.layout);
             } else { // No collision and no change from initial layout (e.g., a click or minor drag not changing cells)
-                 console.log(`PanoramaGrid: Item ID ${this.draggedItem.id} position effectively unchanged. Layout:`, this.draggedItem.layout);
             }
 
         } else {
             // If no potentialLayout, it means no valid drag move happened (e.g. just a click), so revert.
             this.draggedItem.layout = { ...this.draggedItemInitialLayout };
-            console.log(`PanoramaGrid: Item ID ${this.draggedItem.id} drag ended with no potential layout change (e.g. click). Layout:`, this.draggedItem.layout);
         }
 
         // Update the item's actual grid positioning in the DOM
@@ -586,7 +568,6 @@ class PanoramaGrid {
         document.removeEventListener('mousemove', this._boundHandleDragMove);
         document.removeEventListener('mouseup', this._boundHandleDragEnd);
 
-        console.log(`PanoramaGrid: Drag End for item ID ${this.draggedItem.id}. Final layout:`, this.draggedItem.layout);
 
         this.draggedItem = null;
         this.draggedItemInitialLayout = null;
@@ -621,7 +602,6 @@ class PanoramaGrid {
         document.addEventListener('mousemove', this._boundHandleResizeMove);
         document.addEventListener('mouseup', this._boundHandleResizeEnd);
 
-        console.log(`PanoramaGrid: Resize start on item ID ${itemObject.id}, Dir: ${this.resizeDirection}`);
     }
 
     _handleResizeMove(event) {
@@ -758,7 +738,7 @@ class PanoramaGrid {
         const itemHeight = (newH * this.currentRowHeight) + ((newH - 1) * this.options.gap); // Use dynamic row height
         this.resizeItem.element.style.height = `${itemHeight}px`;
 
-        // console.log(`PanoramaGrid: Resize Move - newW:${newW}, newH:${newH}, newItemHeight: ${itemHeight}px`);
+        //
     }
 
     _handleResizeEnd(event) {
@@ -796,7 +776,7 @@ class PanoramaGrid {
         } else {
             // If no potentialLayout (e.g. click without move), revert to ensure consistency
             this.resizeItem.layout = { ...this.resizeItemInitialLayout };
-            // console.log(`PanoramaGrid: No resize changes for item ID ${this.resizeItem.id}. Reverted to initial.`);
+            //
         }
 
         // Enforce minimums on the final layout before updating DOM and emitting event
@@ -830,7 +810,6 @@ class PanoramaGrid {
         const finalLayoutStr = JSON.stringify(this.resizeItem.layout);
         if (initialLayoutStr !== finalLayoutStr) {
             this._emit('itemResized', this.resizeItem.id, { ...this.resizeItem.layout });
-            console.log(`PanoramaGrid: Item ID ${this.resizeItem.id} resized to`, this.resizeItem.layout);
         }
 
 
@@ -841,7 +820,7 @@ class PanoramaGrid {
         document.removeEventListener('mousemove', this._boundHandleResizeMove);
         document.removeEventListener('mouseup', this._boundHandleResizeEnd);
 
-        // console.log(`PanoramaGrid: Resize End for item ID ${this.resizeItem.id}. Final layout:`, this.resizeItem.layout);
+        //
 
         this.resizeItem = null;
         this.resizeItemInitialLayout = null;
@@ -893,7 +872,6 @@ class PanoramaGrid {
         itemObject.layout = { ...newLayout };
         this._updateItemDOMPosition(itemObject);
         this._emit('itemLayoutUpdated', itemId, { ...itemObject.layout });
-        console.log(`PanoramaGrid: Layout updated for item ID ${itemId}.`, itemObject.layout);
         return true;
     }
 
@@ -940,11 +918,9 @@ class PanoramaGrid {
                 contentElement.innerHTML = `<p style="color:red;">Error re-rendering content. Type: ${itemObject.config.type}</p>`;
             }
         } else {
-             console.log(`PanoramaGrid: DOM element for item ${itemId} was missing. Configuration updated, content not re-rendered.`);
         }
         
         this._emit('itemConfigUpdated', itemId, { ...itemObject.config });
-        console.log(`PanoramaGrid: Configuration updated for item ID ${itemId}. Content re-rendering attempted if element was present.`);
         return true;
     }
 
@@ -958,7 +934,6 @@ class PanoramaGrid {
         // Clear internal state
         this.items = [];
         this.itemIdCounter = 0;
-        console.log('PanoramaGrid: Grid cleared.');
     }
 
     loadLayout(layoutData) {
@@ -978,7 +953,6 @@ class PanoramaGrid {
                 this.containerElement.style.setProperty('--pg-columns', this.options.columns);
                 this.containerElement.style.setProperty('--pg-gap', `${this.options.gap}px`);
             }
-            console.log('PanoramaGrid: Grid options restored.', this.options);
         }
 
         layoutData.items.forEach(itemData => {
@@ -1000,7 +974,6 @@ class PanoramaGrid {
 
 
         this._emit('layoutLoaded');
-        console.log('PanoramaGrid: Layout loaded successfully.');
         return true;
     }
 
@@ -1081,7 +1054,6 @@ class PanoramaGrid {
                 // Content is null or undefined, leave it empty
             }
             this._emit('itemContentUpdated', itemObject.id, itemObject.config.content);
-            console.log(`PanoramaGrid: Content updated for item ID ${itemId}.`);
             return true;
         } else {
             console.warn(`PanoramaGrid: Content container element not found for item ID ${itemId}. Config updated, but DOM not.`);
