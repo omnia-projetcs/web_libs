@@ -2,7 +2,7 @@
  * @file dynamic-table.js
  * @description Light and fast html table
  * @author Nicolas HANTEVILLE
- * @version 0.13
+ * @version 0.15
  *
  * Copyright 2025 Nicolas HANTEVILLE
  * @link https://github.com/omnia-projetcs/web_libs

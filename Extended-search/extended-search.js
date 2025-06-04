@@ -2,6 +2,7 @@
  * @file extended-search.js
  * @description Input search extended function with flags and more informations
  * @author Nicolas HANTEVILLE
+ * @version 0.4.0
  *
  * Copyright 2025 Nicolas HANTEVILLE
  * @link https://github.com/omnia-projetcs/web_libs
