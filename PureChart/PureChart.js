@@ -970,8 +970,7 @@ class PureChart {
         }));
 
         // Add legend item for period highlights toggle
-        if (this.config.options.periodHighlights && 
-            this.config.options.periodHighlights.display && // Check if global display is true
+        if (this.config.options.periodHighlights &&
             this.config.options.periodHighlights.periods && 
             this.config.options.periodHighlights.periods.length > 0 && 
             this.config.options.periodHighlights.legendLabel) {
