@@ -78,10 +78,7 @@ class Panorama {
   }
 
   _renderPanoramaItemContent(type, config, contentContainerElement, itemId) {
-    console.log(`Panorama Debug: _renderPanoramaItemContent called for itemId: ${itemId}, type: ${type}`);
-    console.log(`Panorama Debug: received contentContainerElement:`, contentContainerElement);
     if (contentContainerElement) {
-        console.log(`Panorama Debug: contentContainerElement.parentElement is:`, contentContainerElement.parentElement);
         if (contentContainerElement.parentElement && !contentContainerElement.parentElement.classList.contains('panorama-grid-custom-item')) {
             console.warn('Panorama Debug: contentContainerElement.parentElement does NOT have "panorama-grid-custom-item" class for itemId:', itemId, 'Parent:', contentContainerElement.parentElement);
         }
@@ -255,7 +252,6 @@ class Panorama {
     // we would iterate through this.grid.items and tell PanoramaGrid to update/re-render them,
     // or PanoramaGrid might have its own full re-render method.
     // For now, this method's role is reduced.
-    console.log("Panorama.renderDashboard() called. Actual rendering is now largely managed by PanoramaGrid.");
     // If PanoramaGrid's loadLayout doesn't trigger render for each item,
     // this could be a place to trigger a full render if needed, e.g., by calling a
     // hypothetical this.grid.renderAllItems() or similar.
@@ -460,7 +456,6 @@ _renderChart(item, contentContainer) {
     if (!checkCanvas) {
         console.error(`PANORAMA DEBUG (pre-rAF): Canvas ${canvas.id} was NOT found in DOM immediately after appendChild! Item ID: ${item.id}`);
     } else {
-        console.log(`PANORAMA DEBUG (pre-rAF): Canvas ${canvas.id} was found in DOM. Item ID: ${item.id}`);
     }
 
     const chartConfig = { // Define chartConfig outside rAF if it doesn't depend on things inside it
@@ -491,7 +486,6 @@ _renderChart(item, contentContainer) {
 
             if (typeof PureChart === 'function') {
                 new PureChart(canvas.id, chartConfig);
-                console.log(`Rendering chart on canvas ${canvas.id} for item ${item.id} (via rAF).`);
             } else {
                 console.error("Error: PureChart is not defined (rAF). Ensure PureChart.js is loaded.");
                 if (chartHostDiv) { // Target chartHostDiv
@@ -560,7 +554,6 @@ _renderChart(item, contentContainer) {
             if (typeof createDynamicTable === 'function') {
                 // Pass the config, ensuring containerId within it is correct
                 createDynamicTable(tableConfig); 
-                console.log(`Rendering table in container ${actualTableContainerId} for item ${item.id} (via rAF) with config:`, item.config);
             } else {
                 console.error("Error: createDynamicTable function is not defined globally (rAF). Check Dynamic-table.js.");
                 if (tableHostDiv) { // Target tableHostDiv
@@ -908,7 +901,7 @@ _renderChart(item, contentContainer) {
       }
 
       this.addItem(type, config, layout);
-      // console.log(`Item from URL "${url}" added successfully.`); // Optional success log
+      //
 
     } catch (error) {
       alert(`Failed to add item from URL: ${error.message}`);

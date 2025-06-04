@@ -21,11 +21,7 @@ function assertTrue(condition, message) {
 }
 
 function printTestSummary() {
-    console.log(`\n--- Test Summary ---`);
-    console.log(`Total Assertions: ${assertions.count}`);
-    console.log(`Failures: ${assertions.failures}`);
     if (assertions.failures === 0) {
-        console.log("All tests passed!");
     } else {
         console.error(`${assertions.failures} tests failed.`);
     }
@@ -342,7 +338,6 @@ class TestPureChart {
 
 
 // --- Test Cases ---
-console.log("Starting PureChart Label Filtering Tests...");
 
 // Test 1: Basic overlap prevention
 let chart1Config = {
@@ -364,7 +359,6 @@ if (drawn1.length === 2) {
     assertEquals("Dec", drawn1[1].text, "Test 1: Second label should be Dec");
     assertTrue(Math.abs(drawn1[1].x - (0 + 30 + 40 + 30/2)) < 0.01, `Test 1: Dec X pos. Expected: 85, Actual: ${drawn1[1].x.toFixed(1)}`);
 }
-console.log(`Test 1: Drawn ${drawn1.length} labels: ${drawn1.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 
 // Test 2: xAxis.maxLabelsToShow
@@ -388,7 +382,6 @@ if (drawn2.length === 3) {
     assertEquals("L10", drawn2[2].text, "Test 2: Last label L10");
     assertTrue(Math.abs(drawn2[2].x - (0 + 20 + 120 + 20 + 120 + 20/2)) < 0.01, "Test 2: L10 X pos"); // Exp 290
 }
-console.log(`Test 2: Drawn ${drawn2.length} labels: ${drawn2.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 
 // Test 3: forceShowFirstAndLastLabel: false
@@ -411,7 +404,6 @@ if (drawn3.length === 2) {
     assertEquals("S3", drawn3[1].text, "Test 3: Second label S3");
     assertTrue(Math.abs(drawn3[1].x - (0 + 20 + 110 + 20/2)) < 0.01, "Test 3: S3 X pos"); // Exp 140
 }
-console.log(`Test 3: Drawn ${drawn3.length} labels (forceShowFirstAndLast=false): ${drawn3.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 
 // Test 4: Dynamic calculation of maxLabelsToShow (no explicit maxLabelsToShow)
@@ -443,7 +435,6 @@ if (drawn4.length === 6) {
     assertEquals("O", drawn4[drawn4.length-1].text, "Test 4: Last label O");
     assertTrue(Math.abs(drawn4[drawn4.length-1].x - (currentX + labelWidth/2)) < 0.01, `Test 4: O X pos`);
 }
-console.log(`Test 4: Drawn ${drawn4.length} labels (dynamic): ${drawn4.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 
 // Test 5: No labels
@@ -492,7 +483,6 @@ if (drawn7.length === 2) {
     assertEquals("Short", drawn7[1].text, "Test 7: Second label is Short.");
     assertTrue(Math.abs(drawn7[1].x - (0 + 400 + 5 + 50/2)) < 0.01, "Test 7: Short label X pos"); // Exp 430
 }
-console.log(`Test 7: Drawn ${drawn7.length} labels (long first/last, force=true): ${drawn7.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 
 // Test 8: forceShowFirstAndLastLabel: false, with very wide first/last that shouldn't appear
@@ -520,7 +510,6 @@ if(drawn8.length === 3) {
     assertEquals("Mid3", drawn8[2].text, "Test 8: Third drawn is Mid3");
     assertTrue(Math.abs(drawn8[2].x - (0 + labelWidth + expectedSpacing + labelWidth + expectedSpacing + labelWidth/2)) < 0.01, "Test 8: Mid3 X pos");
 }
-console.log(`Test 8: Drawn ${drawn8.length} labels: ${drawn8.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 // Test 9: All labels fit comfortably with default settings
 let chart9Config = {
@@ -544,7 +533,6 @@ if (drawn9.length === 3) {
     assertEquals("Three", drawn9[2].text, "Test 9: Third label 'Three'");
     assertTrue(Math.abs(drawn9[2].x - (0 + 24 + expectedSpacing + 24 + expectedSpacing + 40/2)) < 0.01, "Test 9: Three X pos");
 }
-console.log(`Test 9: Drawn ${drawn9.length} labels: ${drawn9.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 
 // Test 10: Overlap check logic - ensure labels don't visually overlap
@@ -567,7 +555,6 @@ if (drawn10.length === 2) {
     assertEquals("LabelFive", drawn10[1].text, "Test 10: Second label LabelFive");
     assertTrue(Math.abs(drawn10[1].x - (0 + 56 + 74 + 70/2)) < 0.01, "Test 10: LabelFive X pos");
 }
-console.log(`Test 10: Drawn ${drawn10.length} labels: ${drawn10.map(l=>`${l.text}@${l.x.toFixed(0)}`).join(', ')}`);
 
 
 // Test 11: Verify Line Chart Label Positioning (Pinned First/Last, Proportional Intermediate)
@@ -596,7 +583,6 @@ if (drawn11.length === 4) {
     assertEquals("End", drawn11[3].text);
     assertTrue(Math.abs(drawn11[3].x - (10 + 40 + expectedSpacing + 50 + expectedSpacing + 50 + expectedSpacing + 30/2)) < 0.01, `Test 11: End X`);
 }
-console.log(`Test 11: Drawn ${drawn11.length} labels. Actual positions: ${drawn11.map(l=>l.text + '@' + (l.x !== undefined ? l.x.toFixed(0) : 'undef')).join(', ')}`);
 
 // Test 12: Verify Line Chart Label Positioning with 3 labels (Pinned First/Last)
 // Name historical.
@@ -622,7 +608,6 @@ if (drawn12.length === 3) {
     assertEquals("Mid", drawn12[2].text);
     assertTrue(Math.abs(drawn12[2].x - (5 + 30 + expectedSpacing + 150 + expectedSpacing + 50/2)) < 0.01, `Test 12: Mid X`);
 }
-console.log(`Test 12: Drawn ${drawn12.length} labels. Actual positions: ${drawn12.map(l=>l.text + '@' + (l.x !== undefined ? l.x.toFixed(0) : 'undef')).join(', ')}`);
 
 // Test 13: Verify Bar Chart X-Axis Label Positioning (Slot-Based Centering)
 // Name historical.
@@ -654,7 +639,6 @@ if (drawn13.length === 3) {
     assertEquals("BarThreeLonger", drawn13[2].text);
     assertTrue(Math.abs(drawn13[2].x - (20 + 40 + expectedSpacing + 50 + expectedSpacing + 90/2)) < 0.01, `Test 13: BarThreeLonger X`);
 }
-console.log(`Test 13: Bar chart labels: ${drawn13.map(l=>l.text + '@' + (l.x !== undefined ? l.x.toFixed(0) : 'undef')).join(', ')}`);
 
 printTestSummary();
 // To run this in a browser, you'd save it as an HTML file or include this script

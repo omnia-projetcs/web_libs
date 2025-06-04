@@ -107,17 +107,6 @@ html, body {
   border-style: solid;
 }
 
-.grid-stack-item-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  overflow: auto;
-  color: #495057;
-  text-align: center;
-  flex-grow: 1;
-}
-
 /* Item Controls Styling (Menu Button and Popup) - Positioned absolutely within .panorama-item */
 .panorama-item-controls {
   position: absolute; /* Changed from relative */

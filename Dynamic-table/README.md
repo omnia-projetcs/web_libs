@@ -1,3 +1,17 @@
+## Dynamic-table
+A fast, light, and customizable HTML table generator.
+![Table Example](table.jpg)
+
+**Features:**
+*   Data loading from JSON path or direct JSON data.
+*   Sortable and filterable columns.
+*   Custom cell rendering, including embedding charts (using PureChart.js).
+*   Pagination, global search, results count, and rows-per-page selector.
+*   Column visibility toggling.
+*   Filter multi select
+*   Darkmode
+
+---
 # dynamic-table.js - Documentation
 
 ## 1. Overview

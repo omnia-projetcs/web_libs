@@ -2,11 +2,11 @@
 
 ## Description
 
-Panorama is a dynamic, grid-based dashboard component that allows users to create, customize, and manage interactive dashboards. It leverages GridStack.js for layout management and supports various content types.
+Panorama is a dynamic, grid-based dashboard component that allows users to create, customize, and manage interactive dashboards. It uses a custom grid system for layout management and supports various content types.
 
 ## Features
 
-*   **Grid-Based Layout:** Items are arranged on a draggable and resizable grid, powered by GridStack.js.
+*   **Grid-Based Layout:** Items are arranged on a draggable and resizable grid.
 *   **Multiple Item Types:** Supports a variety of content:
     *   **Text:** Plain text blocks.
     *   **Title:** Headings (H1-H6).
@@ -15,11 +15,11 @@ Panorama is a dynamic, grid-based dashboard component that allows users to creat
     *   **Table:** Integrates with `dynamic-table.js` to display tabular data.
 *   **Edit Functionality:** In-place editing for item content and configuration via a modal interface.
 *   **Save and Load:** Dashboard configurations can be saved to and loaded from JSON strings, allowing for persistence and sharing of layouts.
-*   **Responsive Design:** Adapts to different screen sizes (inherited from GridStack.js capabilities).
+*   **Responsive Design:** Adapts to different screen sizes.
 
 ## Dependencies
 
-*   **GridStack.js:** For the core grid layout and item manipulation. (Included via CDN in `demo.html`)
+*   **PanoramaGrid.js:** For the core grid layout and item manipulation.
 *   **PureChart.js:** For rendering chart items. (Assumed to be in `../PureChart/`)
 *   **dynamic-table.js:** For rendering table items. (Assumed to be in `../Dynamic-table/`)
 
@@ -27,31 +27,30 @@ Panorama is a dynamic, grid-based dashboard component that allows users to creat
 
 1.  **Include CSS Files:**
     ```html
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@latest/dist/gridstack.min.css" />
     <link rel="stylesheet" href="../PureChart/PureChart.css" />
     <link rel="stylesheet" href="../Dynamic-table/dynamic-table.css" />
-    <link rel="stylesheet" href="panorama.css" /> 
+    <link rel="stylesheet" href="panorama.css" />
+    <link rel="stylesheet" href="PanoramaGrid.css" />
     ```
 
 2.  **Include JS Files:**
     ```html
-    <script src="https://cdn.jsdelivr.net/npm/gridstack@latest/dist/gridstack-all.js"></script>
     <script src="../PureChart/PureChart.js"></script>
     <script src="../Dynamic-table/dynamic-table.js"></script>
+    <script src="PanoramaGrid.js"></script>
     <script src="panorama.js"></script>
     ```
 
 3.  **HTML Structure:**
-    Create a container for GridStack within your main dashboard area:
+    Create a container for the Panorama grid within your main dashboard area:
     ```html
     <div id="your-main-dashboard-container">
-      <!-- This specific ID 'panorama-grid-container' is used by the Panorama class constructor -->
-      <div id="panorama-grid-container" class="grid-stack"></div>
+      <div id="panorama-grid-container"></div> <!-- This ID is used by Panorama and PanoramaGrid -->
     </div>
     ```
 
 4.  **Instantiate Panorama:**
-    In your JavaScript, initialize the Panorama component by passing the ID of the GridStack container:
+    In your JavaScript, initialize the Panorama component by passing the ID of the grid container:
     ```javascript
     document.addEventListener('DOMContentLoaded', () => {
       const panorama = new Panorama('panorama-grid-container');
