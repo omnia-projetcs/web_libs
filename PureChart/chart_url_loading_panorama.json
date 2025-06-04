@@ -1,0 +1,17 @@
+{
+  "type": "chart",
+  "config": {
+    "chartType": "bar",
+    "chartData": {
+      "labels": ["Rouge", "Bleu", "Jaune"],
+      "datasets": [{
+        "label": "Votes",
+        "values": [12, 19, 3]
+      }]
+    },
+    "chartOptions": {
+      "title": "Graphique Circulaire depuis URL"
+    }
+  },
+  "layout": { "x": 1, "y": 1, "w": 5, "h": 3 }
+}

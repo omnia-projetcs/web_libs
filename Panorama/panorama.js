@@ -33,6 +33,26 @@ class Panorama {
     // For example, this.items becomes this.grid.items (though direct access might be discouraged)
     // this.itemIdCounter becomes this.grid.itemIdCounter
 
+    // Bind methods
+    this.addItemFromUrl = this.addItemFromUrl.bind(this); // For the new method
+
+    // Event listener for "Add from URL"
+    const addItemFromUrlBtn = document.getElementById('add-item-from-url-btn');
+    const itemUrlInput = document.getElementById('item-url-input');
+
+    if (addItemFromUrlBtn && itemUrlInput) {
+      addItemFromUrlBtn.addEventListener('click', () => {
+        const url = itemUrlInput.value.trim();
+        if (url) {
+          this.addItemFromUrl(url);
+          itemUrlInput.value = ''; // Clear input after attempt
+        } else {
+          alert('Please enter a URL.');
+        }
+      });
+    } else {
+      console.warn('Panorama: "Add from URL" button or input field not found. Ensure demo_full.html is updated.');
+    }
   }
 
   _renderPanoramaItemContent(type, config, contentContainerElement, itemId) {
@@ -815,5 +835,62 @@ _renderChart(item, contentContainer) {
       this.updateItemConfig(this.editingItemId, newConfig, itemType);
     }
     this._hideModal();
+  }
+
+  async addItemFromUrl(url) {
+    if (!url) {
+      alert('URL cannot be empty.');
+      return;
+    }
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.statusText}`);
+      }
+      const data = await response.json();
+
+      // Validate JSON structure
+      if (!data || typeof data !== 'object') {
+        alert('Invalid JSON format: Data is not an object.');
+        console.error('Invalid JSON format from URL:', data);
+        return;
+      }
+
+      const { type, config, layout } = data;
+
+      if (!type || typeof type !== 'string') {
+        alert('Invalid item data: "type" is missing or not a string.');
+        console.error('Missing or invalid "type" in JSON from URL:', data);
+        return;
+      }
+      if (!config || typeof config !== 'object') {
+        alert('Invalid item data: "config" is missing or not an object.');
+        console.error('Missing or invalid "config" in JSON from URL:', data);
+        return;
+      }
+      if (!layout || typeof layout !== 'object') {
+        // Try to get default layout if not provided, or require it
+        // For now, let's require it to match the spec closely.
+        alert('Invalid item data: "layout" is missing or not an object.');
+        console.error('Missing or invalid "layout" in JSON from URL:', data);
+        return;
+      }
+      
+      // Optional: More specific validation for layout properties (x, y, w, h)
+      if (typeof layout.x !== 'number' || typeof layout.y !== 'number' || 
+          typeof layout.w !== 'number' || typeof layout.h !== 'number') {
+        alert('Invalid item data: "layout" properties (x, y, w, h) must be numbers.');
+        console.error('Invalid "layout" properties in JSON from URL:', data);
+        return;
+      }
+
+      this.addItem(type, config, layout);
+      // console.log(`Item from URL "${url}" added successfully.`); // Optional success log
+
+    } catch (error) {
+      alert(`Failed to add item from URL: ${error.message}`);
+      console.error('Error in addItemFromUrl:', error);
+    }
   }
 }

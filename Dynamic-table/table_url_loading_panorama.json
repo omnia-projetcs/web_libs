@@ -1,0 +1,21 @@
+{
+  "type": "table",
+  "config": {
+    "tableData": [
+      { "id": 1, "nom": "Alice", "age": 30, "ville": "Paris" },
+      { "id": 2, "nom": "Bob", "age": 24, "ville": "Lyon" },
+      { "id": 3, "nom": "Charlie", "age": 35, "ville": "Marseille" }
+    ],
+    "tableColumns": [
+      { "key": "id", "header": "ID", "sortable": true, "filterable": true },
+      { "key": "nom", "header": "Nom", "sortable": true, "filterable": true },
+      { "key": "age", "header": "Age", "sortable": true, "filterable": false },
+      { "key": "ville", "header": "Ville", "sortable": true, "filterable": true }
+    ],
+    "tableOptions": {
+      "caption": "Liste des Utilisateurs (depuis URL)",
+      "itemsPerPage": 5
+    }
+  },
+  "layout": { "x": 1, "y": 1, "w": 7, "h": 3 }
+}
