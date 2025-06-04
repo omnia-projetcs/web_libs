@@ -1010,7 +1010,7 @@ class PureChart {
                 w: itemSegmentWidth,
                 h: itemHeight
             };
-            this.interactiveLegendItems.push({ rect: legendItemRect, dataset: item.dataset, datasetIndex: item.datasetIndex });
+            this.interactiveLegendItems.push({ rect: legendItemRect, dataset: item.dataset, datasetIndex: item.datasetIndex, isPeriodToggle: item.isPeriodToggle || false });
 
             this.ctx.fillStyle = item.color;
             if (legend.markerStyle === 'circle') {
