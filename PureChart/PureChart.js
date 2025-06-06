@@ -92,7 +92,7 @@ class PureChart {
                     id: 'left', // Default ID for the first axis
                     position: 'left', // Default position
                     display: true, 
-                    beginAtZero: true, 
+                    beginAtZero: true, // If true, the Y-axis scale will include 0. Handles negative values by scaling from the data's minimum to 0 if all data is negative, or data min to data max if data is mixed (when data crosses zero) or all positive.
                     title: '', 
                     displayTitle: true, 
                     maxTicks: 5, 
@@ -1108,16 +1108,18 @@ class PureChart {
             let minValue, maxValue;
 
             if (allValuesForCurrentAxis.length === 0) {
-                //
                 minValue = 0;
-                maxValue = 1;
+                maxValue = 1; // Default scale 0-1 if no data
             } else {
-                minValue = axisConfig.beginAtZero ? 0 : Math.min(...allValuesForCurrentAxis);
-                maxValue = Math.max(...allValuesForCurrentAxis);
+                let actualDataMin = Math.min(...allValuesForCurrentAxis);
+                let actualDataMax = Math.max(...allValuesForCurrentAxis);
 
                 if (axisConfig.beginAtZero) {
-                    minValue = Math.min(0, minValue);
-                    maxValue = Math.max(0, maxValue);
+                    minValue = Math.min(0, actualDataMin);
+                    maxValue = Math.max(0, actualDataMax);
+                } else {
+                    minValue = actualDataMin;
+                    maxValue = actualDataMax;
                 }
             }
 
@@ -1306,15 +1308,53 @@ class PureChart {
 
         // X-Axis
         const oX = options.xAxis; // options = this.config.options, data = this.config.data
+
+        // --- START: Calculate xAxisLineY for the main X-axis ---
+        let yAxisForXPositionConfig = null;
+        let yScaleInfoForXPosition = null;
+
+        if (primaryGridAxisId && this.yAxisScales[primaryGridAxisId] && this.yAxisScales[primaryGridAxisId].axisConfig.display) {
+            yScaleInfoForXPosition = this.yAxisScales[primaryGridAxisId];
+            yAxisForXPositionConfig = yScaleInfoForXPosition.axisConfig;
+        } else {
+            if (options.yAxes && options.yAxes.length > 0) {
+                for (const axisCfg of options.yAxes) {
+                    if (axisCfg.display && this.yAxisScales[axisCfg.id]) {
+                        yScaleInfoForXPosition = this.yAxisScales[axisCfg.id];
+                        yAxisForXPositionConfig = axisCfg;
+                        break;
+                    }
+                }
+            }
+        }
+
+        let xAxisLineY = this.drawArea.y + this.drawArea.height; // Default to bottom
+
+        if (yScaleInfoForXPosition && yScaleInfoForXPosition.scale > 0) {
+            const yMin = yScaleInfoForXPosition.min;
+            const yMax = yScaleInfoForXPosition.max;
+            const yScale = yScaleInfoForXPosition.scale;
+
+            if (yMin <= 0 && yMax >= 0) { // If zero is within the scale range
+                let calculatedZeroPixelY = this.drawArea.y + this.drawArea.height - ((0 - yMin) * yScale);
+                xAxisLineY = Math.max(this.drawArea.y, Math.min(calculatedZeroPixelY, this.drawArea.y + this.drawArea.height));
+            } else if (yMax < 0 && yAxisForXPositionConfig && yAxisForXPositionConfig.beginAtZero) {
+                // Handles case like [-10, 0] where yMax is 0 due to beginAtZero=true
+                // In this scenario, Y=0 is at the top of the drawArea.
+                xAxisLineY = this.drawArea.y;
+            }
+        }
+        // --- END: Calculate xAxisLineY ---
+
         if (oX.display && this.drawArea.width > 0) {
             // Set styles for X-axis line
             this.ctx.strokeStyle = oX.color || this.activePalette.axisColor;
-            this.ctx.lineWidth = 1; // Default line width for the axis itself
+            this.ctx.lineWidth = 1; // Standard width for the main X-axis line
 
             // Draw X-Axis Line (drawn if X-axis is displayed)
             this.ctx.beginPath();
-            this.ctx.moveTo(this.drawArea.x, this.drawArea.y + this.drawArea.height);
-            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, this.drawArea.y + this.drawArea.height);
+            this.ctx.moveTo(this.drawArea.x, xAxisLineY);
+            this.ctx.lineTo(this.drawArea.x + this.drawArea.width, xAxisLineY);
             this.ctx.stroke();
 
             // Logic for drawing labels and their associated grid lines
@@ -1331,7 +1371,7 @@ class PureChart {
                 let maxLabelsToShow = oX.maxLabelsToShow;
                 const minSpacingBetweenLabels = oX.minSpacingBetweenLabels !== undefined ? oX.minSpacingBetweenLabels : 5;
                 const labelYOffset = oX.labelYOffset || 8;
-                const labelYPos = this.drawArea.y + this.drawArea.height + labelYOffset;
+                const labelYPos = xAxisLineY + labelYOffset;
                 let lastDrawnLabelXEnd = -Infinity;
 
                 const xLabelSlotWidth = numLabels > 0 ? this.drawArea.width / numLabels : this.drawArea.width;
@@ -1409,6 +1449,27 @@ class PureChart {
                             const groupCanvasXStart = this.drawArea.x + (i * groupTotalWidth) + (actualGroupSpacing / 2);
                             const labelXPos = groupCanvasXStart + groupDrawableWidth / 2;
                             const labelText = String(data.labels[i]);
+
+                            // Ensure font is set for accurate measurement and drawing style
+                            this.ctx.font = oX.labelFont;
+                            this.ctx.textAlign = 'center'; // Ensure textAlign is center for bg calculation
+                            this.ctx.textBaseline = 'top'; // Ensure textBaseline is top for bg calculation
+
+                            const textMetrics = this.ctx.measureText(labelText);
+                            const fontHeightMatch = oX.labelFont.match(/(\d+)px/);
+                            const fontHeight = fontHeightMatch ? parseInt(fontHeightMatch[1], 10) : 10;
+                            const bgPadding = { x: 3, y: 1 };
+                            const bgWidth = textMetrics.width + bgPadding.x * 2;
+                            const bgHeight = fontHeight + bgPadding.y * 2;
+                            const bgX = labelXPos - (textMetrics.width / 2) - bgPadding.x;
+                            const bgY = labelYPos - bgPadding.y;
+
+                            const originalFillStyleForLabel = this.ctx.fillStyle;
+                            this.ctx.fillStyle = (this.activePalette && this.activePalette.backgroundColor) ? this.activePalette.backgroundColor : 'white';
+                            this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+                            this.ctx.fillStyle = originalFillStyleForLabel;
+                            
+                            // fillStyle for text is already set from outside this loop (oX.labelColor etc.)
                             this.ctx.fillText(labelText, labelXPos, labelYPos);
                         }
                     }
@@ -1562,9 +1623,35 @@ class PureChart {
 
                                 finalLabelsToDraw.forEach((label, k) => {
                                     const xPos = currentX + label.width / 2;
+                                    const labelText = label.text; // Use label.text from finalLabelsToDraw object
 
-                                    this.ctx.fillText(label.text, xPos, labelYPos);
-                                    currentX += label.width + finalSpacing;
+                                    // Ensure font, textAlign, and textBaseline are set correctly before drawing & measuring
+                                    // These are usually set before this loop (e.g., this.ctx.font = oX.labelFont)
+                                    // but good to be mindful. textAlign is 'center', textBaseline is 'top'.
+
+                                    // textMetrics for label.text can use label.width if already measured accurately,
+                                    // but for safety, or if label.width wasn't from the exact current ctx.font:
+                                    // const textMetrics = this.ctx.measureText(labelText);
+                                    // const currentTextWidth = textMetrics.width; 
+                                    // For this implementation, we'll assume label.width is accurate for the current font.
+                                    const currentTextWidth = label.width;
+
+                                    const fontHeightMatch = oX.labelFont.match(/(\d+)px/);
+                                    const fontHeight = fontHeightMatch ? parseInt(fontHeightMatch[1], 10) : 10;
+                                    const bgPadding = { x: 3, y: 1 };
+                                    const bgWidth = currentTextWidth + bgPadding.x * 2;
+                                    const bgHeight = fontHeight + bgPadding.y * 2;
+                                    const bgX = xPos - (currentTextWidth / 2) - bgPadding.x;
+                                    const bgY = labelYPos - bgPadding.y;
+
+                                    const originalFillStyleForLabel = this.ctx.fillStyle;
+                                    this.ctx.fillStyle = (this.activePalette && this.activePalette.backgroundColor) ? this.activePalette.backgroundColor : 'white';
+                                    this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+                                    this.ctx.fillStyle = originalFillStyleForLabel;
+                                    
+                                    // fillStyle for text is already set (oX.labelColor etc.)
+                                    this.ctx.fillText(labelText, xPos, labelYPos);
+                                    currentX += currentTextWidth + finalSpacing; // Use currentTextWidth for spacing
                                 });
                             }
                         }
@@ -1895,15 +1982,20 @@ class PureChart {
                 this.ctx.strokeStyle = borderColor || 'transparent'; 
                 this.ctx.lineWidth = borderWidth;
 
-                const topCornerRadius = chartOptions.bar.topCornerRadius || 0;
+                const cornerRadius = chartOptions.bar.topCornerRadius || 0; // Reuse topCornerRadius for symmetry
 
-                if (topCornerRadius > 0 && value >= 0 && barRect.h > 0) { // Only for positive bars with height
-                    const radiusSpec = { tl: topCornerRadius, tr: topCornerRadius, bl: 0, br: 0 };
+                if (cornerRadius > 0 && barRect.h > 0) {
+                    let radiusSpec;
+                    if (value >= 0) { // Positive or zero value, round top corners
+                        radiusSpec = { tl: cornerRadius, tr: cornerRadius, bl: 0, br: 0 };
+                    } else { // Negative value, round bottom corners
+                        radiusSpec = { tl: 0, tr: 0, bl: cornerRadius, br: cornerRadius };
+                    }
                     this._fillRoundRect(this.ctx, barRect.x, barRect.y, barRect.w, barRect.h, radiusSpec);
                     if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') {
                         this._strokeRoundRect(this.ctx, barRect.x, barRect.y, barRect.w, barRect.h, radiusSpec, borderWidth);
                     }
-                } else { // Standard drawing for negative bars or if radius is 0
+                } else { // No radius or no height, standard square drawing
                     if (barRect.h > 0) { // Ensure there's height to draw
                          this.ctx.fillRect(barRect.x, barRect.y, barRect.w, barRect.h);
                          if (borderWidth > 0 && this.ctx.strokeStyle !== 'transparent') {

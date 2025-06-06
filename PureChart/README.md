@@ -148,6 +148,45 @@ myChart.destroy();
 // myChart = null; // Optional: help garbage collector
 ```
 
+### Handling Negative Values
+
+PureChart supports the display of negative values in both bar and line charts, allowing for a comprehensive representation of your data. The primary way to control how negative values affect the Y-axis scale is through the `beginAtZero` option for each Y-axis configuration.
+
+*   **`options.yAxes[].beginAtZero`**:
+    *   **`true` (Default):** When set to true, the Y-axis will always include 0.
+        *   If all data points for an axis are negative (e.g., values from -10 to -2), the axis will automatically scale from the most negative data point up to 0 (e.g., Y-axis range of -10 to 0).
+        *   If data points are mixed (e.g., -10 to 20) or all positive, the axis will scale to include 0 and accommodate the full range of data.
+    *   **`false`:** When set to false, the Y-axis will scale to the actual minimum and maximum values of your data for that axis. This is useful if you want the axis to tightly fit the data range, even if all values are negative (e.g., an axis from -20 to -5).
+
+**Example:**
+
+```javascript
+new PureChart('myChartCanvas', {
+    data: {
+        labels: ['P1', 'P2', 'P3'],
+        datasets: [{
+            label: 'Profit/Loss',
+            values: [-50, 150, -20],
+            yAxisID: 'financialAxis' // Ensure this dataset is mapped to the configured Y-axis
+        }]
+    },
+    options: {
+        yAxes: [{
+            id: 'financialAxis',
+            position: 'left',
+            title: 'Amount ($)',
+            // beginAtZero: true, // Default behavior, will scale from -50 to 150
+            // beginAtZero: false, // Would also scale from -50 to 150 in this mixed case
+        }]
+        // To see specific negative scaling, e.g. if all values were [-50, -10, -20]:
+        // beginAtZero: true  => Y-axis from -50 to 0
+        // beginAtZero: false => Y-axis from -50 to -10 (approx, with buffering)
+    }
+});
+```
+
+**Note:** The `percentageDistribution` chart type does not support negative values, as its data items are expected to be non-negative contributions to a total.
+
 ---
 # PureChart.js - A Simple Pure JavaScript Charting Library
 
