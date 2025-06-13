@@ -76,7 +76,6 @@ function loadMindmapFromLocalStorage() {
       }
     } else {
       console.log('No mindmap data found in local storage. Starting fresh.');
-      // Ensure root has default x/y if not loaded
       if (!mindmapData.root.x || !mindmapData.root.y) {
           mindmapData.root.x = 50;
           mindmapData.root.y = 50;
@@ -85,7 +84,7 @@ function loadMindmapFromLocalStorage() {
   } catch (e) {
     console.error('Error loading from local storage:', e);
     showFeedback('Could not load data from local storage. Starting fresh.', true);
-     if (!mindmapData.root.x || !mindmapData.root.y) { // Ensure defaults on error too
+     if (!mindmapData.root.x || !mindmapData.root.y) {
         mindmapData.root.x = 50;
         mindmapData.root.y = 50;
     }
@@ -101,7 +100,7 @@ function clearLocalStorage() {
     mindmapData = {
         root: {
             id: 'root', text: 'Default Root', notes:'Cleared local data', children: [],
-            x: 50, y: 50 // Reset position for root
+            x: 50, y: 50
         }
     };
     nodeIdCounter = 0;
@@ -138,7 +137,7 @@ async function loadMindmapFromServer(mindmapId = 'sample-map-from-server') {
     const sampleServerData = {
       root: {
         id: 'server-root', text: `Loaded: ${mindmapId}`, notes: 'This data came from a (simulated) server.',
-        x: 50, y: 50, // Give it a default position
+        x: 50, y: 50,
         image: {src: 'https://via.placeholder.com/120/007bff/ffffff?text=Server+Image', alt:'Server Image'},
         children: [
           { id: generateNodeId(), text: 'Server Child 1', children: [] },
@@ -163,7 +162,7 @@ async function loadMindmapFromServer(mindmapId = 'sample-map-from-server') {
 
 // --- DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', () => {
-  mindmapContainer = document.getElementById('mindmap-container'); // Assign to global
+  mindmapContainer = document.getElementById('mindmap-container');
   svgLayer = document.getElementById('mindmap-svg-layer');
 
   function updateContainerRect() {
@@ -174,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
   updateContainerRect();
   window.addEventListener('resize', updateContainerRect);
 
-  loadMindmapFromLocalStorage(); // This will call renderMindmap
+  loadMindmapFromLocalStorage();
 
   const addNodeBtn = document.getElementById('add-node-btn');
   const nodeTextInput = document.getElementById('node-text-input');
@@ -201,9 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (exportJsonBtn) exportJsonBtn.addEventListener('click', handleExportMindmapAsJson);
 });
 
-// --- File Export/Import & Utility Functions (getBoundingBox, doNodesOverlap) ---
-// (These functions are assumed to be present from previous steps and are not repeated here for brevity,
-// but they would be part of the full file content being overwritten)
+// --- File Export/Import & Utility Functions ---
 function handleExportMindmapAsJson() {
   try {
     const mindmapJsonString = JSON.stringify(mindmapData, null, 2);
@@ -308,6 +305,9 @@ function addNode(parentId, text) {
   if (!parentNode) return;
   if (!parentNode.children) parentNode.children = [];
   const newNode = { id: generateNodeId(), text: text, notes: '', children: [] };
+  // Remove x,y from newNode so it's algorithmically placed
+  delete newNode.x;
+  delete newNode.y;
   parentNode.children.push(newNode);
   if (parentNode.children.length === 1) parentNode.isCollapsed = false;
   renderMindmap(mindmapData, 'mindmap-container');
@@ -318,7 +318,19 @@ function deleteNode(nodeId) {
   let parentNode = findParentNode(mindmapData.root, nodeId);
   if (parentNode && parentNode.children) {
     parentNode.children = parentNode.children.filter(child => child.id !== nodeId);
-  } else { /* Handle cases where node might not be a direct child if structure allows */ }
+  } else {
+    function removeInChildren(node, idToRemove) {
+        if (!node.children) return false;
+        const initialLength = node.children.length;
+        node.children = node.children.filter(child => child.id !== idToRemove);
+        if (node.children.length < initialLength) return true;
+        for (const child of node.children) { if (removeInChildren(child, idToRemove)) return true; }
+        return false;
+    }
+    if (!removeInChildren(mindmapData.root, nodeId)) {
+        alert(`Node with ID "${nodeId}" not found for deletion.`); return;
+    }
+  }
   renderMindmap(mindmapData, 'mindmap-container');
   saveMindmapToLocalStorage();
 }
@@ -464,14 +476,61 @@ function createNodeElement(nodeData) {
     if (newText !== null && newText.trim() !== '') editNodeText(nodeData.id, newText.trim());
   });
 
-  if (nodeData.image && nodeData.image.src) { /* ... content ... */ }
-  if (nodeData.notes) { /* ... content ... */ }
-  if (nodeData.table && nodeData.table.headers) { /* ... content ... */ }
-  if (nodeData.chart && nodeData.chart.labels && nodeData.chart.values) { /* ... content ... */ }
+  if (nodeData.image && nodeData.image.src) {
+    const imgElement = document.createElement('img');
+    imgElement.classList.add('node-image');
+    imgElement.src = nodeData.image.src; imgElement.alt = nodeData.image.alt || 'Node image';
+    nodeElement.appendChild(imgElement);
+  }
+  if (nodeData.notes) {
+    const noteElement = document.createElement('p');
+    noteElement.classList.add('node-notes');
+    noteElement.textContent = nodeData.notes;
+    nodeElement.appendChild(noteElement);
+  }
+  if (nodeData.table && nodeData.table.headers) {
+    const tableElement = document.createElement('table');
+    tableElement.classList.add('node-table');
+    const thead = tableElement.createTHead();
+    const headerRow = thead.insertRow();
+    nodeData.table.headers.forEach(ht => { const th = document.createElement('th'); th.textContent = ht; headerRow.appendChild(th); });
+    if (nodeData.table.rows && nodeData.table.rows.length > 0) {
+        const tbody = tableElement.createTBody();
+        nodeData.table.rows.forEach(rd => {
+          const row = tbody.insertRow();
+          rd.forEach(cd => { const td = row.insertCell(); td.textContent = cd; });
+        });
+    }
+    nodeElement.appendChild(tableElement);
+  }
+  if (nodeData.chart && nodeData.chart.labels && nodeData.chart.values) {
+    const chartContainer = document.createElement('div');
+    chartContainer.classList.add('node-chart-container');
+    chartContainer.id = `chart-container-${nodeData.id}`;
+    nodeElement.appendChild(chartContainer);
+    if (typeof PureChart !== 'undefined') {
+      try {
+        const oldCanvas = document.getElementById(`chart-canvas-${nodeData.id}`);
+        if(oldCanvas) oldCanvas.remove();
+        new PureChart(
+            [{ Data: nodeData.chart.values, Label: nodeData.chart.title || 'Chart' }],
+            nodeData.chart.labels,
+            nodeData.chart.type,
+            chartContainer.id,
+            nodeData.chart.title || `${nodeData.chart.type.toUpperCase()} Chart`,
+            `chart-canvas-${nodeData.id}`
+        );
+      } catch (e) {
+        console.error("Error rendering PureChart:", e);
+        chartContainer.textContent = `Chart Error. Data: ${nodeData.chart.type} - L: ${nodeData.chart.labels.join(',')}, V: ${nodeData.chart.values.join(',')}`;
+      }
+    } else {
+      chartContainer.textContent = `Chart (PureChart N/A): ${nodeData.chart.type} - L: ${nodeData.chart.labels.join(',')}, V: ${nodeData.chart.values.join(',')}`;
+    }
+  }
 
   const controlsContainer = document.createElement('div');
   controlsContainer.classList.add('node-controls');
-  // ... (button creation logic)
   const buttons = [
     { text: nodeData.notes ? 'Edit Note' : 'Add Note', action: () => addOrEditNote(nodeData.id) },
     { text: nodeData.table ? 'Edit Table' : 'Add Table', action: () => addOrEditTable(nodeData.id) },
@@ -485,7 +544,7 @@ function createNodeElement(nodeData) {
     controlsContainer.appendChild(btn);
   });
 
-  if (nodeData.id !== 'root') { /* ... delete button ... */
+  if (nodeData.id !== 'root') {
     const deleteBtn = document.createElement('button');
     deleteBtn.classList.add('delete-node-btn'); deleteBtn.textContent = 'X'; deleteBtn.title = 'Delete node';
     deleteBtn.onclick = (e) => {
@@ -509,7 +568,6 @@ function createNodeElement(nodeData) {
     onDragStart(event, nodeData.id, nodeElement);
   });
 
-  // Ensure a children container is always present if children can be added or exist
   if (!nodeElement.querySelector('.mindmap-children-container')) {
     const childrenDiv = document.createElement('div');
     childrenDiv.classList.add('mindmap-children-container');
@@ -535,7 +593,7 @@ function onDragStart(event, nodeId, nodeElement) {
 }
 
 function onDragMove(event) {
-  if (!isDragging || !draggedNodeElement || !mindmapContainerRect) return;
+  if (!isDragging || !draggedNodeElement || !mindmapContainerRect || !mindmapContainer) return;
   event.preventDefault();
   let newLeft = event.clientX - initialMouseOffsetX - mindmapContainerRect.left + mindmapContainer.scrollLeft;
   let newTop = event.clientY - initialMouseOffsetY - mindmapContainerRect.top + mindmapContainer.scrollTop;
@@ -543,7 +601,7 @@ function onDragMove(event) {
   draggedNodeElement.style.top = newTop + 'px';
   requestAnimationFrame(() => {
     clearSvgLayer();
-    const rootNodeForLines = document.querySelector(`#mindmap-container > .mindmap-node[data-id='${mindmapData.root.id}']`);
+    const rootNodeForLines = mindmapContainer.querySelector(`.mindmap-node[data-id='${mindmapData.root.id}']`);
     if (rootNodeForLines && svgLayer) {
         traverseAndDrawLines(rootNodeForLines);
     }
@@ -551,7 +609,7 @@ function onDragMove(event) {
 }
 
 function onDragEnd(event) {
-  if (!isDragging || !draggedNodeId || !draggedNodeElement || !mindmapContainerRect) return;
+  if (!isDragging || !draggedNodeId || !draggedNodeElement || !mindmapContainerRect || !mindmapContainer) return;
   document.removeEventListener('mousemove', onDragMove);
   document.removeEventListener('mouseup', onDragEnd);
   draggedNodeElement.style.cursor = 'move';
@@ -560,7 +618,6 @@ function onDragEnd(event) {
   const DRAG_NUDGE_AMOUNT = 10;
   const MAX_DRAG_NUDGES = 30;
 
-  // Use the globally available mindmapContainer DOM element
   let currentDraggedNodeBox = getBoundingBox(draggedNodeElement, mindmapContainer);
   if (!currentDraggedNodeBox) {
       console.error("Could not get bounding box for dragged node in onDragEnd.");
@@ -582,11 +639,10 @@ function onDragEnd(event) {
   for (let nudgeCount = 0; nudgeCount < MAX_DRAG_NUDGES; nudgeCount++) {
     let isOverlappingGlobal = false;
     let overlappedWith = null;
-    // Update draggedNodeBox for current iteration based on currentPosition
-    draggedNodeBox = { ...currentDraggedNodeBox, x: currentPosition.x, y: currentPosition.y };
+    let draggedBoxForCheck = { ...currentDraggedNodeBox, x: currentPosition.x, y: currentPosition.y };
 
     for (const otherBox of allOtherNodeBoxes) {
-      if (doNodesOverlap(draggedNodeBox, otherBox)) {
+      if (doNodesOverlap(draggedBoxForCheck, otherBox)) {
         isOverlappingGlobal = true;
         overlappedWith = otherBox;
         break;
@@ -595,8 +651,8 @@ function onDragEnd(event) {
     if (isOverlappingGlobal && overlappedWith) {
       const overlapCenterX = overlappedWith.x + overlappedWith.width / 2;
       const overlapCenterY = overlappedWith.y + overlappedWith.height / 2;
-      const draggedCenterX = currentPosition.x + draggedNodeBox.width / 2;
-      const draggedCenterY = currentPosition.y + draggedNodeBox.height / 2;
+      const draggedCenterX = currentPosition.x + draggedBoxForCheck.width / 2;
+      const draggedCenterY = currentPosition.y + draggedBoxForCheck.height / 2;
       const deltaX = draggedCenterX - overlapCenterX;
       const deltaY = draggedCenterY - overlapCenterY;
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -609,8 +665,10 @@ function onDragEnd(event) {
     }
   }
 
-  draggedNodeElement.style.left = currentPosition.x + 'px';
-  draggedNodeElement.style.top = currentPosition.y + 'px';
+  // The style update here is primarily for immediate visual feedback if renderMindmap was slow.
+  // However, renderMindmap will be called right after and is the source of truth for positioning.
+  // draggedNodeElement.style.left = currentPosition.x + 'px';
+  // draggedNodeElement.style.top = currentPosition.y + 'px';
 
   const nodeData = findNodeById(mindmapData.root, draggedNodeId);
   if (nodeData) {
@@ -629,16 +687,17 @@ function renderMindmap(data, containerId) {
   if (!container) { console.error("Mindmap container not found!"); return; }
 
   let svgLayerElement = container.querySelector('#mindmap-svg-layer');
-  if (svgLayerElement) svgLayerElement.remove();
+  // Clear only node elements, not the SVG layer itself
+  const existingNodes = container.querySelectorAll('.mindmap-node');
+  existingNodes.forEach(node => node.remove());
 
-  container.innerHTML = '';
-
-  if (!svgLayerElement) { // If it was null or removed, recreate
+  if (!svgLayerElement) { // If it wasn't found (e.g. first render or was removed by full container.innerHTML)
     svgLayerElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgLayerElement.id = 'mindmap-svg-layer';
+    container.insertBefore(svgLayerElement, container.firstChild); // Insert SVG layer before any nodes
   }
-  container.appendChild(svgLayerElement);
-  svgLayer = svgLayerElement;
+  svgLayer = svgLayerElement; // Update global reference
+  clearSvgLayer(); // Clear previous lines from SVG layer
 
 
   const rootNodeElement = createNodeElement(data.root);
@@ -649,23 +708,53 @@ function renderMindmap(data, containerId) {
   } else {
     rootNodeElement.style.left = '50px';
     rootNodeElement.style.top = '50px';
-    if (data.root.x === undefined || data.root.y === undefined) { // Set default if not present
+    if (data.root.x === undefined || data.root.y === undefined) {
         data.root.x = 50;
         data.root.y = 50;
     }
   }
   container.appendChild(rootNodeElement);
 
+  const globalRootBox = getBoundingBox(rootNodeElement, mindmapContainer);
+  if (globalRootBox) {
+    data.root.width = globalRootBox.width; // Update width/height based on rendered size
+    data.root.height = globalRootBox.height;
+    // data.root.x and data.root.y are already global, so no need to update them from globalRootBox here
+    // unless there's a discrepancy we want to correct, but style should match data.
+  }
+
   if (data.root.children && data.root.children.length > 0) {
     let childrenContainer = rootNodeElement.querySelector('.mindmap-children-container');
-    // createNodeElement should ensure this container exists.
     if (!childrenContainer) {
         childrenContainer = document.createElement('div');
         childrenContainer.classList.add('mindmap-children-container');
         rootNodeElement.appendChild(childrenContainer);
     }
+
+    const verticalBranchSpacing = 50;
+    const estimatedNodeHeight = data.root.height || 50;
+    const estimatedChildrenAreaHeight = 100;
+    let currentGlobalYForBranch = (data.root.y || 50) + estimatedNodeHeight + verticalBranchSpacing;
+    const horizontalIndentForBranch = (data.root.x || 50) + (data.root.width ? data.root.width / 4 : 20);
+
+    data.root.children.forEach(rootChildData => {
+      if (typeof rootChildData.x !== 'number' || typeof rootChildData.y !== 'number') {
+        rootChildData.x = horizontalIndentForBranch;
+        rootChildData.y = currentGlobalYForBranch;
+
+        const selfHeight = rootChildData.height || 50; // Use self estimate if available
+        const childrenHeightEstimate = (rootChildData.children && rootChildData.children.length > 0 && !rootChildData.isCollapsed) ? estimatedChildrenAreaHeight : 0;
+        currentGlobalYForBranch += selfHeight + childrenHeightEstimate + verticalBranchSpacing;
+      } else {
+        const selfHeight = rootChildData.height || 50;
+        const childrenHeightEstimate = (rootChildData.children && rootChildData.children.length > 0 && !rootChildData.isCollapsed) ? estimatedChildrenAreaHeight : 0;
+        const draggedBranchBottom = rootChildData.y + selfHeight + childrenHeightEstimate;
+        currentGlobalYForBranch = Math.max(currentGlobalYForBranch, draggedBranchBottom + verticalBranchSpacing);
+      }
+    });
+
     if (!data.root.isCollapsed) {
-        renderChildren(data.root.children, rootNodeElement, container); // Pass main container
+        renderChildren(data.root.children, rootNodeElement, mindmapContainer);
     }
   }
 
@@ -688,7 +777,7 @@ function clearSvgLayer() {
 
 function drawConnectionLine(parentElement, childElement) {
   if (!svgLayer || !parentElement || !childElement) return;
-  const mindmapContainerElem = document.getElementById('mindmap-container'); // Use consistent naming
+  const mindmapContainerElem = document.getElementById('mindmap-container');
   if (!mindmapContainerElem) return;
 
   const containerRect = mindmapContainerElem.getBoundingClientRect();
@@ -762,7 +851,6 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
     let actualRelativeX, actualRelativeY;
 
     if (typeof childData.x === 'number' && typeof childData.y === 'number') {
-      // Node has stored GLOBAL coordinates. Convert to local for style.left/top.
       const childrenContainerGlobalBox = getBoundingBox(childrenContainer, mainMindmapContainer);
       if (childrenContainerGlobalBox) {
         actualRelativeX = childData.x - childrenContainerGlobalBox.x;
@@ -771,21 +859,19 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
         currentXLocal = Math.max(currentXLocal, actualRelativeX + childNodeElement.offsetWidth + horizontalSpacing);
         maxChildHeightInRow = Math.max(maxChildHeightInRow, (actualRelativeY - currentYLocal) + childNodeElement.offsetHeight );
 
-        placedSiblingBoxesLocal.push({
-            x: actualRelativeX, y: actualRelativeY,
-            width: childNodeElement.offsetWidth, height: childNodeElement.offsetHeight,
-            id: childData.id
-        });
       } else {
         console.error("Could not get childrenContainer global box for positioning child:", childData.id);
         actualRelativeX = currentXLocal;
         actualRelativeY = currentYLocal;
-        placedSiblingBoxesLocal.push({ x: actualRelativeX, y: actualRelativeY, width: childNodeElement.offsetWidth, height: childNodeElement.offsetHeight, id: childData.id });
         currentXLocal += childNodeElement.offsetWidth + horizontalSpacing;
         maxChildHeightInRow = Math.max(maxChildHeightInRow, childNodeElement.offsetHeight);
       }
+      placedSiblingBoxesLocal.push({
+            x: actualRelativeX, y: actualRelativeY,
+            width: childNodeElement.offsetWidth, height: childNodeElement.offsetHeight,
+            id: childData.id
+      });
     } else {
-      // Algorithmic placement
       actualRelativeY = currentYLocal;
       childNodeElement.style.top = actualRelativeY + 'px';
 
@@ -829,9 +915,17 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
     childNodeElement.style.left = actualRelativeX + 'px';
     childNodeElement.style.top = actualRelativeY + 'px';
 
+    // After child is positioned, update its global data fields
+    const globalChildBox = getBoundingBox(childNodeElement, mainMindmapContainer);
+    if (globalChildBox) {
+        childData.x = globalChildBox.x;
+        childData.y = globalChildBox.y;
+        childData.width = globalChildBox.width;
+        childData.height = globalChildBox.height;
+    }
+
     if (childData.children && childData.children.length > 0) {
       let grandChildrenContainer = childNodeElement.querySelector('.mindmap-children-container');
-      // createNodeElement now ensures this container exists.
       if (!grandChildrenContainer) {
           grandChildrenContainer = document.createElement('div');
           grandChildrenContainer.classList.add('mindmap-children-container');
@@ -849,5 +943,3 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
     childrenContainer.style.height = 'auto';
   }
 }
-
-[end of Mindmap/mindmap.js]
