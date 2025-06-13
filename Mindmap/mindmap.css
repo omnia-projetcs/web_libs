@@ -1,89 +1,203 @@
+/* General Mindmap Styling */
 body {
     font-family: sans-serif;
-    margin: 20px;
+    line-height: 1.6;
     background-color: #f4f4f4;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the mindmap container */
 }
 
 #mindmap-container {
-  position: relative; /* Needed for absolute positioning of SVG layer */
-  margin-top: 60px; /* Shift the container further down from the top of its containing block */
-}
-
-/* This is the existing .mindmap-container style, ensure #mindmap-container properties are merged or handled */
-.mindmap-container {
-    /* position: relative; -- Already handled by #mindmap-container ID selector */
-    width: 100%;
-    height: 500px; /* Adjust as needed */
+    position: relative; /* Crucial for absolute positioning of nodes and SVG layer */
+    width: 90%; /* Or a fixed width like 1200px */
+    max-width: 1500px;
+    min-height: 600px; /* Ensure it has some height */
     border: 1px solid #ccc;
-    overflow: auto; /* Allow scrolling if mindmap is larger than container */
     background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow: auto; /* Add scrollbars if content overflows */
+    margin-top: 70px; /* Push the container down from the top of the page */
 }
 
 #mindmap-svg-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0; /* Behind nodes */
-  pointer-events: none; /* Allow clicks to pass through to nodes */
-}
-
-.mindmap-node {
-    /* position: absolute; /* REMOVED - Will be set by JS for child nodes */
-    /* position: relative; /* Root node might be relative if not explicitly positioned by JS */
-    z-index: 1; /* Above SVG layer */
-    background-color: white; /* Ensure nodes have a background to hide lines passing 'under' them */
-    padding: 8px 12px;
-    border: 1px solid #007bff;
-    border-radius: 5px;
-    cursor: move; /* Standard cursor for draggable items */
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-    white-space: nowrap; /* Prevent text wrapping */
-    margin-bottom: 15px; /* Increased spacing between sibling nodes */
-}
-
-.mindmap-node:active {
-    cursor: grabbing;
-    box-shadow: 4px 4px 10px rgba(0,0,0,0.2);
-}
-
-.node-controls {
-    margin-top: 5px;
-}
-
-.node-controls button {
-    font-size: 10px;
-    padding: 2px 4px;
-    margin-right: 3px;
-}
-
-/* Styling for lines will be handled by JavaScript (SVG/Canvas) */
-.mindmap-line {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    pointer-events: none; /* Lines should not interfere with node interactions */
-    z-index: -1; /* Draw lines behind nodes */
+    pointer-events: none; /* Allows clicks to go through to nodes below */
+    z-index: 0; /* Behind nodes */
 }
 
-.collapse-toggle {
-    cursor: pointer;
-    margin-right: 5px;
-    font-weight: bold;
-    padding: 2px 5px;
+
+.mindmap-node {
+    position: absolute; /* All nodes are absolutely positioned */
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px 15px;
+    min-width: 100px;
+    min-height: 30px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    cursor: grab;
+    display: flex;
+    flex-direction: column; /* Stack content, controls, and children container vertically */
+    align-items: flex-start; /* Align items to the start */
+    z-index: 1; /* Nodes are above the SVG layer */
+}
+
+.mindmap-node:active {
+    cursor: grabbing;
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
+}
+
+.mindmap-node-content {
+    margin-bottom: 8px; /* Space between content and controls */
+    white-space: pre-wrap; /* Respect newlines and spaces in text */
+    word-wrap: break-word; /* Break long words */
+    max-width: 300px; /* Prevent nodes from becoming too wide by default */
+    overflow: auto; /* Add scrollbars if content within node overflows */
+}
+.mindmap-node-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-top: 5px;
+}
+.mindmap-node-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 5px;
+}
+.mindmap-node-content th, .mindmap-node-content td {
+    border: 1px solid #ccc;
+    padding: 4px;
+    text-align: left;
+}
+
+.mindmap-node-controls {
+    display: flex;
+    gap: 5px; /* Space between buttons */
+    margin-top: auto; /* Push controls to the bottom if node content is short */
+    padding-top: 5px;
+    border-top: 1px solid #eee; /* Separator line */
+    width: 100%; /* Make controls take full width */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.mindmap-node-controls button {
+    padding: 3px 7px;
+    font-size: 0.8em;
+    background-color: #efefef;
     border: 1px solid #ccc;
     border-radius: 3px;
-    display: inline-block; /* Ensure it behaves well with other elements */
-    user-select: none; /* Prevent text selection on click */
+    cursor: pointer;
+}
+.mindmap-node-controls button:hover {
+    background-color: #e0e0e0;
 }
 
 .mindmap-children-container {
-    position: relative; /* Establishes a positioning context for absolutely positioned children */
-    margin-left: 35px;  /* Indent child branches */
-    padding: 10px;      /* Internal padding for the container */
-    /* padding-top: 10px; /* Covered by padding: 10px; */
-    min-height: 10px; /* Ensure it has some height even if empty, for layout purposes */
+    /* This container is now primarily for structure and connection points.
+       Individual children are absolutely positioned relative to #mindmap-container. */
+    position: relative; /* Establishes a positioning context for any potential relative positioning of children if needed later, but mostly for semantic grouping */
+    width: 100%; /* Occupy available width for structure */
+    margin-top: 20px; /* Default vertical space from parent node content/controls to where children start */
+    padding-left: 0; /* No padding, children are placed globally */
+    /* border-left: 2px solid #eee; /* Visual cue for hierarchy, optional */
+    /* padding-top: 10px; /* Space above the first child in a group */
+}
+
+
+/* Styling for the collapse toggle button */
+.collapse-toggle {
+    cursor: pointer;
+    margin-right: 8px;
+    font-weight: bold;
+    user-select: none; /* Prevent text selection on click */
+    padding: 2px 5px;
+    border-radius: 3px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    display: inline-block; /* Ensure it behaves like a button */
+    line-height: 1; /* Adjust for better vertical alignment */
+}
+
+.collapse-toggle:hover {
+    background-color: #e0e0e0;
+}
+
+
+/* Toolbar styling */
+#toolbar {
+    position: fixed; /* Keep toolbar visible on scroll */
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #333;
+    padding: 10px 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000; /* Ensure toolbar is above everything */
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+#toolbar button, #toolbar input, #toolbar select, #toolbar label {
+    padding: 8px 12px;
+    font-size: 0.9em;
+    border-radius: 4px;
+    border: 1px solid #555;
+    background-color: #444;
+    color: #fff;
+    cursor: pointer;
+}
+
+#toolbar button:hover {
+    background-color: #555;
+}
+
+#toolbar input[type="file"] {
+    padding: 0; /* Override for file input */
+}
+#toolbar input[type="file"]::file-selector-button { /* Style the button part of file input */
+    padding: 8px 12px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#toolbar input[type="file"]::file-selector-button:hover {
+    background-color: #45a049;
+}
+
+#toolbar label {
+    margin-right: -5px; /* Adjust spacing next to input */
+    cursor: default;
+}
+
+/* PureChart CSS (minimal for demo) */
+.pure-chart {
+    /* Add styles if you want to customize chart appearance */
+    border: 1px solid #eee;
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+/* Temp container for measurements */
+#temp-measurement-container {
+    position: absolute;
+    top: -10000px; /* Move off-screen */
+    left: -10000px; /* Move off-screen */
+    visibility: hidden; /* Hide it */
+    z-index: -100; /* Ensure it's behind everything */
+    pointer-events: none; /* No interaction */
 }

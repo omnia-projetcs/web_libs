@@ -304,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadFromServerBtn = document.getElementById('load-from-server-btn');
   const importFileInput = document.getElementById('import-file-input');
   const exportJsonBtn = document.getElementById('export-json-btn');
+  const clearMindmapBtn = document.getElementById('clear-mindmap-btn');
 
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
     const text = nodeTextInput.value.trim();
@@ -319,7 +320,81 @@ document.addEventListener('DOMContentLoaded', () => {
   if (clearLocalBtn) clearLocalBtn.addEventListener('click', clearLocalStorage);
   if (importFileInput) importFileInput.addEventListener('change', handleFileUpload);
   if (exportJsonBtn) exportJsonBtn.addEventListener('click', handleExportMindmapAsJson);
+  if (clearMindmapBtn) clearMindmapBtn.addEventListener('click', handleClearAllMindmap);
 });
+
+// --- New/Clear Map Function ---
+function handleClearAllMindmap() {
+  const defaultRootText = 'Root Node';
+  const initialX = 50;
+  const initialY = 50;
+
+  // Measure default node size for better initial data
+  const measureContainer = getOrCreateTempMeasurementContainer();
+  // Create a minimal nodeData for measurement. createNodeElement should handle this gracefully.
+  const tempNodeDataForMeasure = {
+    id: 'root-measure', // Temporary ID for measurement
+    text: defaultRootText,
+    children: [],
+    // No need to specify notes, table, image, chart for measurement of basic structure
+  };
+  const tempNodeElement = createNodeElement(tempNodeDataForMeasure);
+
+  measureContainer.innerHTML = ''; // Clear before measure
+  measureContainer.appendChild(tempNodeElement);
+  const rootWidth = tempNodeElement.offsetWidth || 100;  // Fallback width
+  const rootHeight = tempNodeElement.offsetHeight || 40; // Fallback height
+  measureContainer.innerHTML = ''; // Clean up measurement container
+
+  mindmapData = {
+    root: {
+      id: 'root', // Consistent root ID
+      text: defaultRootText,
+      children: [],
+      x: initialX,
+      y: initialY,
+      width: rootWidth,
+      height: rootHeight,
+      isManuallyPositioned: false,
+      notes: '',
+      table: null,
+      image: null,
+      chart: null,
+      isCollapsed: false // Default to expanded
+    }
+  };
+  nodeIdCounter = Date.now(); // Reset node ID counter
+
+  // Perform full dimension calculation and layout for the new minimal map
+  // Check if functions exist, useful if this code is ever run in a context where they might not be defined
+  if (typeof calculateAndStoreNodeDimensions === 'function') {
+    calculateAndStoreNodeDimensions(mindmapData.root, measureContainer);
+  }
+   // Re-fetch width/height after calculateAndStoreNodeDimensions which might refine them
+  const finalRootWidth = mindmapData.root.width || rootWidth;
+  const finalRootHeight = mindmapData.root.height || rootHeight;
+  mindmapData.root.width = finalRootWidth;
+  mindmapData.root.height = finalRootHeight;
+
+  if (typeof calculateTreeLayout === 'function' && mindmapContainer) {
+    // Ensure root x is centered if not manually positioned (which it isn't for a new map)
+    mindmapData.root.x = (mindmapContainer.offsetWidth / 2) - (finalRootWidth / 2);
+    mindmapData.root.y = initialY; // Reset Y to initial Y for the layout
+    calculateTreeLayout(mindmapData.root, mindmapContainer.offsetWidth);
+  } else if (mindmapContainer) { // Basic fallback if calculateTreeLayout is missing
+     mindmapData.root.x = (mindmapContainer.offsetWidth / 2) - (finalRootWidth / 2);
+     mindmapData.root.y = initialY;
+  } else { // Absolute fallback
+     mindmapData.root.x = initialX;
+     mindmapData.root.y = initialY;
+  }
+
+  renderMindmap(mindmapData, 'mindmap-container'); // Render the new minimal map
+  saveMindmapToLocalStorage(); // Persist the cleared state
+
+  showFeedback('Mindmap cleared. New map started.', false);
+}
+
 
 // --- File Export/Import & Utility Functions ---
 function handleExportMindmapAsJson() {

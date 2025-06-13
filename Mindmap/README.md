@@ -24,10 +24,11 @@ This is a web-based interactive mindmap application that allows users to create,
         *   Assign vertical positions (`y`-coordinates) based on the node's level in the hierarchy, ensuring clear separation between levels.
         *   Horizontally position children, typically centering them as a group beneath their parent node.
         *   Respect manually dragged positions: nodes moved by the user will maintain their position unless their ancestors are algorithmically repositioned.
-        *   This approach provides a more organized, classic tree-like structure by default and significantly reduces initial node overlaps compared to previous layout methods.
+        *   This approach provides a more organized, classic tree-like structure by default and significantly reduces initial node overlaps compared to previous layout methods. This algorithm's parameters (such as level and sibling separation) have been tuned to further improve default spacing and reduce common node overlap issues in typical map structures.
 *   **Data Persistence & Portability**:
     *   **Local Storage**: Your mindmap is automatically saved to your browser's local storage as you make changes. It will be reloaded when you revisit the page.
-    *   **Clear Local Data**: Option to clear the mindmap data stored in your browser.
+    *   **New/Clear Map Button**: Allows users to quickly clear the entire current mindmap and start over with a fresh, single root node.
+    *   **Clear Local Data**: Option to clear the mindmap data stored in your browser (this typically resets to a default sample or an empty state, distinct from "New/Clear Map" which always gives a single root).
     *   **JSON Export**: Download your current mindmap as a `.json` file. This is useful for backups or sharing.
     *   **JSON Import**: Load a mindmap from a previously exported `.json` file.
     *   **Consistent Global Node State**: The internal data for each node now reliably stores its global position (x,y) and dimensions (width,height) on the canvas after every render.
