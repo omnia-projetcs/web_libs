@@ -6,7 +6,7 @@ body {
 
 #mindmap-container {
   position: relative; /* Needed for absolute positioning of SVG layer */
-  margin-top: 25px; /* Shift the container down from the top of its containing block */
+  margin-top: 60px; /* Shift the container further down from the top of its containing block */
 }
 
 /* This is the existing .mindmap-container style, ensure #mindmap-container properties are merged or handled */
@@ -30,8 +30,8 @@ body {
 }
 
 .mindmap-node {
-    position: absolute; /* Changed to absolute for explicit positioning for lines */
-    /* position: relative; Ensure nodes have a stacking context for z-index. If using absolute, this is less direct. z-index will work on positioned elements. */
+    /* position: absolute; /* REMOVED - Will be set by JS for child nodes */
+    /* position: relative; /* Root node might be relative if not explicitly positioned by JS */
     z-index: 1; /* Above SVG layer */
     background-color: white; /* Ensure nodes have a background to hide lines passing 'under' them */
     padding: 8px 12px;
@@ -83,5 +83,7 @@ body {
 .mindmap-children-container {
     position: relative; /* Establishes a positioning context for absolutely positioned children */
     margin-left: 35px;  /* Indent child branches */
-    padding-top: 10px;   /* Space above the first child in a group */
+    padding: 10px;      /* Internal padding for the container */
+    /* padding-top: 10px; /* Covered by padding: 10px; */
+    min-height: 10px; /* Ensure it has some height even if empty, for layout purposes */
 }

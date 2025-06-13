@@ -19,6 +19,7 @@ This is a web-based interactive mindmap application that allows users to create,
     *   **Collapsible Branches**: Click the `[+]` or `[-]` toggle next to a node's text to expand or collapse its child branches, making it easier to navigate large mindmaps.
     *   **Curved Connection Lines**: Visual lines (curved Bézier paths) are now drawn between parent and child nodes, making the mindmap structure clearer and more aesthetically pleasing.
     *   **Improved Node Spacing**: Default spacing between nodes and branches has been enhanced to reduce clutter and minimize visual overlaps.
+    *   **Horizontal Child Node Layout**: Child nodes are now primarily arranged in a horizontal row relative to their parent, controlled by JavaScript. This is a foundational step towards more dynamic and organized mindmap structures.
 *   **Data Persistence & Portability**:
     *   **Local Storage**: Your mindmap is automatically saved to your browser's local storage as you make changes. It will be reloaded when you revisit the page.
     *   **Clear Local Data**: Option to clear the mindmap data stored in your browser.
@@ -26,6 +27,8 @@ This is a web-based interactive mindmap application that allows users to create,
     *   **JSON Import**: Load a mindmap from a previously exported `.json` file.
 *   **Simulated Server Interaction**:
     *   Buttons for "Save to Server (Sim)" and "Load from Server (Sim)" demonstrate conceptual integration with a backend. Currently, these are simulations and do not connect to a real server.
+*   **Visual Presentation**:
+    *   **Improved Page Positioning**: The entire mindmap visualization has been shifted further down from the top controls bar, providing better visual balance on the page.
 
 ## Getting Started
 
@@ -57,3 +60,8 @@ This is a web-based interactive mindmap application that allows users to create,
 *   `mindmap.css`: Provides the styles for the mindmap application.
 *   `README.md`: This file - providing information about the project.
 *   `tests/`: Contains files related to testing the mindmap (not detailed in this README).
+
+## Known Limitations
+
+*   The current horizontal layout for child nodes is basic. It does not yet implement automatic wrapping for a large number of children in a single row, which may cause horizontal overflow within the children's container.
+*   Node positioning is primarily handled for the root and its direct children's horizontal layout. More complex, multi-depth automatic layout algorithms (e.g., tree layout, force-directed) are not yet implemented. Nodes are positioned based on their order and basic spacing calculations.
