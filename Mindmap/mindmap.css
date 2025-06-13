@@ -6,6 +6,7 @@ body {
 
 #mindmap-container {
   position: relative; /* Needed for absolute positioning of SVG layer */
+  margin-top: 25px; /* Shift the container down from the top of its containing block */
 }
 
 /* This is the existing .mindmap-container style, ensure #mindmap-container properties are merged or handled */
