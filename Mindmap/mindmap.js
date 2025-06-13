@@ -26,6 +26,7 @@ const LOCAL_STORAGE_KEY = 'userMindmapData';
 let nodeIdCounter = 0;
 let svgLayer = null; // For SVG connection lines
 let mindmapContainer = null; // Reference to the main mindmap container DOM element
+let selectedNodeId = null; // ID of the currently selected node
 
 // --- Drag State Variables ---
 let isDragging = false;
@@ -194,8 +195,8 @@ function calculateAndStoreNodeDimensions(nodeData, tempContainer) {
 function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
   console.log("Calculating tree layout for root:", rootNodeData.id, "within width:", mindmapContainerWidth);
   const initialYOffset = 50;
-  const levelSeparation = 75;
-  const siblingSeparation = 30;
+  const levelSeparation = 90; // Increased from 75
+  const siblingSeparation = 40; // Increased from 30
 
   // 1. Assign Levels and Y-coordinates using BFS
   if (!rootNodeData) return;
@@ -286,6 +287,23 @@ document.addEventListener('DOMContentLoaded', () => {
   mindmapContainer = document.getElementById('mindmap-container');
   svgLayer = document.getElementById('mindmap-svg-layer');
 
+  if (mindmapContainer) {
+    mindmapContainer.addEventListener('click', (event) => {
+      // If the click is directly on the container and not on a node or its controls
+      if (event.target === mindmapContainer) {
+        if (selectedNodeId) {
+          const currentlySelectedElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${selectedNodeId}']`);
+          if (currentlySelectedElement) {
+            currentlySelectedElement.classList.remove('selected-node');
+          }
+          selectedNodeId = null;
+          console.log('Mindmap container clicked, node deselected.');
+          // Optionally, re-render or update UI if deselection needs to trigger other changes
+        }
+      }
+    });
+  }
+
   function updateContainerRect() {
     if (mindmapContainer) {
         mindmapContainerRect = mindmapContainer.getBoundingClientRect();
@@ -321,6 +339,65 @@ document.addEventListener('DOMContentLoaded', () => {
   if (importFileInput) importFileInput.addEventListener('change', handleFileUpload);
   if (exportJsonBtn) exportJsonBtn.addEventListener('click', handleExportMindmapAsJson);
   if (clearMindmapBtn) clearMindmapBtn.addEventListener('click', handleClearAllMindmap);
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (event) => {
+    if (!selectedNodeId) return; // No node selected, do nothing
+
+    const nodeData = findNodeById(mindmapData.root, selectedNodeId);
+    if (!nodeData) {
+        console.warn("Selected node data not found for keydown event:", selectedNodeId);
+        selectedNodeId = null; // Clear invalid selection
+        return;
+    }
+
+    let preventDefault = false;
+
+    if (event.key === 'Enter') {
+      promptAndAddSibling(selectedNodeId);
+      preventDefault = true;
+    } else if (event.key === 'Tab') {
+      promptAndAddChild(selectedNodeId);
+      preventDefault = true;
+    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (selectedNodeId !== mindmapData.root.id) {
+        const nodeName = nodeData.text || "this node";
+        const childrenCount = nodeData.children ? nodeData.children.length : 0;
+        let confirmMessage = `Are you sure you want to delete "${nodeName}"?`;
+        if (childrenCount > 0) {
+          confirmMessage += `\n\nThis node has ${childrenCount} direct child/children, which will also be deleted.`;
+        }
+        if (confirm(confirmMessage)) {
+          const parentOfSelected = findParentNode(mindmapData.root, selectedNodeId);
+          deleteNode(selectedNodeId);
+          // Attempt to select the parent after deleting a node
+          if (parentOfSelected) {
+            const parentElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${parentOfSelected.id}']`);
+            if (parentElement) {
+                // Clear previous selection styling
+                const currentlySelectedElement = mindmapContainer.querySelector('.selected-node');
+                if (currentlySelectedElement) currentlySelectedElement.classList.remove('selected-node');
+
+                parentElement.classList.add('selected-node');
+                selectedNodeId = parentOfSelected.id;
+            } else {
+                selectedNodeId = null; // Parent element not found in DOM
+            }
+          } else {
+            selectedNodeId = null; // No parent found (e.g. if root was somehow targeted)
+          }
+        }
+        preventDefault = true;
+      } else {
+        showFeedback("The root node cannot be deleted.", true);
+        preventDefault = true; // Prevent default even if not deleting, e.g. backspace navigation
+      }
+    }
+
+    if (preventDefault) {
+      event.preventDefault();
+    }
+  });
 });
 
 // --- New/Clear Map Function ---
@@ -459,6 +536,44 @@ function handleFileUpload(event) {
   reader.readAsText(file);
 }
 
+function sanitizeNodeData(node) {
+  if (!node) return null;
+
+  // Ensure basic properties exist
+  node.id = node.id || generateNodeId();
+  node.text = node.text || 'Untitled Node';
+  node.children = Array.isArray(node.children) ? node.children : [];
+  node.notes = typeof node.notes === 'string' ? node.notes : '';
+
+  // Initialize or validate rich content fields
+  node.image = (node.image && typeof node.image.src === 'string' && typeof node.image.alt === 'string') ? node.image : null;
+  if (node.table && Array.isArray(node.table.headers) && Array.isArray(node.table.rows)) {
+    // Basic check, could be more thorough (e.g. row lengths matching header length)
+  } else {
+    node.table = null;
+  }
+  if (node.chart && typeof node.chart.type === 'string' && Array.isArray(node.chart.labels) && Array.isArray(node.chart.values)) {
+    // Basic check
+  } else {
+    node.chart = null;
+  }
+
+  // Positional and state properties
+  node.x = typeof node.x === 'number' ? node.x : undefined; // Rely on layout if undefined
+  node.y = typeof node.y === 'number' ? node.y : undefined; // Rely on layout if undefined
+  // width and height are typically calculated at render time, so not strictly needed from import unless to preserve exact previous render.
+  // For now, let them be recalculated. If width/height are present, they will be used by calculateAndStoreNodeDimensions then layout.
+  // node.width = typeof node.width === 'number' ? node.width : undefined;
+  // node.height = typeof node.height === 'number' ? node.height : undefined;
+  node.isManuallyPositioned = typeof node.isManuallyPositioned === 'boolean' ? node.isManuallyPositioned : false;
+  node.isCollapsed = typeof node.isCollapsed === 'boolean' ? node.isCollapsed : false;
+
+  // Recursively sanitize children
+  node.children = node.children.map(child => sanitizeNodeData(child)).filter(child => child !== null);
+
+  return node;
+}
+
 function getBoundingBox(nodeElement, mindmapContainerElement) {
   if (!nodeElement || !mindmapContainerElement) return null;
   const nodeRect = nodeElement.getBoundingClientRect();
@@ -517,6 +632,10 @@ function deleteNode(nodeId) {
   if (parentNode && parentNode.children) {
     parentNode.children = parentNode.children.filter(child => child.id !== nodeId);
   } else {
+    // This else block might be legacy or for cases where parentNode is not direct,
+    // e.g. if findParentNode had limitations. Given current findParentNode,
+    // this path might be less common for typical tree structures.
+    // However, keeping the fallback for robustness.
     function removeInChildren(node, idToRemove) {
         if (!node.children) return false;
         const initialLength = node.children.length;
@@ -529,6 +648,17 @@ function deleteNode(nodeId) {
         alert(`Node with ID "${nodeId}" not found for deletion.`); return;
     }
   }
+
+  // If the deleted node was the selected node, clear the selection
+  if (selectedNodeId === nodeId) {
+    const currentlySelectedElement = mindmapContainer.querySelector('.selected-node');
+    if (currentlySelectedElement) {
+        currentlySelectedElement.classList.remove('selected-node');
+    }
+    selectedNodeId = null;
+    console.log(`Selected node ${nodeId} was deleted. Selection cleared.`);
+  }
+
   renderMindmap(mindmapData, 'mindmap-container');
   saveMindmapToLocalStorage();
 }
@@ -643,6 +773,85 @@ function addOrEditChart(nodeId) {
   }
 }
 
+// --- New Node Creation Functions ---
+function promptAndAddChild(parentId) {
+  const text = prompt('Enter text for new child node:');
+  if (text !== null && text.trim() !== '') {
+    addChildNode(parentId, text.trim());
+  }
+}
+
+function addChildNode(parentId, text) {
+  const parentNode = findNodeById(mindmapData.root, parentId);
+  if (!parentNode) {
+    console.error(`Parent node with ID "${parentId}" not found.`);
+    showFeedback(`Error: Could not find parent to add child to.`, true);
+    return;
+  }
+  if (!parentNode.children) {
+    parentNode.children = [];
+  }
+  const newNode = {
+    id: generateNodeId(),
+    text: text,
+    notes: '',
+    table: null,
+    image: null,
+    chart: null,
+    children: [],
+    isManuallyPositioned: false // New nodes are not manually positioned
+  };
+  delete newNode.x; // Ensure x/y are not set initially
+  delete newNode.y;
+
+  parentNode.children.push(newNode);
+
+  // Expand parent if it was collapsed and had no children before this new one
+  if (parentNode.isCollapsed && parentNode.children.length === 1) {
+    parentNode.isCollapsed = false;
+  }
+
+  renderMindmap(mindmapData, 'mindmap-container');
+  saveMindmapToLocalStorage();
+  showFeedback(`Child node added to "${parentNode.text}".`, false);
+}
+
+function promptAndAddSibling(siblingId) {
+  const text = prompt('Enter text for new sibling node:');
+  if (text !== null && text.trim() !== '') {
+    addSiblingNode(siblingId, text.trim());
+  }
+}
+
+function addSiblingNode(siblingId, text) {
+  const parentNode = findParentNode(mindmapData.root, siblingId);
+  if (!parentNode) {
+    // This case should ideally not be reached if the UI prevents "Add Sibling" for root.
+    console.error(`Could not find parent for sibling ID "${siblingId}". Cannot add sibling.`);
+    showFeedback(`Error: Could not determine parent to add sibling to. (Is this the root node?)`, true);
+    return;
+  }
+
+  const newNode = {
+    id: generateNodeId(),
+    text: text,
+    notes: '',
+    table: null,
+    image: null,
+    chart: null,
+    children: [],
+    isManuallyPositioned: false // New nodes are not manually positioned
+  };
+  delete newNode.x; // Ensure x/y are not set initially
+  delete newNode.y;
+
+  parentNode.children.push(newNode); // Add as a child of the same parent
+
+  renderMindmap(mindmapData, 'mindmap-container');
+  saveMindmapToLocalStorage();
+  showFeedback(`Sibling node added near node ID "${siblingId}".`, false);
+}
+
 // --- Rendering ---
 function createNodeElement(nodeData) {
   const nodeElement = document.createElement('div');
@@ -742,7 +951,27 @@ function createNodeElement(nodeData) {
     controlsContainer.appendChild(btn);
   });
 
+  // "Add Child" button (always shown)
+  const addChildBtn = document.createElement('button');
+  addChildBtn.textContent = '+ Child';
+  addChildBtn.title = 'Add a child node';
+  addChildBtn.onclick = (e) => {
+    e.stopPropagation();
+    promptAndAddChild(nodeData.id);
+  };
+  controlsContainer.appendChild(addChildBtn);
+
+  // "Add Sibling" button (not for root)
   if (nodeData.id !== 'root') {
+    const addSiblingBtn = document.createElement('button');
+    addSiblingBtn.textContent = '+ Sibling';
+    addSiblingBtn.title = 'Add a sibling node';
+    addSiblingBtn.onclick = (e) => {
+      e.stopPropagation();
+      promptAndAddSibling(nodeData.id);
+    };
+    controlsContainer.appendChild(addSiblingBtn);
+
     const deleteBtn = document.createElement('button');
     deleteBtn.classList.add('delete-node-btn'); deleteBtn.textContent = 'X'; deleteBtn.title = 'Delete node';
     deleteBtn.onclick = (e) => {
@@ -762,8 +991,50 @@ function createNodeElement(nodeData) {
   nodeElement.appendChild(controlsContainer);
 
   nodeElement.addEventListener('mousedown', (event) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0) return; // Only main button
+    // If the click is on a button within controls, don't treat as node selection/drag start
+    if (event.target.closest && event.target.closest('.node-controls button, .collapse-toggle')) {
+        // event.stopPropagation(); // Stop propagation if it's a control button
+        return;
+    }
     onDragStart(event, nodeData.id, nodeElement);
+  });
+
+  nodeElement.addEventListener('click', (event) => {
+    // Prevent selection when clicking on controls (buttons, etc.) within the node
+    if (event.target.closest && (event.target.closest('.node-controls') || event.target.closest('.collapse-toggle'))) {
+      // Let button clicks propagate for their own handlers but don't select the node itself.
+      return;
+    }
+    // If a drag didn't happen (isDragging is false or check some threshold)
+    if (isDragging && draggedNodeId === nodeData.id) {
+        // If a drag just finished on this node, don't re-select it here as onDragEnd might handle state.
+        // Or, ensure selection is desired even after a drag. For now, let's assume drag might imply selection.
+        // This logic might need refinement based on desired UX for click-vs-drag.
+    }
+
+    // Deselect previously selected node
+    if (selectedNodeId && selectedNodeId !== nodeData.id) {
+      const prevSelectedElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${selectedNodeId}']`);
+      if (prevSelectedElement) {
+        prevSelectedElement.classList.remove('selected-node');
+      }
+    }
+
+    // Select the current node
+    if (selectedNodeId !== nodeData.id) {
+        nodeElement.classList.add('selected-node');
+        selectedNodeId = nodeData.id;
+        console.log(`Node ${selectedNodeId} selected.`);
+    } else {
+        // If clicking the already selected node, maybe deselect it? Or keep it selected.
+        // For now, clicking an already selected node keeps it selected.
+        // To deselect on clicking again:
+        // nodeElement.classList.remove('selected-node');
+        // selectedNodeId = null;
+        // console.log(`Node ${nodeData.id} deselected by clicking again.`);
+    }
+    event.stopPropagation(); // Stop click from bubbling to mindmapContainer to prevent immediate deselection
   });
 
   if (!nodeElement.querySelector('.mindmap-children-container')) {
