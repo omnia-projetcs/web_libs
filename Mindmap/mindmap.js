@@ -499,6 +499,7 @@ function createNodeElement(nodeData) {
   const nodeElement = document.createElement('div');
   nodeElement.classList.add('mindmap-node');
   nodeElement.setAttribute('data-id', nodeData.id);
+  // Note: position:absolute will be set by the layouting function (renderChildren or renderMindmap for root)
 
   const textElement = document.createElement('span');
   textElement.classList.add('node-text');
@@ -626,18 +627,31 @@ function renderMindmap(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) { console.error("Mindmap container not found!"); return; }
   container.innerHTML = ''; // Clear previous rendering
+
+  // Create and position the root node
   const rootNodeElement = createNodeElement(data.root);
-  // Note: Positioning of root and children is basic. A real layout algorithm would be complex.
-  // For now, root is positioned simply, and children are appended.
-  // Example static positioning for root (can be improved with dynamic layout later)
+  // For the root node, we can set its position here or assume it's handled by CSS (e.g., normal flow or specific ID style)
+  // If it needs to be positioned by JS:
+  rootNodeElement.style.position = 'absolute'; // Explicitly position root
   rootNodeElement.style.left = '50px';
   rootNodeElement.style.top = '50px';
   container.appendChild(rootNodeElement);
 
-  // Render children only if the root has children and is not collapsed
-  if (data.root.children && data.root.children.length > 0 && !(data.root.isCollapsed)) {
-    renderChildren(data.root.children, rootNodeElement);
+  // Create a children container for the root node if it has children
+  // This container is essential for renderChildren to find and manage.
+  if (data.root.children && data.root.children.length > 0) {
+    let childrenContainer = rootNodeElement.querySelector('.mindmap-children-container');
+    if (!childrenContainer) {
+        childrenContainer = document.createElement('div');
+        childrenContainer.classList.add('mindmap-children-container');
+        rootNodeElement.appendChild(childrenContainer);
+    }
+    // Render children only if the root is not collapsed
+    if (!data.root.isCollapsed) {
+        renderChildren(data.root.children, rootNodeElement);
+    }
   }
+
 
   // Ensure this runs after the DOM has been updated and layout computed.
   // Using requestAnimationFrame helps defer execution until the browser is ready to paint.
@@ -727,21 +741,91 @@ function traverseAndDrawLines(nodeElement) {
 }
 
 
-function renderChildren(children, parentElement) {
-  const childrenContainer = document.createElement('div');
-  childrenContainer.classList.add('mindmap-children-container');
-  parentElement.appendChild(childrenContainer); // Append to the actual parent DOM element
+function renderChildren(childrenData, parentNodeElement) {
+  // parentNodeElement is the DOM element of the parent node.
+  const childrenContainer = parentNodeElement.querySelector('.mindmap-children-container');
 
-  children.forEach(childNodeData => {
-    const childNodeElement = createNodeElement(childNodeData);
-    // Basic absolute positioning relative to parent's childrenContainer
-    // More sophisticated layout would calculate these based on siblings, depth, etc.
-    // For now, this will stack them based on their own content size within the container.
-    // The actual X, Y for lines will be based on getBoundingClientRect relative to svgLayer.
+  if (!childrenContainer) {
+    // This case should ideally be handled by createNodeElement ensuring such a container exists if nodeData.children is present.
+    // For robustness, if it's missing for a node that *should* have one (because it has children and isn't collapsed), create it.
+    if (childrenData && childrenData.length > 0) {
+        console.warn("Missing .mindmap-children-container for parent:", parentNodeElement, "Creating one.");
+        const newContainer = document.createElement('div');
+        newContainer.classList.add('mindmap-children-container');
+        parentNodeElement.appendChild(newContainer);
+        // It's tricky to re-assign childrenContainer here without affecting outer scope if it was passed.
+        // The most robust way is to ensure createNodeElement *always* creates it if children might exist.
+        // For now, we'll assume createNodeElement has added it if children are present.
+        // If not, the querySelector above would be null.
+        // Let's re-query, though ideally createNodeElement should handle this.
+        const reQueriedContainer = parentNodeElement.querySelector('.mindmap-children-container');
+        if (!reQueriedContainer) {
+            console.error("Failed to create and find .mindmap-children-container for parent:", parentNodeElement);
+            return;
+        }
+        // This direct reassignment won't work due to scope. Better to ensure createNodeElement does its job.
+        // For this implementation, we'll rely on createNodeElement having done this.
+        // If childrenContainer is null, it means the parent node didn't render one, which is an issue in createNodeElement.
+    } else {
+        // No children data, so no container needed.
+        if (childrenContainer) childrenContainer.innerHTML = ''; // Clear if it exists but no data.
+        return;
+    }
+  }
+
+  childrenContainer.innerHTML = ''; // Clear previous children before re-rendering/re-positioning
+
+  let currentX = 10; // Start with padding inside childrenContainer (matches CSS padding)
+  let currentY = 10; // Start with padding
+  let maxChildHeightInRow = 0;
+  const horizontalSpacing = 25; // Space between horizontal nodes
+  const verticalSpacing = 20; // Space between rows if wrapping were fully implemented
+
+  childrenData.forEach(childData => {
+    const childNodeElement = createNodeElement(childData);
+
+    // Temporarily append to get dimensions, then position
+    childNodeElement.style.visibility = 'hidden'; // Avoid flicker
     childrenContainer.appendChild(childNodeElement);
 
-    if (childNodeData.children && childNodeData.children.length > 0 && !(childNodeData.isCollapsed)) {
-      renderChildren(childNodeData.children, childNodeElement); // Pass childNodeElement as the new parentElement
+    const childWidth = childNodeElement.offsetWidth;
+    const childHeight = childNodeElement.offsetHeight;
+    maxChildHeightInRow = Math.max(maxChildHeightInRow, childHeight);
+
+    // Basic wrapping logic (optional, for now, simple horizontal row)
+    // const containerMaxWidth = childrenContainer.offsetWidth - 20; // Example: childrenContainer.clientWidth
+    // if (containerMaxWidth > 0 && currentX + childWidth > containerMaxWidth && currentX > 10) { // Check currentX > 10 to ensure at least one item is in the row
+    //   currentX = 10;
+    //   currentY += maxChildHeightInRow + verticalSpacing;
+    //   maxChildHeightInRow = childHeight;
+    // }
+
+    childNodeElement.style.position = 'absolute';
+    childNodeElement.style.left = currentX + 'px';
+    childNodeElement.style.top = currentY + 'px';
+    childNodeElement.style.visibility = 'visible';
+
+    currentX += childWidth + horizontalSpacing;
+
+    // If child itself has children and is not collapsed, recursively call renderChildren for it.
+    // Ensure the childNodeElement has a children-container, typically added by createNodeElement.
+    if (childData.children && childData.children.length > 0) {
+        let grandChildrenContainer = childNodeElement.querySelector('.mindmap-children-container');
+        if (!grandChildrenContainer) {
+            grandChildrenContainer = document.createElement('div');
+            grandChildrenContainer.classList.add('mindmap-children-container');
+            childNodeElement.appendChild(grandChildrenContainer);
+        }
+        if (!childData.isCollapsed) {
+            renderChildren(childData.children, childNodeElement);
+        }
     }
   });
+
+  // Adjust height of childrenContainer to fit content
+  if (childrenData.length > 0) {
+    childrenContainer.style.height = (currentY + maxChildHeightInRow + 10) + 'px'; // Add last row height + bottom padding
+  } else {
+    childrenContainer.style.height = 'auto'; // Or '0px' if it should truly collapse, 'auto' is safer.
+  }
 }
