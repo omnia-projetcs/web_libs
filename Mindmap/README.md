@@ -20,6 +20,7 @@ This is a web-based interactive mindmap application that allows users to create,
     *   **Curved Connection Lines**: Visual lines (curved Bézier paths) are now drawn between parent and child nodes, making the mindmap structure clearer and more aesthetically pleasing.
     *   **Improved Node Spacing**: Default spacing between nodes and branches has been enhanced to reduce clutter and minimize visual overlaps.
     *   **Horizontal Child Node Layout**: Child nodes are now primarily arranged in a horizontal row relative to their parent, controlled by JavaScript. This is a foundational step towards more dynamic and organized mindmap structures.
+    *   **Draggable Nodes (Drag-and-Drop)**: Nodes can be manually repositioned on the mindmap canvas by clicking and dragging them. Their custom positions are saved to local storage and restored upon reload.
 *   **Data Persistence & Portability**:
     *   **Local Storage**: Your mindmap is automatically saved to your browser's local storage as you make changes. It will be reloaded when you revisit the page.
     *   **Clear Local Data**: Option to clear the mindmap data stored in your browser.
@@ -44,6 +45,7 @@ This is a web-based interactive mindmap application that allows users to create,
         *   Adding/Editing Notes, Tables, Images, or Charts.
         *   Deleting the node (the 'X' button).
     *   **Expand/Collapse**: Click the `[+]` (expand) or `[-]` (collapse) button next to a node's name to show/hide its children.
+    *   **Moving Nodes**: To change a node's position, click and hold the primary mouse button on it, then drag it to the desired location on the canvas and release.
     *   **Saving Locally**: Changes are saved to local storage automatically. The "Save Locally" button provides an explicit save action.
     *   **Import/Export**:
         *   Use the "Import from JSON File" file chooser to load a mindmap.
@@ -65,3 +67,4 @@ This is a web-based interactive mindmap application that allows users to create,
 
 *   The current horizontal layout for child nodes is basic. It does not yet implement automatic wrapping for a large number of children in a single row, which may cause horizontal overflow within the children's container.
 *   Node positioning is primarily handled for the root and its direct children's horizontal layout. More complex, multi-depth automatic layout algorithms (e.g., tree layout, force-directed) are not yet implemented. Nodes are positioned based on their order and basic spacing calculations.
+*   **Layout with Dragged Nodes**: When a node is manually dragged and repositioned, its sibling nodes that are still positioned by the basic layout algorithm do not currently reflow or dynamically adjust to avoid the dragged node. This may result in visual overlaps if a dragged node is placed in the path of its algorithmically positioned siblings. Improving this interaction is an area for future layout enhancements.

@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mindmap Demo</title>
+  <title>Mindmap Demo (Latest)</title>
   <style type="text/css">
+/* Content of Mindmap/mindmap.css */
 body {
     font-family: sans-serif;
     margin: 20px;
     background-color: #f4f4f4;
 }
 
+#mindmap-container {
+  position: relative; /* Needed for absolute positioning of SVG layer */
+  margin-top: 60px; /* Shift the container further down from the top of its containing block */
+}
+
+/* This is the existing .mindmap-container style, ensure #mindmap-container properties are merged or handled */
 .mindmap-container {
-    position: relative;
+    /* position: relative; -- Already handled by #mindmap-container ID selector */
     width: 100%;
     height: 500px; /* Adjust as needed */
     border: 1px solid #ccc;
@@ -18,15 +25,28 @@ body {
     background-color: #fff;
 }
 
+#mindmap-svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0; /* Behind nodes */
+  pointer-events: none; /* Allow clicks to pass through to nodes */
+}
+
 .mindmap-node {
-    position: absolute;
+    /* position: absolute; /* REMOVED - Will be set by JS for child nodes */
+    /* position: relative; /* Root node might be relative if not explicitly positioned by JS */
+    z-index: 1; /* Above SVG layer */
+    background-color: white; /* Ensure nodes have a background to hide lines passing 'under' them */
     padding: 8px 12px;
     border: 1px solid #007bff;
-    background-color: #fff;
     border-radius: 5px;
     cursor: grab; /* Indicates draggable */
     box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     white-space: nowrap; /* Prevent text wrapping */
+    margin-bottom: 15px; /* Increased spacing between sibling nodes */
 }
 
 .mindmap-node:active {
@@ -65,8 +85,17 @@ body {
     display: inline-block; /* Ensure it behaves well with other elements */
     user-select: none; /* Prevent text selection on click */
 }
+
+.mindmap-children-container {
+    position: relative; /* Establishes a positioning context for absolutely positioned children */
+    margin-left: 35px;  /* Indent child branches */
+    padding: 10px;      /* Internal padding for the container */
+    /* padding-top: 10px; /* Covered by padding: 10px; */
+    min-height: 10px; /* Ensure it has some height even if empty, for layout purposes */
+}
   </style>
   <style type="text/css">
+/* Content of PureChart/PureChart.css */
 /**
  File PureChart.css
  Description Light and fast chart without any other libs
@@ -137,9 +166,9 @@ p.info {
   <div id="controls">
     <input type="text" id="node-text-input" placeholder="Enter node text">
     <button id="add-node-btn">Add Node to Root</button>
-    <button id="save-locally-btn">Save Locally</button>
+    <button id="save-locally-btn">Save Locally (Demo)</button>
     <button id="export-json-btn">Download as JSON</button>
-    <button id="clear-local-storage-btn">Clear Local Data</button>
+    <button id="clear-local-storage-btn">Clear Local Data (Demo)</button>
     <button id="save-to-server-btn">Save to Server (Sim)</button>
     <button id="load-from-server-btn">Load from Server (Sim)</button>
     <hr style="margin: 5px 0;">
@@ -154,6 +183,7 @@ p.info {
   </div>
 
   <script type="text/javascript">
+// Content of PureChart/PureChart.js (Full library code from previous step)
 /**
  * @file PureChart.js
  * @description Light and fast chart without any other libs
@@ -2915,14 +2945,13 @@ class PureChart {
 }
   </script>
   <script type="text/javascript">
-// --- Conceptual API Endpoints ---
-// const API_BASE_URL = '/api/mindmap'; // Example base
-// const API_SAVE_MINDMAP = `${API_BASE_URL}/save`; // POST - Body: { mindmapData, mindmapId? }
-// const API_LOAD_MINDMAP = `${API_BASE_URL}/load/:mindmapId`; // GET
-// const API_LIST_MINDMAPS = `${API_BASE_URL}/list`; // GET - Returns list of user's mindmaps {id, name, lastModified}
+// Content of Mindmap/mindmap.js with demo-specific modifications
 
-// Global mindmap data variable for DEMO
-// This is the new structure for mindmapData in demo.html
+// --- Conceptual API Endpoints (Commented out for demo) ---
+// const API_BASE_URL = '/api/mindmap';
+// ...
+
+// Global mindmap data variable for DEMO - UPDATED STRUCTURE
 let mindmapData = {
   root: {
     id: 'root-demo',
@@ -2961,14 +2990,14 @@ let mindmapData = {
     ]
   }
 };
-// Ensure this new mindmapData declaration replaces the old one.
-// The existing logic in demo.html that bypasses local storage load and calls renderMindmap directly should remain.
 
-const LOCAL_STORAGE_KEY = 'userMindmapData_DEMO'; // Use a different key for demo to avoid conflicts
+const LOCAL_STORAGE_KEY = 'userMindmapData_DEMO_LATEST'; // Unique key for demo
 let nodeIdCounter = Date.now(); // Initialize for demo
+let svgLayer = null; // For SVG connection lines
+
 function generateNodeId() { return `node-demo-${Date.now()}-${nodeIdCounter++}`; }
 
-// --- Feedback Utility ---
+// --- Feedback Utility --- (Copied from mindmap.js)
 function showFeedback(message, isError = false, isServerSim = false) {
   const feedbackElement = document.getElementById('feedback-message');
   if (feedbackElement) {
@@ -2986,102 +3015,134 @@ function showFeedback(message, isError = false, isServerSim = false) {
 function getMindmapDataAsJSON() { return JSON.stringify(mindmapData, null, 2); }
 
 function saveMindmapToLocalStorage() {
-  // In demo mode, we might choose not to save to actual local storage
-  // or use a specific demo key if we want to allow temporary saves within the demo.
-  // For this version, let's make "Save Locally" a simulated action in demo.
-  console.log('Demo: Simulating save to local storage.');
-  showFeedback('Demo: "Save Locally" is simulated. Changes are not persisted beyond this session in demo.html.', false);
-  // If you wanted to enable local storage for the demo, uncomment the next lines:
-  // try {
-  //   localStorage.setItem(LOCAL_STORAGE_KEY, getMindmapDataAsJSON());
-  //   console.log('Mindmap (Demo) saved to local storage.');
-  // } catch (e) {
-  //   console.error('Error saving to local storage (Demo):', e);
-  //   showFeedback('Error saving locally (Demo). Storage might be full.', true);
-  // }
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, getMindmapDataAsJSON());
+    console.log('Mindmap (Demo) saved to local storage with key:', LOCAL_STORAGE_KEY);
+    showFeedback('Demo progress saved to this browser session.', false);
+  } catch (e) {
+    console.error('Error saving to local storage (Demo):', e);
+    showFeedback('Error saving demo locally. Storage might be full.', true);
+  }
 }
 
 function loadMindmapFromLocalStorage() {
-  // This function will NOT be called in the demo to preserve sample data.
-  // If it were, it would load from LOCAL_STORAGE_KEY_DEMO
-  console.log('Demo: loadMindmapFromLocalStorage called but will be skipped to show sample data.');
+  // This function is intentionally bypassed in the demo's DOMContentLoaded
+  // to always show the predefined sample data.
+  // If it were to be used, it would load from LOCAL_STORAGE_KEY.
+  console.log('Demo: loadMindmapFromLocalStorage called but bypassed.');
+  // Attempt to load from demo-specific key if needed for some persistence scenarios
+  try {
+    const jsonData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (jsonData) {
+      const loadedData = JSON.parse(jsonData);
+      if (loadedData && loadedData.root) {
+        mindmapData = loadedData;
+        nodeIdCounter = Date.now();
+        console.log('Mindmap (Demo) loaded from local storage key:', LOCAL_STORAGE_KEY);
+      }
+    }
+  } catch(e) {
+    console.error("Error loading demo data from local storage", e);
+  }
+  // Fallback to render with whatever mindmapData is current (either pre-defined or loaded)
   renderMindmap(mindmapData, 'mindmap-container');
 }
 
 function clearLocalStorage() {
-  // Modify clear local storage for demo context
-  showFeedback('Demo: "Clear Local Data" simulated. Resetting to initial demo map.', false);
-  console.log('Demo: Local storage clear simulated.');
-  // Reset to the initial demo data
-  mindmapData = { /* Paste the full initial demo mindmapData structure here again, or clone properly */
+  showFeedback('Demo: Resetting to initial demo mindmap.', false);
+  console.log('Demo: Local storage clear simulated, resetting to sample data.');
+  // Reset to the initial rich demo data
+  mindmapData = {
     root: {
       id: 'root-demo',
       text: 'Interactive Mindmap Demo',
-      notes: 'This is a self-contained demo of the mindmap application. All CSS and JS are embedded. Try adding nodes, editing, and using the features!',
+      notes: 'This demo showcases curved connectors and improved spacing. All CSS and JS are embedded.',
       isCollapsed: false,
       children: [
         {
-          id: 'demo-child1', text: 'Feature Showcase', notes: 'Explore different node types below.', isCollapsed: false, children: [
-            { id: 'demo-grandchild11', text: 'Node with Notes', notes: 'This node has some interesting text notes! You can add your own too.', children: [] },
-            { id: 'demo-grandchild12', text: 'Node with Image', image: {src: 'https://via.placeholder.com/120/007bff/ffffff?text=Demo+Image', alt:'Demo Image Placeholder'}, children: [] },
-            { id: 'demo-grandchild13', text: 'Node with Table', table: {headers: ['Item', 'Value'], rows: [['Alpha', '100'], ['Beta', '200'], ['Gamma', '300']]}, children: [] },
-            { id: 'demo-grandchild14', text: 'Node with Chart', chart: {type: 'bar', title: 'Sample Bar Chart', labels: ['Section A', 'Section B', 'Section C'], values: [12, 19, 7]}, children: [] }
+          id: 'demo-child1', text: 'Feature Showcase', notes: 'Explore different node types below. This branch is initially expanded.', isCollapsed: false, children: [
+            { id: 'demo-grandchild11', text: 'Node with Notes', notes: 'This node has a text note!', children: [] },
+            { id: 'demo-grandchild12', text: 'Node with Image', image: {src: 'https://via.placeholder.com/100/09f/fff?text=DemoIMG', alt:'Demo Image'}, children: [] },
+            { id: 'demo-grandchild13', text: 'Node with Table', table: {headers: ['Col1', 'Col2'], rows: [['DataA', 'DataB'], ['DataC', 'DataD']]}, children: [] },
+            { id: 'demo-grandchild14', text: 'Node with Chart', chart: {type: 'bar', title: 'Sample Chart', labels: ['A', 'B', 'C'], values: [10, 20, 15]}, children: [] }
           ]
         },
         {
-          id: 'demo-child2', text: 'Collapsible Branch', notes: 'Click the [-] toggle next to my text to collapse this entire branch. Click [+] to expand it again.', isCollapsed: false, children: [
-            { id: 'demo-grandchild21', text: 'Sub-item 1', notes: 'Part of a collapsible branch.', children: [] },
-            { id: 'demo-grandchild22', text: 'Sub-item 2', notes: 'You can create deep hierarchies.', children: [
-              { id: 'demo-greatgrandchild221', text: 'Deeper Item', notes: 'Even deeper!', children: [] }
-            ]}
+          id: 'demo-child2', text: 'Multi-Level Branch', notes: 'This branch demonstrates multiple levels of children, all expanded.', isCollapsed: false, children: [
+            { id: 'demo-grandchild21', text: 'Sub-item 2.1', children: [
+                { id: 'demo-greatgrandchild211', text: 'Sub-sub-item 2.1.1', children: [] },
+                { id: 'demo-greatgrandchild212', text: 'Sub-sub-item 2.1.2', children: [] }
+            ]},
+            { id: 'demo-grandchild22', text: 'Sub-item 2.2', children: [] }
           ]
         },
         {
-          id: 'demo-child3', text: 'Another Branch', notes: 'Feel free to add more children here.', children: [] }
+          id: 'demo-child3', text: 'Initially Collapsed Branch', notes: 'Click the [+] to expand this branch and see its children and connection lines.', isCollapsed: true, children: [
+            { id: 'demo-grandchild31', text: 'Hidden Child 3.1', children: [] },
+            { id: 'demo-grandchild32', text: 'Hidden Child 3.2', children: [] }
+          ]
+        },
+        {
+          id: 'demo-child4', text: 'Another Expanded Branch', notes: 'Just to show more connections.', isCollapsed: false, children: [
+              { id: 'demo-grandchild41', text: 'Item 4.1', children: []},
+              { id: 'demo-grandchild42', text: 'Item 4.2', children: []}
+          ]}
       ]
     }
   };
-  nodeIdCounter = Date.now();
+  nodeIdCounter = Date.now(); // Reset counter
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear the demo-specific key
+    console.log('Demo-specific local storage cleared for key:', LOCAL_STORAGE_KEY);
+  } catch (e) {
+    console.error('Error clearing demo-specific local storage:', e);
+  }
   renderMindmap(mindmapData, 'mindmap-container');
-  // If you enabled local storage for demo:
-  // try { localStorage.removeItem(LOCAL_STORAGE_KEY); } catch(e) { console.error('Error clearing demo local storage', e); }
 }
 
-// --- Simulated Server Interaction (remains the same, conceptually) ---
+// --- Simulated Server Interaction --- (Copied from mindmap.js, remains conceptual)
 async function saveMindmapToServer(mindmapId = 'default-map-id') {
   const jsonData = getMindmapDataAsJSON();
-  console.log(`Simulating SAVE to endpoint for mindmapId: ${mindmapId}`);
+  const conceptualEndpoint = `/api/mindmap/save`;
+  console.log(`Simulating SAVE to conceptual endpoint: ${conceptualEndpoint} for mindmapId: ${mindmapId}`);
   showFeedback(`Attempting to save mindmap "${mindmapId}" to server...`, false, true);
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  console.log("Simulated server success response:", { success: true, savedId: mindmapId });
-  showFeedback(`Mindmap "${mindmapId}" saved. (Simulated server ID: ${mindmapId})`, false, true);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const simulatedServerResponse = { success: true, savedId: mindmapId, timestamp: Date.now() };
+    console.log("Simulated server success response:", simulatedServerResponse);
+    showFeedback(`Mindmap "${mindmapId}" saved. (Simulated server ID: ${simulatedServerResponse.savedId})`, false, true);
+  } catch (error) {
+    console.error("Simulated server save error:", error);
+    showFeedback(`Failed to save mindmap "${mindmapId}" to server. ${error.message}`, true, true);
+  }
 }
 
 async function loadMindmapFromServer(mindmapId = 'sample-map-from-server') {
-  console.log(`Simulating LOAD from endpoint for mindmapId: ${mindmapId}`);
+  const conceptualEndpoint = `/api/mindmap/load/${mindmapId}`;
+  console.log(`Simulating LOAD from conceptual endpoint: ${conceptualEndpoint}`);
   showFeedback(`Attempting to load mindmap "${mindmapId}" from server...`, false, true);
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const sampleServerData = {
-    root: {
-      id: 'server-root-demo', text: `Loaded Demo: ${mindmapId}`, notes: 'This data came from a (simulated) server for the demo.',
-      isCollapsed: false,
-      children: [ { id: generateNodeId(), text: 'Server Child 1 (Demo)', children: [] } ]
-    }
-  };
-  mindmapData = sampleServerData;
-  nodeIdCounter = Date.now();
-  renderMindmap(mindmapData, 'mindmap-container');
-  showFeedback(`Mindmap "${mindmapId}" loaded from server successfully. (Demo)`, false, true);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const sampleServerData = { /* ... sample server data ... */ }; // Keep it simple for demo
+    mindmapData = sampleServerData; // Replace current data
+    nodeIdCounter = Date.now();
+    renderMindmap(mindmapData, 'mindmap-container');
+    // saveMindmapToLocalStorage(); // Optionally save server-loaded data to demo local storage
+    showFeedback(`Mindmap "${mindmapId}" loaded from server successfully.`, false, true);
+  } catch (error) {
+    console.error("Simulated server load error:", error);
+    showFeedback(`Failed to load mindmap "${mindmapId}" from server. ${error.message}`, true, true);
+  }
 }
 
-
+// --- DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', () => {
-  // DO NOT load from local storage for the demo to ensure sample data is shown.
-  // loadMindmapFromLocalStorage();
+  // loadMindmapFromLocalStorage(); // BYPASSED for demo to always show predefined data
+  svgLayer = document.getElementById('mindmap-svg-layer'); // Initialize svgLayer
   renderMindmap(mindmapData, 'mindmap-container'); // Directly render the predefined demo data
-  showFeedback('Welcome to the Interactive Mindmap Demo!', false);
+  showFeedback('Welcome to the Mindmap Demo! This is a self-contained page using the latest features.', false);
 
-
+  // Event listeners (copied from mindmap.js)
   const addNodeBtn = document.getElementById('add-node-btn');
   const nodeTextInput = document.getElementById('node-text-input');
   const saveLocallyBtn = document.getElementById('save-locally-btn');
@@ -3091,32 +3152,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const importFileInput = document.getElementById('import-file-input');
   const exportJsonBtn = document.getElementById('export-json-btn');
 
-
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
     const text = nodeTextInput.value.trim();
-    if (text) { addNode(mindmapData.root.id, text); nodeTextInput.value = ''; } // Add to current root of demo
+    if (text) { addNode(mindmapData.root.id, text); nodeTextInput.value = ''; }
     else { alert('Please enter text for the node.'); }
   });
-
-  if (saveLocallyBtn) saveLocallyBtn.addEventListener('click', () => {
-    saveMindmapToLocalStorage(); // This is now a simulated save for demo
-  });
-
-  if (saveToServerBtn) saveToServerBtn.addEventListener('click', () => {
-    saveMindmapToServer('user123-map-demo');
-  });
-
-  if (loadFromServerBtn) loadFromServerBtn.addEventListener('click', () => {
-    loadMindmapFromServer('official-sample-map-demo');
-  });
-
-  if (clearLocalBtn) clearLocalBtn.addEventListener('click', clearLocalStorage); // Resets to demo data
-
+  if (saveLocallyBtn) saveLocallyBtn.addEventListener('click', saveMindmapToLocalStorage);
+  if (saveToServerBtn) saveToServerBtn.addEventListener('click', () => saveMindmapToServer('user123-map-demo'));
+  if (loadFromServerBtn) loadFromServerBtn.addEventListener('click', () => loadMindmapFromServer('official-sample-map-demo'));
+  if (clearLocalBtn) clearLocalBtn.addEventListener('click', clearLocalStorage);
   if (importFileInput) importFileInput.addEventListener('change', handleFileUpload);
   if (exportJsonBtn) exportJsonBtn.addEventListener('click', handleExportMindmapAsJson);
 });
 
-// --- File Export Logic ---
+// --- File Export/Import Logic --- (Copied from mindmap.js)
 function handleExportMindmapAsJson() {
   try {
     const mindmapJsonString = JSON.stringify(mindmapData, null, 2);
@@ -3124,9 +3173,9 @@ function handleExportMindmapAsJson() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    let filename = 'mindmap_demo.json';
+    let filename = 'mindmap_demo_export.json'; // Demo specific filename
     if (mindmapData && mindmapData.root && mindmapData.root.text) {
-      const safeFilename = mindmapData.root.text.replace(/[^a-z0-9_\-\.]/gi, '_').substring(0, 50);
+      const safeFilename = mindmapData.root.text.replace(/[^a-z0-9_\-\.]/gi, '_').substring(0, 40);
       if (safeFilename) filename = `${safeFilename}_demo.json`;
     }
     link.setAttribute('download', filename);
@@ -3141,12 +3190,10 @@ function handleExportMindmapAsJson() {
   }
 }
 
-// --- File Import Logic ---
 function handleFileUpload(event) {
   const file = event.target.files[0];
   const importFileInput = document.getElementById('import-file-input');
-
-  if (!file) { return; }
+  if (!file) return;
   if (file.type !== "application/json") {
     showFeedback("Please select a valid JSON file (.json).", true);
     if (importFileInput) importFileInput.value = '';
@@ -3158,11 +3205,10 @@ function handleFileUpload(event) {
       const jsonText = e.target.result;
       const loadedData = JSON.parse(jsonText);
       if (loadedData && loadedData.root && typeof loadedData.root.text !== 'undefined') {
-        mindmapData = loadedData;
+        mindmapData = loadedData; // Replace current demo data
         nodeIdCounter = Date.now();
         renderMindmap(mindmapData, 'mindmap-container');
-        // saveMindmapToLocalStorage(); // Decide if imported demo should be "saved" (simulated)
-        showFeedback('Mindmap loaded successfully from file into demo!', false);
+        showFeedback('Mindmap loaded from file into demo! (Not saved to local storage automatically)', false);
       } else {
         showFeedback('Invalid mindmap file format.', true);
       }
@@ -3175,13 +3221,14 @@ function handleFileUpload(event) {
   };
   reader.onerror = () => {
     console.error('Error reading file.');
-    showFeedback('Error reading file.', true);
+    showFeedback('An error occurred while trying to read the file.', true);
     if (importFileInput) importFileInput.value = '';
   };
   reader.readAsText(file);
 }
 
-// --- Core Mindmap Logic ---
+
+// --- Core Mindmap Logic --- (Copied from mindmap.js, with minor demo adjustments)
 function findNodeById(node, id) {
     if (node.id === id) return node;
     if (node.children) {
@@ -3192,6 +3239,7 @@ function findNodeById(node, id) {
     }
     return null;
 }
+
 function findParentNode(node, childId) {
     if (node.children) {
         for (const child of node.children) {
@@ -3202,6 +3250,7 @@ function findParentNode(node, childId) {
     }
     return null;
 }
+
 function addNode(parentId, text) {
   const parentNode = findNodeById(mindmapData.root, parentId);
   if (!parentNode) { console.error("Parent not found for new node in demo"); return; }
@@ -3217,23 +3266,41 @@ function addNode(parentId, text) {
     parentNode.isCollapsed = false;
   }
   renderMindmap(mindmapData, 'mindmap-container');
-  // saveMindmapToLocalStorage(); // Simulated in demo
+  // saveMindmapToLocalStorage(); // For demo, explicit save preferred
 }
+
 function deleteNode(nodeId) {
-  if (nodeId === mindmapData.root.id) { alert("Cannot delete root node in demo."); return; } // Protect demo root
+  if (nodeId === mindmapData.root.id && mindmapData.root.id === 'root-demo') { // Protect initial demo root
+      alert("Deletion of the initial demo root node is prevented in this demo.");
+      return;
+  }
   let parentNode = findParentNode(mindmapData.root, nodeId);
   if (parentNode && parentNode.children) {
     parentNode.children = parentNode.children.filter(child => child.id !== nodeId);
-  } else { /* More complex deletion if not direct child, simplified for demo or keep full logic */ }
+  } else {
+    // Fallback for non-direct children, if any (should be covered by parentNode check)
+    function removeInChildren(node, idToRemove) {
+        if (!node.children) return false;
+        const initialLength = node.children.length;
+        node.children = node.children.filter(child => child.id !== idToRemove);
+        if (node.children.length < initialLength) return true;
+        for (const child of node.children) { if (removeInChildren(child, idToRemove)) return true; }
+        return false;
+    }
+    if (!removeInChildren(mindmapData.root, nodeId)) {
+        alert(`Node with ID "${nodeId}" not found for deletion.`); return;
+    }
+  }
   renderMindmap(mindmapData, 'mindmap-container');
-  // saveMindmapToLocalStorage(); // Simulated
+  // saveMindmapToLocalStorage(); // For demo, explicit save preferred
 }
+
 function editNodeText(nodeId, newText) {
   const node = findNodeById(mindmapData.root, nodeId);
   if (node) {
     node.text = newText;
     renderMindmap(mindmapData, 'mindmap-container');
-    // saveMindmapToLocalStorage(); // Simulated
+    // saveMindmapToLocalStorage();
   }
 }
 function addOrEditNote(nodeId) {
@@ -3243,7 +3310,7 @@ function addOrEditNote(nodeId) {
     if (newNote !== null) {
       node.notes = newNote.trim();
       renderMindmap(mindmapData, 'mindmap-container');
-      // saveMindmapToLocalStorage(); // Simulated
+      // saveMindmapToLocalStorage();
     }
   }
 }
@@ -3253,18 +3320,15 @@ function addOrEditTable(nodeId) {
   const currentTable = node.table;
   let headersInput = currentTable ? currentTable.headers.join(',') : '';
   let rowsInput = currentTable ? currentTable.rows.map(r => r.join(',')).join(';') : '';
-
   headersInput = prompt("Table Headers (comma-separated):", headersInput);
   if (headersInput === null) return;
   rowsInput = prompt("Table Rows (semicolon-separated rows; comma-separated cells):", rowsInput);
   if (rowsInput === null) return;
-
   const headers = headersInput.split(',').map(h => h.trim()).filter(h => h);
   let rows = [];
   if (rowsInput.trim() !== '') {
     rows = rowsInput.split(';').map(rowStr => rowStr.split(',').map(cell => cell.trim())).filter(row => row.length > 0 && (row.length > 1 || row[0] !== ''));
   }
-
   let changed = false;
   if (headers.length === 0 && rows.length === 0) {
     if (node.table !== null) changed = true;
@@ -3272,16 +3336,16 @@ function addOrEditTable(nodeId) {
   } else if (headers.length > 0 && rows.every(row => row.length === headers.length)) {
     node.table = { headers, rows };
     changed = true;
-  } else if (headers.length > 0 && rows.length === 0) { // Allow table with only headers
+  } else if (headers.length > 0 && rows.length === 0) {
     node.table = { headers, rows: [] };
     changed = true;
   } else {
     alert("Invalid table data. All rows must match header count, or provide only headers. Table not saved.");
-    if (!currentTable) node.table = null; // Revert if new table was invalid
+    if (!currentTable) node.table = null;
   }
   if (changed) {
     renderMindmap(mindmapData, 'mindmap-container');
-    // saveMindmapToLocalStorage(); // Simulated
+    // saveMindmapToLocalStorage();
   }
 }
 function addOrEditImage(nodeId) {
@@ -3290,23 +3354,21 @@ function addOrEditImage(nodeId) {
   const currentImage = node.image;
   let src = currentImage ? currentImage.src : '';
   let alt = currentImage ? currentImage.alt : '';
-
   src = prompt("Image URL:", src);
   if (src === null) return;
   alt = prompt("Image Alt Text:", alt);
-  if (alt === null) return; // User cancelled alt prompt
-
+  if (alt === null) return;
   let changed = false;
   if (src.trim()) {
     if (!node.image || node.image.src !== src.trim() || node.image.alt !== alt.trim()) changed = true;
     node.image = { src: src.trim(), alt: alt.trim() };
-  } else { // Empty src means remove image
+  } else {
     if (node.image !== null) changed = true;
     node.image = null;
   }
   if (changed) {
     renderMindmap(mindmapData, 'mindmap-container');
-    // saveMindmapToLocalStorage(); // Simulated
+    // saveMindmapToLocalStorage();
   }
 }
 function addOrEditChart(nodeId) {
@@ -3317,7 +3379,6 @@ function addOrEditChart(nodeId) {
   let title = currentChart ? currentChart.title : '';
   let labelsStr = currentChart ? currentChart.labels.join(',') : '';
   let valuesStr = currentChart ? currentChart.values.join(',') : '';
-
   type = prompt("Chart Type ('bar', 'line', 'pie'):", type);
   if (type === null) return; type = type.trim().toLowerCase();
   title = prompt("Chart Title:", title);
@@ -3326,39 +3387,36 @@ function addOrEditChart(nodeId) {
   if (labelsStr === null) return;
   valuesStr = prompt("Chart Values (comma-separated numbers):", valuesStr);
   if (valuesStr === null) return;
-
   const labels = labelsStr.split(',').map(l => l.trim()).filter(l => l);
   const values = valuesStr.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-
   let changed = false;
   if (labels.length > 0 && values.length > 0 && labels.length === values.length && ['bar', 'line', 'pie'].includes(type)) {
     node.chart = { type, title: title.trim(), labels, values };
     changed = true;
-  } else if (labels.length === 0 && values.length === 0 && type && ['bar', 'line', 'pie'].includes(type)) { // Allow chart with no data but valid type
+  } else if (labels.length === 0 && values.length === 0 && type && ['bar', 'line', 'pie'].includes(type)) {
     node.chart = { type, title: title.trim(), labels: [], values: [] };
     changed = true;
-  }
-  else {
+  } else {
     alert("Invalid chart data. Ensure type is valid, and labels/values counts match. Chart not saved.");
-    if (!currentChart) node.chart = null; // Revert if new chart was invalid
+    if (!currentChart) node.chart = null;
   }
-
   if (changed) {
     renderMindmap(mindmapData, 'mindmap-container');
-    // saveMindmapToLocalStorage(); // Simulated
+    // saveMindmapToLocalStorage();
   }
 }
 
-// --- Rendering (Copied from mindmap.js, ensure it's the latest version) ---
+// --- Rendering ---
 function createNodeElement(nodeData) {
   const nodeElement = document.createElement('div');
   nodeElement.classList.add('mindmap-node');
   nodeElement.setAttribute('data-id', nodeData.id);
+  // Note: position:absolute will be set by the layouting function (renderChildren or renderMindmap for root)
 
   const textElement = document.createElement('span');
   textElement.classList.add('node-text');
   textElement.textContent = nodeData.text;
-  // Insert toggle before text if children exist
+
   if (nodeData.children && nodeData.children.length > 0) {
     const toggleButton = document.createElement('span');
     toggleButton.classList.add('collapse-toggle');
@@ -3368,7 +3426,8 @@ function createNodeElement(nodeData) {
       e.stopPropagation();
       nodeData.isCollapsed = !nodeData.isCollapsed;
       renderMindmap(mindmapData, 'mindmap-container');
-      // saveMindmapToLocalStorage(); // Simulated in demo
+      // For demo, explicit save is better if we enable local storage for demo
+      // saveMindmapToLocalStorage();
     });
     nodeElement.appendChild(toggleButton);
   }
@@ -3384,7 +3443,7 @@ function createNodeElement(nodeData) {
     const imgElement = document.createElement('img');
     imgElement.classList.add('node-image');
     imgElement.src = nodeData.image.src; imgElement.alt = nodeData.image.alt || 'Node image';
-    imgElement.style.maxWidth = '100px'; imgElement.style.maxHeight = '100px'; // Demo constraint
+    imgElement.style.maxWidth = '100px'; imgElement.style.maxHeight = '100px';
     nodeElement.appendChild(imgElement);
   }
 
@@ -3392,19 +3451,19 @@ function createNodeElement(nodeData) {
     const noteElement = document.createElement('p');
     noteElement.classList.add('node-notes');
     noteElement.textContent = nodeData.notes;
-    noteElement.style.fontSize = '0.8em'; noteElement.style.color = '#555'; // Demo style
+    noteElement.style.fontSize = '0.8em'; noteElement.style.color = '#555';
     nodeElement.appendChild(noteElement);
   }
 
   if (nodeData.table && nodeData.table.headers) {
     const tableElement = document.createElement('table');
     tableElement.classList.add('node-table');
-    tableElement.style.borderCollapse = 'collapse'; tableElement.style.fontSize = '0.8em'; // Demo style
+    tableElement.style.borderCollapse = 'collapse'; tableElement.style.fontSize = '0.8em';
     const thead = tableElement.createTHead();
     const headerRow = thead.insertRow();
     nodeData.table.headers.forEach(ht => {
         const th = document.createElement('th'); th.textContent = ht;
-        th.style.border = '1px solid #ddd'; th.style.padding = '2px 4px'; // Demo style
+        th.style.border = '1px solid #ddd'; th.style.padding = '2px 4px';
         headerRow.appendChild(th);
     });
     if (nodeData.table.rows && nodeData.table.rows.length > 0) {
@@ -3413,7 +3472,7 @@ function createNodeElement(nodeData) {
           const row = tbody.insertRow();
           rd.forEach(cd => {
               const td = row.insertCell(); td.textContent = cd;
-              td.style.border = '1px solid #ddd'; td.style.padding = '2px 4px'; // Demo style
+              td.style.border = '1px solid #ddd'; td.style.padding = '2px 4px';
             });
         });
     }
@@ -3424,36 +3483,28 @@ function createNodeElement(nodeData) {
     const chartContainer = document.createElement('div');
     chartContainer.classList.add('node-chart-container');
     chartContainer.id = `chart-container-${nodeData.id}`;
-    chartContainer.style.width = '200px'; chartContainer.style.height = '150px'; // Demo constraint
+    chartContainer.style.width = '200px'; chartContainer.style.height = '150px';
     nodeElement.appendChild(chartContainer);
     if (typeof PureChart !== 'undefined') {
       try {
         const oldCanvas = document.getElementById(`chart-canvas-${nodeData.id}`);
-        if(oldCanvas) oldCanvas.remove(); // Remove old canvas if re-rendering
-
-        // Ensure chart options are suitable for small display if needed
+        if(oldCanvas) oldCanvas.remove();
         const chartDisplayOptions = {
-            width: 200, height: 150, // Match container
+            width: 200, height: 150,
             options: {
                 title: { display: true, text: nodeData.chart.title || `${nodeData.chart.type.toUpperCase()} Chart`, font: '12px Arial bold', padding: 5},
-                legend: { display: false }, // Optionally hide legend for small charts
-                padding: {top: 20, right: 5, bottom: 20, left: 25 }, // Adjust padding
+                legend: { display: false },
+                padding: {top: 20, right: 5, bottom: 20, left: 25 },
                 yAxes: [{ labelFont: '8px Arial', titleFont: '10px Arial bold', maxTicks: 3 }],
                 xAxis: { labelFont: '8px Arial', titleFont: '10px Arial bold' }
             },
             data: {
                 labels: nodeData.chart.labels,
-                datasets: [{
-                    label: nodeData.chart.title || 'Data', // PureChart expects dataset label
-                    values: nodeData.chart.values,
-                    // Optionally add colors if your PureChart version supports per-dataset colors
-                }]
+                datasets: [{ label: nodeData.chart.title || 'Data', values: nodeData.chart.values }]
             },
             type: nodeData.chart.type
         };
-        // Corrected instantiation to match PureChart's expected constructor if it's new PureChart(elementId, options)
         new PureChart(chartContainer.id, chartDisplayOptions);
-
       } catch (e) {
         console.error("Error rendering PureChart (Demo):", e);
         chartContainer.textContent = `Chart Error.`;
@@ -3478,7 +3529,7 @@ function createNodeElement(nodeData) {
     controlsContainer.appendChild(btn);
   });
 
-  if (nodeData.id !== mindmapData.root.id) { // Check against current demo root
+  if (nodeData.id !== mindmapData.root.id) {
     const deleteBtn = document.createElement('button');
     deleteBtn.classList.add('delete-node-btn'); deleteBtn.textContent = 'X'; deleteBtn.title = 'Delete node';
     deleteBtn.onclick = (e) => {
@@ -3496,53 +3547,160 @@ function createNodeElement(nodeData) {
     controlsContainer.appendChild(deleteBtn);
   }
   nodeElement.appendChild(controlsContainer);
+  // Ensure a children container is always present if children can be added or exist
+  if (!nodeElement.querySelector('.mindmap-children-container')) {
+    const childrenDiv = document.createElement('div');
+    childrenDiv.classList.add('mindmap-children-container');
+    nodeElement.appendChild(childrenDiv);
+  }
   return nodeElement;
 }
 
 function renderMindmap(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) { console.error("Mindmap container not found!"); return; }
-  container.innerHTML = '';
+  const mindmapSvgLayer = container.querySelector('#mindmap-svg-layer'); // Find SVG layer within the container
+  container.innerHTML = ''; // Clear previous rendering
+  if(mindmapSvgLayer) container.appendChild(mindmapSvgLayer); // Re-append SVG layer first
+
   const rootNodeElement = createNodeElement(data.root);
+  rootNodeElement.style.position = 'absolute';
   rootNodeElement.style.left = '50px';
   rootNodeElement.style.top = '50px';
   container.appendChild(rootNodeElement);
 
-  if (data.root.children && data.root.children.length > 0 && !(data.root.isCollapsed)) {
-    renderChildren(data.root.children, rootNodeElement, 1); // Start depth at 1
+  if (data.root.children && data.root.children.length > 0) {
+    let childrenContainer = rootNodeElement.querySelector('.mindmap-children-container');
+    if (!childrenContainer) { // Should be created by createNodeElement now
+        childrenContainer = document.createElement('div');
+        childrenContainer.classList.add('mindmap-children-container');
+        rootNodeElement.appendChild(childrenContainer);
+    }
+    if (!data.root.isCollapsed) {
+        renderChildren(data.root.children, rootNodeElement);
+    }
+  }
+
+  requestAnimationFrame(() => {
+    clearSvgLayer();
+    // Query for the root node element that was just added to the container
+    const rootElementForLines = container.querySelector(`.mindmap-node[data-id='${data.root.id}']`);
+    if (rootElementForLines && svgLayer) {
+      traverseAndDrawLines(rootElementForLines);
+    }
+  });
+}
+
+function clearSvgLayer() {
+  if (svgLayer) {
+    while (svgLayer.firstChild) {
+      svgLayer.removeChild(svgLayer.firstChild);
+    }
   }
 }
 
-function renderChildren(children, parentElement, depth) {
-  const childrenContainer = document.createElement('div');
-  childrenContainer.classList.add('mindmap-children-container');
-  // Basic horizontal/vertical layout for demo - can be very complex for real mindmaps
-  let currentXOffset = 150; // Horizontal spacing from parent
-  let currentYOffset = 0;   // Cumulative vertical offset for siblings
-  const siblingSpacing = 20; // Vertical space between sibling nodes
+function drawConnectionLine(parentElement, childElement) {
+  if (!svgLayer || !parentElement || !childElement) return;
+  const mindmapContainer = document.getElementById('mindmap-container');
+  if (!mindmapContainer) return;
 
-  parentElement.appendChild(childrenContainer); // Append container once
+  const containerRect = mindmapContainer.getBoundingClientRect();
+  const scrollLeft = mindmapContainer.scrollLeft;
+  const scrollTop = mindmapContainer.scrollTop;
 
-  children.forEach((childNodeData, index) => {
-    const childNodeElement = createNodeElement(childNodeData);
+  const parentRect = parentElement.getBoundingClientRect();
+  const childRect = childElement.getBoundingClientRect();
 
-    // Basic positioning: place children to the right of parent, stacked vertically
-    // This is a very naive layout. A real mindmap needs a layout algorithm.
-    childNodeElement.style.left = `${currentXOffset}px`;
-    childNodeElement.style.top = `${currentYOffset}px`;
+  const startX = (parentRect.right - containerRect.left) + scrollLeft;
+  const startY = (parentRect.top + parentRect.height / 2 - containerRect.top) + scrollTop;
+  const endX = (childRect.left - containerRect.left) + scrollLeft;
+  const endY = (childRect.top + childRect.height / 2 - containerRect.top) + scrollTop;
 
-    childrenContainer.appendChild(childNodeElement); // Append node to its container
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  const controlOffsetX = Math.max(50, Math.abs(endX - startX) * 0.4);
+  const c1X = startX + controlOffsetX;
+  const c1Y = startY;
+  const c2X = endX - controlOffsetX;
+  const c2Y = endY;
+  const pathData = `M ${startX} ${startY} C ${c1X} ${c1Y}, ${c2X} ${c2Y}, ${endX} ${endY}`;
 
-    // After appending, get its height for next sibling's Y offset
-    // Adding a slight delay for DOM to update, or use ResizeObserver for accuracy
-    // For demo, direct offsetHeight might be okay if content isn't too dynamic before render
-    currentYOffset += childNodeElement.offsetHeight + siblingSpacing;
+  path.setAttribute('d', pathData);
+  path.setAttribute('stroke', '#555');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('fill', 'none');
+  svgLayer.appendChild(path);
+}
 
+function traverseAndDrawLines(nodeElement) {
+  if (!nodeElement || !findNodeById) return;
+  const nodeId = nodeElement.getAttribute('data-id');
+  if (!nodeId) return;
 
-    if (childNodeData.children && childNodeData.children.length > 0 && !(childNodeData.isCollapsed)) {
-      renderChildren(childNodeData.children, childNodeElement, depth + 1);
+  const nodeData = findNodeById(mindmapData.root, nodeId);
+
+  if (nodeData && nodeData.children && nodeData.children.length > 0 && !nodeData.isCollapsed) {
+    const childrenContainer = nodeElement.querySelector('.mindmap-children-container');
+    if (childrenContainer) {
+      const childNodeElements = Array.from(childrenContainer.children).filter(el => el.matches('.mindmap-node'));
+      childNodeElements.forEach(childElement => {
+        if (childElement.classList.contains('mindmap-node')) {
+            drawConnectionLine(nodeElement, childElement);
+            traverseAndDrawLines(childElement);
+        }
+      });
+    }
+  }
+}
+
+function renderChildren(childrenData, parentNodeElement) {
+  const childrenContainer = parentNodeElement.querySelector('.mindmap-children-container');
+  if (!childrenContainer) {
+    console.error("Critical: .mindmap-children-container missing in parent for renderChildren:", parentNodeElement);
+    return;
+  }
+  childrenContainer.innerHTML = '';
+
+  let currentX = 10;
+  let currentY = 10;
+  let maxChildHeightInRow = 0;
+  const horizontalSpacing = 25;
+  const verticalSpacing = 20;
+
+  childrenData.forEach(childData => {
+    const childNodeElement = createNodeElement(childData);
+    childNodeElement.style.visibility = 'hidden';
+    childrenContainer.appendChild(childNodeElement);
+
+    const childWidth = childNodeElement.offsetWidth;
+    const childHeight = childNodeElement.offsetHeight;
+    maxChildHeightInRow = Math.max(maxChildHeightInRow, childHeight);
+
+    childNodeElement.style.position = 'absolute';
+    childNodeElement.style.left = currentX + 'px';
+    childNodeElement.style.top = currentY + 'px';
+    childNodeElement.style.visibility = 'visible';
+
+    currentX += childWidth + horizontalSpacing;
+
+    if (childData.children && childData.children.length > 0) {
+        let grandChildrenContainer = childNodeElement.querySelector('.mindmap-children-container');
+        // createNodeElement should now always add this container.
+        // if (!grandChildrenContainer) {
+        //     grandChildrenContainer = document.createElement('div');
+        //     grandChildrenContainer.classList.add('mindmap-children-container');
+        //     childNodeElement.appendChild(grandChildrenContainer);
+        // }
+        if (!childData.isCollapsed) {
+            renderChildren(childData.children, childNodeElement);
+        }
     }
   });
+
+  if (childrenData.length > 0) {
+    childrenContainer.style.height = (currentY + maxChildHeightInRow + 10) + 'px';
+  } else {
+    childrenContainer.style.height = 'auto';
+  }
 }
   </script>
 </body>
