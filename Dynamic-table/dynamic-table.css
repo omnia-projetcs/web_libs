@@ -1010,6 +1010,11 @@
 /* Checkboxes in .dt-column-selector-item might need specific styling for dark mode */
 /* .dt-dark-mode .dt-column-selector-item input[type="checkbox"] { ... } */
 
+.dynamic-table tbody td.dt-currency-cell,
+.dynamic-table tbody td.dt-percentage-cell {
+    white-space: nowrap;
+}
+
 /* === Dark Mode Styles === */
 .dt-dark-mode.dynamic-table-wrapper {
     background-color: var(--dt-dark-bg-primary);
