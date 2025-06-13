@@ -86,29 +86,39 @@ function clearLocalStorage() {
   }
 }
 
-// --- Simulated Server Interaction ---
+// --- SIMULATED SERVER INTERACTION ---
+// The following functions simulate communication with a backend server.
+// For actual database persistence, these would need to be replaced with
+// real API calls (e.g., using fetch) to corresponding backend endpoints.
+
 async function saveMindmapToServer(mindmapId = 'default-map-id') {
   const jsonData = getMindmapDataAsJSON();
-  const endpoint = `/api/mindmap/save`; // Conceptual
-  console.log(`Simulating SAVE to endpoint: ${endpoint} for mindmapId: ${mindmapId}`);
+  // This is a conceptual API endpoint. In a real application, this would be an actual URL.
+  const conceptualEndpoint = `/api/mindmap/save`;
+  console.log(`Simulating SAVE to conceptual endpoint: ${conceptualEndpoint} for mindmapId: ${mindmapId}`);
+  // The 'isServerSim = true' flag in showFeedback prefixes the message with "(Simulated Server) ".
   showFeedback(`Attempting to save mindmap "${mindmapId}" to server...`, false, true);
 
-  // Simulate fetch
   try {
-    // const response = await fetch(endpoint, { // Actual fetch would be:
+    // --- SIMULATED NETWORK DELAY ---
+    // In a real application, replace this with an actual `fetch` call:
+    // const response = await fetch(conceptualEndpoint, {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ mindmapId, mindmapData: JSON.parse(jsonData) }) // Send parsed object
+    //   body: JSON.stringify({ mindmapId, mindmapData: JSON.parse(jsonData) })
     // });
     // if (!response.ok) throw new Error(`Server responded with ${response.status}`);
     // const result = await response.json();
     // console.log("Simulated server response:", result);
-    // showFeedback(`Mindmap "${mindmapId}" saved to server successfully. (Simulated ID: ${result.id || mindmapId})`, false, true);
+    // showFeedback(`Mindmap "${mindmapId}" saved to server. ID: ${result.id || mindmapId}`, false, true);
 
-    // Simplified simulation without actual fetch
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating network latency
+
+    // --- END OF SIMULATED NETWORK DELAY ---
+
     const simulatedServerResponse = { success: true, savedId: mindmapId, timestamp: Date.now() };
     console.log("Simulated server success response:", simulatedServerResponse);
+    // Message already clearly indicates simulation via showFeedback's prefix.
     showFeedback(`Mindmap "${mindmapId}" saved. (Simulated server ID: ${simulatedServerResponse.savedId})`, false, true);
 
   } catch (error) {
@@ -118,18 +128,27 @@ async function saveMindmapToServer(mindmapId = 'default-map-id') {
 }
 
 async function loadMindmapFromServer(mindmapId = 'sample-map-from-server') {
-  const endpoint = `/api/mindmap/load/${mindmapId}`; // Conceptual
-  console.log(`Simulating LOAD from endpoint: ${endpoint}`);
+  // This is a conceptual API endpoint. In a real application, this would be an actual URL.
+  const conceptualEndpoint = `/api/mindmap/load/${mindmapId}`;
+  console.log(`Simulating LOAD from conceptual endpoint: ${conceptualEndpoint}`);
+  // The 'isServerSim = true' flag in showFeedback prefixes the message with "(Simulated Server) ".
   showFeedback(`Attempting to load mindmap "${mindmapId}" from server...`, false, true);
 
-  // Simulate fetch
   try {
-    // const response = await fetch(endpoint); // Actual fetch
+    // --- SIMULATED NETWORK DELAY ---
+    // In a real application, replace this with an actual `fetch` call:
+    // const response = await fetch(conceptualEndpoint);
     // if (!response.ok) throw new Error(`Server responded with ${response.status}`);
     // const loadedDataFromServer = await response.json();
+    // if (loadedDataFromServer && loadedDataFromServer.root) {
+    //   mindmapData = loadedDataFromServer;
+    //   /* ... rest of update ... */
+    // } else { throw new Error("Invalid data from server."); }
 
-    // Simplified simulation without actual fetch
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating network latency
+    // --- END OF SIMULATED NETWORK DELAY ---
+
+    // Sample data structure for simulation
     const sampleServerData = {
       root: {
         id: 'server-root', text: `Loaded: ${mindmapId}`, notes: 'This data came from a (simulated) server.',
@@ -147,6 +166,7 @@ async function loadMindmapFromServer(mindmapId = 'sample-map-from-server') {
       nodeIdCounter = Date.now(); // Reset counter
       renderMindmap(mindmapData, 'mindmap-container');
       saveMindmapToLocalStorage(); // Also save to local storage after loading from server
+      // Message already clearly indicates simulation via showFeedback's prefix.
       showFeedback(`Mindmap "${mindmapId}" loaded from server successfully.`, false, true);
       console.log("Simulated server load successful. Data:", mindmapData);
     } else {
@@ -168,6 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveToServerBtn = document.getElementById('save-to-server-btn');
   const clearLocalBtn = document.getElementById('clear-local-storage-btn');
   const loadFromServerBtn = document.getElementById('load-from-server-btn');
+  const importFileInput = document.getElementById('import-file-input');
+  const exportJsonBtn = document.getElementById('export-json-btn');
 
 
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
@@ -190,7 +212,95 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (clearLocalBtn) clearLocalBtn.addEventListener('click', clearLocalStorage);
+
+  if (importFileInput) importFileInput.addEventListener('change', handleFileUpload);
+  if (exportJsonBtn) exportJsonBtn.addEventListener('click', handleExportMindmapAsJson);
 });
+
+// --- File Export Logic ---
+function handleExportMindmapAsJson() {
+  try {
+    const mindmapJsonString = JSON.stringify(mindmapData, null, 2); // Pretty print JSON
+    const blob = new Blob([mindmapJsonString], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+
+    // Create a filename, e.g., based on root node text or a default
+    let filename = 'mindmap.json';
+    if (mindmapData && mindmapData.root && mindmapData.root.text) {
+      // Sanitize the root text to create a safe filename
+      const safeFilename = mindmapData.root.text.replace(/[^a-z0-9_\-\.]/gi, '_').substring(0, 50);
+      if (safeFilename) { // Ensure safeFilename is not empty after sanitization
+        filename = `${safeFilename}.json`;
+      }
+    }
+
+    link.setAttribute('download', filename);
+
+    // Append link to the body, click it, and remove it (standard practice for triggering download)
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url); // Clean up the object URL
+    showFeedback('Mindmap data prepared for download as ' + filename, false);
+  } catch (error) {
+    console.error('Error exporting mindmap as JSON:', error);
+    showFeedback('Could not export mindmap. An error occurred.', true);
+  }
+}
+
+// --- File Import Logic ---
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  const importFileInput = document.getElementById('import-file-input'); // Get ref for resetting
+
+  if (!file) {
+    return; // No file selected
+  }
+
+  if (file.type !== "application/json") {
+    showFeedback("Please select a valid JSON file (.json).", true);
+    if (importFileInput) importFileInput.value = ''; // Reset file input
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    try {
+      const jsonText = e.target.result;
+      const loadedData = JSON.parse(jsonText);
+
+      // Basic validation: Check for root and some essential property like text
+      if (loadedData && loadedData.root && typeof loadedData.root.text !== 'undefined') {
+        mindmapData = loadedData;
+        nodeIdCounter = Date.now(); // Reset counter to avoid potential ID issues with imported data
+        renderMindmap(mindmapData, 'mindmap-container');
+        saveMindmapToLocalStorage(); // Save the newly imported map to local storage
+        showFeedback('Mindmap loaded successfully from file!', false);
+      } else {
+        showFeedback('Invalid mindmap file format. Missing root node or essential data.', true);
+      }
+    } catch (error) {
+      console.error('Error parsing JSON file:', error);
+      showFeedback('Error reading or parsing the mindmap file. Ensure it is valid JSON.', true);
+    } finally {
+      // Reset the file input to allow re-uploading the same file if needed,
+      // or if the user cancels and then wants to upload again.
+      if (importFileInput) importFileInput.value = '';
+    }
+  };
+
+  reader.onerror = () => {
+    console.error('Error reading file.');
+    showFeedback('An error occurred while trying to read the file.', true);
+    if (importFileInput) importFileInput.value = ''; // Reset file input on error
+  };
+
+  reader.readAsText(file);
+}
 
 // --- Core Mindmap Logic (adapted for auto-save) ---
 // ... (All existing functions: findNodeById, findParentNode, addNode, deleteNode, editNodeText, etc.)
@@ -219,11 +329,24 @@ function findParentNode(node, childId) { /* ... unchanged ... */
 function addNode(parentId, text) { /* ... unchanged ... calls saveMindmapToLocalStorage() ... */
   const parentNode = findNodeById(mindmapData.root, parentId);
   if (!parentNode) return;
-  parentNode.children = parentNode.children || [];
+  if (!parentNode.children) {
+    parentNode.children = [];
+  }
+
+  const hadNoChildren = parentNode.children.length === 0;
+
   const newNode = {
     id: generateNodeId(), text: text, notes: '', table: null, image: null, chart: null, children: [],
+    // New nodes with children should default to expanded, so isCollapsed is not set to true here
   };
   parentNode.children.push(newNode);
+
+  if (hadNoChildren && parentNode.children.length === 1) {
+    // If parent had no children and now has one, ensure it's expanded to show the new child.
+    // If isCollapsed was undefined, it's treated as false (expanded), so this handles cases where it might have been true.
+    parentNode.isCollapsed = false;
+  }
+
   renderMindmap(mindmapData, 'mindmap-container');
   saveMindmapToLocalStorage();
 }
@@ -379,6 +502,25 @@ function createNodeElement(nodeData) {
   textElement.classList.add('node-text');
   textElement.textContent = nodeData.text;
   nodeElement.appendChild(textElement);
+
+  // Add collapse/expand toggle button
+  // Check if nodeData.children exists and has elements
+  if (nodeData.children && nodeData.children.length > 0) {
+    const toggleButton = document.createElement('span');
+    toggleButton.classList.add('collapse-toggle');
+    // Set initial state: if isCollapsed is undefined, treat as false (expanded)
+    toggleButton.textContent = nodeData.isCollapsed ? '+' : '-';
+    toggleButton.title = nodeData.isCollapsed ? 'Expand' : 'Collapse'; // Add tooltip
+    toggleButton.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent node dragging or other parent events
+      nodeData.isCollapsed = !nodeData.isCollapsed; // Toggle the state
+      renderMindmap(mindmapData, 'mindmap-container'); // Re-render the whole mindmap
+      saveMindmapToLocalStorage(); // Save state change
+    });
+    // Insert the toggle button before the text element for conventional UI placement
+    nodeElement.insertBefore(toggleButton, textElement);
+  }
+
   textElement.addEventListener('dblclick', (e) => {
     e.stopPropagation();
     const newText = prompt(`Edit node text for "${nodeData.text}":`, nodeData.text);
@@ -481,10 +623,17 @@ function createNodeElement(nodeData) {
 function renderMindmap(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) { console.error("Mindmap container not found!"); return; }
-  container.innerHTML = '';
+  container.innerHTML = ''; // Clear previous rendering
   const rootNodeElement = createNodeElement(data.root);
+  // Note: Positioning of root and children is basic. A real layout algorithm would be complex.
+  // For now, root is positioned simply, and children are appended.
+  // Example static positioning for root (can be improved with dynamic layout later)
+  rootNodeElement.style.left = '50px';
+  rootNodeElement.style.top = '50px';
   container.appendChild(rootNodeElement);
-  if (data.root.children && data.root.children.length > 0) {
+
+  // Render children only if the root has children and is not collapsed
+  if (data.root.children && data.root.children.length > 0 && !(data.root.isCollapsed)) {
     renderChildren(data.root.children, rootNodeElement);
   }
 }
@@ -495,8 +644,12 @@ function renderChildren(children, parentElement) {
   parentElement.appendChild(childrenContainer);
   children.forEach(childNodeData => {
     const childNodeElement = createNodeElement(childNodeData);
+    // TODO: Implement actual positioning logic for children relative to parent
+    // For now, they will just stack inside the parent's childrenContainer
     childrenContainer.appendChild(childNodeElement);
-    if (childNodeData.children && childNodeData.children.length > 0) {
+
+    // Render grandchildren only if the child has children and is not collapsed
+    if (childNodeData.children && childNodeData.children.length > 0 && !(childNodeData.isCollapsed)) {
       renderChildren(childNodeData.children, childNodeElement);
     }
   });
