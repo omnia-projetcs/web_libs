@@ -458,6 +458,292 @@
     // The runTestGroup calls will execute the tests and display results.
     // No further explicit execution calls needed here.
 
+    runTestGroup('Tree Layout Algorithm', () => {
+        const MOCK_CONTAINER_WIDTH = 1000; // For consistent testing
+
+        // Helper to prepare data for layout tests
+        function prepareForLayoutTest(testMindmapData) {
+            window.mindmapData = testMindmapData; // Set the global mindmapData for the functions to use
+
+            // Ensure a temp container exists for measurements (it's created if not present by the func)
+            let tempContainer = getOrCreateTempMeasurementContainer();
+            if (!document.body.contains(tempContainer)) { // Ensure it's in DOM for offsetWidth/Height
+                 document.body.appendChild(tempContainer);
+            }
+
+            // Simulate the calls as in renderMindmap
+            calculateAndStoreNodeDimensions(window.mindmapData.root, tempContainer);
+            calculateSubtreeDimensionsRecursive(window.mindmapData.root);
+            calculateTreeLayout(window.mindmapData.root, MOCK_CONTAINER_WIDTH);
+        }
+
+        resetMindmapDataForTest(); // Reset to original default mindmapData structure
+        let testLayoutData = JSON.parse(JSON.stringify(originalMindmapData)); // Start with a fresh copy
+
+        // Test Case: Root Centering
+        testLayoutData.root.children = [
+            { id: 'child1', text: 'Child 1', children: [], width: 100, height: 40 }, // Approx dimensions
+            { id: 'child2', text: 'Child 2', children: [], width: 100, height: 40 }
+        ];
+        // Assume root itself is also some dimensions, e.g., from originalMindmapData or set manually
+        testLayoutData.root.width = 150; testLayoutData.root.height = 50;
+
+        prepareForLayoutTest(testLayoutData);
+
+        // Root's subtreeWidth should have been calculated by prepareForLayoutTest
+        const expectedRootX = (MOCK_CONTAINER_WIDTH / 2) - (window.mindmapData.root.subtreeWidth / 2);
+        let res = assertEqual(Math.round(window.mindmapData.root.x), Math.round(expectedRootX),
+                        `Root X (${Math.round(window.mindmapData.root.x)}) should be approx ${Math.round(expectedRootX)} (centered by subtreeWidth)`);
+        displayTestResult('Tree Layout', 'Root Centering', res.success, res.details);
+
+        resetMindmapDataForTest();
+        testLayoutData = JSON.parse(JSON.stringify(originalMindmapData));
+
+        // Test Case: Horizontal Non-Overlap of Sibling Subtrees
+        testLayoutData.root.children = [
+            {
+                id: 'c1', text: 'Child 1', children: [
+                    { id: 'gc1', text: 'GC1', children: [], width: 80, height: 30 } // Makes c1 wider
+                ],
+                width: 100, height: 40
+            },
+            { id: 'c2', text: 'Child 2', children: [], width: 100, height: 40 } // c2 is narrower
+        ];
+        testLayoutData.root.width = 150; testLayoutData.root.height = 50;
+        // Ensure children are not manually positioned for this test
+        testLayoutData.root.children.forEach(c => {c.isManuallyPositioned = false; delete c.x; delete c.y;});
+
+
+        prepareForLayoutTest(testLayoutData);
+
+        const child1Node = findNodeById(window.mindmapData.root, 'c1');
+        const child2Node = findNodeById(window.mindmapData.root, 'c2');
+
+        res = assertNotNull(child1Node, "Child 1 should exist for overlap test");
+        displayTestResult('Tree Layout', 'Horizontal Non-Overlap - Child 1 exists', res.success, res.details);
+        res = assertNotNull(child2Node, "Child 2 should exist for overlap test");
+        displayTestResult('Tree Layout', 'Horizontal Non-Overlap - Child 2 exists', res.success, res.details);
+
+        if (child1Node && child2Node && typeof child1Node.x === 'number' && typeof child2Node.x === 'number' &&
+            typeof child1Node.subtreeWidth === 'number' && typeof child2Node.subtreeWidth === 'number') {
+
+            // Assuming child1 is to the left of child2. If not, the test setup or layout is different than expected.
+            // The layout algorithm should place them in order of the children array.
+            if (child1Node.x < child2Node.x) {
+                const child1End = child1Node.x + child1Node.subtreeWidth;
+                const expectedChild2Start = child1End + SIBLING_SEPARATION;
+                // child2Node.x should be >= child1.x + child1.subtreeWidth + SIBLING_SEPARATION
+                res = assertTrue(child2Node.x >= child1End + SIBLING_SEPARATION - 0.01, // Small epsilon for float comparison
+                    `Child 2 X (${child2Node.x}) should be >= Child 1 end (${child1End}) + SIBLING_SEPARATION (${SIBLING_SEPARATION}). Expected >= ${expectedChild2Start - 0.01}`);
+                displayTestResult('Tree Layout', 'Horizontal Non-Overlap of Sibling Subtrees', res.success, res.details);
+            } else {
+                 res = assertTrue(child1Node.x >= child2Node.x + child2Node.subtreeWidth + SIBLING_SEPARATION - 0.01,
+                    `Child 1 X (${child1Node.x}) should be >= Child 2 end (${child2Node.x + child2Node.subtreeWidth}) + SIBLING_SEPARATION (${SIBLING_SEPARATION}). This means order might be swapped.`);
+                displayTestResult('Tree Layout', 'Horizontal Non-Overlap of Sibling Subtrees (order swapped)', res.success, res.details);
+            }
+        } else {
+            displayTestResult('Tree Layout', 'Horizontal Non-Overlap of Sibling Subtrees', false, 'Child nodes or their properties (x, subtreeWidth) are undefined.');
+        }
+
+        resetMindmapDataForTest();
+        testLayoutData = JSON.parse(JSON.stringify(originalMindmapData));
+
+        // Test Case: Vertical Level Spacing - Basic Parent-Child
+        testLayoutData.root.children = [ { id: 'c1', text: 'Child 1', children: [], width: 100, height: 40 } ];
+        testLayoutData.root.width = 150; testLayoutData.root.height = 50;
+        testLayoutData.root.children.forEach(c => {c.isManuallyPositioned = false; delete c.x; delete c.y;});
+
+        prepareForLayoutTest(testLayoutData);
+
+        const rootNodeForVertical = findNodeById(window.mindmapData.root, 'root');
+        const child1ForVertical = findNodeById(window.mindmapData.root, 'c1');
+
+        if (rootNodeForVertical && child1ForVertical && typeof rootNodeForVertical.y === 'number' && typeof child1ForVertical.y === 'number' &&
+            typeof rootNodeForVertical.height === 'number') {
+            // Child1.y should be root.y + root.height + LEVEL_SEPARATION as per old logic
+            // New logic: child1.y (which is levelYPosition for level 1) should be
+            // root.y + root.subtreeHeight (which is just root.height if no other children for root) + LEVEL_SEPARATION
+            // The test for maxSubtreeReachInCurrentLevel is more complex and covered next.
+            // For a simple root -> child case:
+            // Level 0: root at root.y
+            // Level 1: child1 at levelYPosition = root.y + root.subtreeHeight + LEVEL_SEPARATION
+            // Here, root.subtreeHeight will be just root.height if root has no other children affecting its subtree calculation for this specific test.
+            // Let's assume root.subtreeHeight has been calculated.
+
+            const expectedChild1Y = rootNodeForVertical.y + (rootNodeForVertical.subtreeHeight || rootNodeForVertical.height) + LEVEL_SEPARATION;
+            res = assertTrue(Math.abs(child1ForVertical.y - expectedChild1Y) < 0.01, // Epsilon for float
+                `Child 1 Y (${child1ForVertical.y}) should be Root Y (${rootNodeForVertical.y}) + Root SubtreeHeight (${rootNodeForVertical.subtreeHeight || rootNodeForVertical.height}) + LEVEL_SEPARATION (${LEVEL_SEPARATION}). Expected ${expectedChild1Y}`);
+            displayTestResult('Tree Layout', 'Vertical Level Spacing (Parent-Child)', res.success, res.details);
+        } else {
+            displayTestResult('Tree Layout', 'Vertical Level Spacing (Parent-Child)', false, 'Nodes or their y/height properties undefined for basic vertical test.');
+        }
+
+        resetMindmapDataForTest();
+        testLayoutData = JSON.parse(JSON.stringify(originalMindmapData));
+        // Test Case: Vertical Level Spacing - Tall Sibling Subtree
+        testLayoutData.root.children = [
+            {
+                id: 'c1_tall', text: 'Child 1 (Tall Subtree)',
+                children: [ { id: 'gc1', text: 'GC1', children: [ {id: 'ggc1', text:'GGC1', children:[], width:50, height:20}], width: 80, height: 30}],
+                width: 100, height: 40
+            },
+            { id: 'c2_short', text: 'Child 2 (Short Subtree)', children: [], width: 100, height: 40 }
+        ];
+        // Add grandchildren to these children to test next level positioning
+        testLayoutData.root.children[0].children.push({ id: 'gc1_2', text: 'GC1_2 sibling', children: [], width: 70, height: 30});
+        testLayoutData.root.children[1].children = [{ id: 'gc2_1', text: 'GC2_1', children: [], width: 70, height: 30}];
+
+        testLayoutData.root.width = 150; testLayoutData.root.height = 50;
+        testLayoutData.root.children.forEach(c => {c.isManuallyPositioned = false; delete c.x; delete c.y;});
+        testLayoutData.root.children[0].children.forEach(gc => {gc.isManuallyPositioned = false; delete gc.x; delete gc.y;});
+        testLayoutData.root.children[1].children.forEach(gc => {gc.isManuallyPositioned = false; delete gc.x; delete gc.y;});
+
+
+        prepareForLayoutTest(testLayoutData);
+
+        const c1Tall = findNodeById(window.mindmapData.root, 'c1_tall');
+        const c2Short = findNodeById(window.mindmapData.root, 'c2_short');
+        const gc1_node = findNodeById(window.mindmapData.root, 'gc1'); // Grandchild of c1_tall
+        const gc2_1_node = findNodeById(window.mindmapData.root, 'gc2_1'); // Grandchild of c2_short
+
+        if (c1Tall && c2Short && gc1_node && gc2_1_node &&
+            typeof c1Tall.y === 'number' && typeof c1Tall.subtreeHeight === 'number' &&
+            typeof c2Short.y === 'number' && typeof c2Short.subtreeHeight === 'number' &&
+            typeof gc1_node.y === 'number' && typeof gc2_1_node.y === 'number') {
+
+            res = assertTrue(Math.abs(c1Tall.y - c2Short.y) < 0.01, `Sibling Ys C1 (${c1Tall.y}) and C2 (${c2Short.y}) should be same.`);
+            displayTestResult('Tree Layout', 'Vertical Spacing (Siblings at same level)', res.success, res.details);
+
+            const expected_gc_level_y = Math.max(
+                c1Tall.y + c1Tall.subtreeHeight,
+                c2Short.y + c2Short.subtreeHeight
+            ) + LEVEL_SEPARATION;
+
+            res = assertTrue(Math.abs(gc1_node.y - expected_gc_level_y) < 0.01,
+                `GC1 Y (${gc1_node.y}) should be at level after tallest sibling subtree. Expected ${expected_gc_level_y}`);
+            displayTestResult('Tree Layout', 'Vertical Spacing (GC1 after Tall Sibling Subtree)', res.success, res.details);
+
+            res = assertTrue(Math.abs(gc2_1_node.y - expected_gc_level_y) < 0.01,
+                `GC2_1 Y (${gc2_1_node.y}) should be at same level as GC1. Expected ${expected_gc_level_y}`);
+            displayTestResult('Tree Layout', 'Vertical Spacing (GC2_1 same level as GC1)', res.success, res.details);
+
+        } else {
+            displayTestResult('Tree Layout', 'Vertical Spacing (Tall Sibling Subtree)', false, 'Nodes or their y/subtreeHeight properties undefined for tall sibling vertical test.');
+        }
+
+        resetMindmapDataForTest();
+        testLayoutData = JSON.parse(JSON.stringify(originalMindmapData));
+
+        // Test Case: Manually Positioned Parent, Algorithmic Children
+        const manualX = 250;
+        const manualY = 150;
+        testLayoutData.root.children = [
+            {
+                id: 'manual_parent', text: 'Manual Parent',
+                isManuallyPositioned: true, x: manualX, y: manualY,
+                children: [
+                    { id: 'algo_child1', text: 'Algo Child 1', children: [], width: 80, height: 30 },
+                    { id: 'algo_child2', text: 'Algo Child 2', children: [], width: 80, height: 30 }
+                ],
+                width: 120, height: 40
+            }
+        ];
+        // Ensure algo children are not manually positioned
+        testLayoutData.root.children[0].children.forEach(ac => { ac.isManuallyPositioned = false; delete ac.x; delete ac.y; });
+
+
+        prepareForLayoutTest(testLayoutData);
+
+        const manualParentNode = findNodeById(window.mindmapData.root, 'manual_parent');
+        const algoChild1Node = findNodeById(window.mindmapData.root, 'algo_child1');
+        const algoChild2Node = findNodeById(window.mindmapData.root, 'algo_child2');
+
+        res = assertNotNull(manualParentNode, "Manual Parent node should exist");
+        displayTestResult('Tree Layout', 'Manual Parent - Exists', res.success, res.details);
+        if (manualParentNode) {
+            res = assertEqual(manualParentNode.x, manualX, `Manual Parent X should remain ${manualX}`);
+            displayTestResult('Tree Layout', 'Manual Parent - X position preserved', res.success, res.details);
+            res = assertEqual(manualParentNode.y, manualY, `Manual Parent Y should remain ${manualY}`);
+            displayTestResult('Tree Layout', 'Manual Parent - Y position preserved', res.success, res.details);
+        }
+
+        if (manualParentNode && algoChild1Node && algoChild2Node &&
+            typeof manualParentNode.x === 'number' && typeof manualParentNode.y === 'number' &&
+            typeof manualParentNode.width === 'number' && typeof manualParentNode.height === 'number' &&
+            typeof algoChild1Node.x === 'number' && typeof algoChild1Node.y === 'number' &&
+            typeof algoChild1Node.subtreeWidth === 'number' && typeof algoChild2Node.subtreeWidth === 'number') {
+
+            // Children X should be centered around manualParentNode.x + manualParentNode.width / 2
+            const parentCenterX = manualParentNode.x + (manualParentNode.width / 2);
+            const childrenTotalSubtreeWidth = algoChild1Node.subtreeWidth + SIBLING_SEPARATION + algoChild2Node.subtreeWidth;
+            const expectedChild1X = parentCenterX - (childrenTotalSubtreeWidth / 2);
+
+            res = assertTrue(Math.abs(algoChild1Node.x - expectedChild1X) < 0.01,
+                `Algo Child 1 X (${algoChild1Node.x}) should be algorithmically positioned relative to Manual Parent. Expected ${expectedChild1X}`);
+            displayTestResult('Tree Layout', 'Manual Parent - Algo Child 1 X position', res.success, res.details);
+
+            // Children Y should be manualParentNode.y + manualParentNode.subtreeHeight + LEVEL_SEPARATION
+            // (as per the new Y logic, the level for algoChild1 starts after manualParentNode's subtree)
+            const expectedChildY = manualParentNode.y + (manualParentNode.subtreeHeight || manualParentNode.height) + LEVEL_SEPARATION;
+            res = assertTrue(Math.abs(algoChild1Node.y - expectedChildY) < 0.01,
+                `Algo Child 1 Y (${algoChild1Node.y}) should be based on Manual Parent's Y and subtreeHeight. Expected ${expectedChildY}`);
+            displayTestResult('Tree Layout', 'Manual Parent - Algo Child Y position', res.success, res.details);
+            res = assertTrue(Math.abs(algoChild2Node.y - expectedChildY) < 0.01,
+                `Algo Child 2 Y (${algoChild2Node.y}) should be same as Algo Child 1 Y. Expected ${expectedChildY}`);
+            displayTestResult('Tree Layout', 'Manual Parent - Algo Child 2 Y position', res.success, res.details);
+        } else {
+            displayTestResult('Tree Layout', 'Manual Parent - Algo Children positioning', false, 'Nodes or their layout properties are undefined.');
+        }
+
+        resetMindmapDataForTest();
+        testLayoutData = JSON.parse(JSON.stringify(originalMindmapData));
+
+        // Test Case: Collapsed Node
+        testLayoutData.root.children = [
+            {
+                id: 'p_collapsed', text: 'Parent Collapsed', isCollapsed: true,
+                children: [
+                    { id: 'c_under_collapsed', text: 'Child under collapsed', children: [], width: 80, height: 30, x: 999, y: 999 } // Deliberate x,y
+                ],
+                width: 140, height: 45
+            }
+        ];
+        testLayoutData.root.width = 150; testLayoutData.root.height = 50;
+
+        prepareForLayoutTest(testLayoutData);
+
+        const collapsedParentNode = findNodeById(window.mindmapData.root, 'p_collapsed');
+        const childUnderCollapsed = findNodeById(window.mindmapData.root, 'c_under_collapsed');
+
+        res = assertNotNull(collapsedParentNode, "Collapsed Parent node should exist");
+        displayTestResult('Tree Layout', 'Collapsed Node - Parent exists', res.success, res.details);
+        if (collapsedParentNode) {
+            res = assertEqual(collapsedParentNode.subtreeWidth, collapsedParentNode.width, 'Collapsed parent subtreeWidth should be its own width');
+            displayTestResult('Tree Layout', 'Collapsed Node - subtreeWidth', res.success, res.details);
+            res = assertEqual(collapsedParentNode.subtreeHeight, collapsedParentNode.height, 'Collapsed parent subtreeHeight should be its own height');
+            displayTestResult('Tree Layout', 'Collapsed Node - subtreeHeight', res.success, res.details);
+        }
+
+        res = assertNotNull(childUnderCollapsed, "Child under collapsed parent should exist in data");
+        displayTestResult('Tree Layout', 'Collapsed Node - Child data exists', res.success, res.details);
+        if (childUnderCollapsed) {
+            // assignAlgorithmicXRecursive should not have processed children of a collapsed node.
+            // Their x,y should remain as they were (or undefined if not set initially).
+            // calculateTreeLayout's Y assignment loop also skips children of collapsed nodes for level processing.
+            // So, their original x,y (999) should be preserved.
+            res = assertEqual(childUnderCollapsed.x, 999,
+                `Child under collapsed parent X (${childUnderCollapsed.x}) should not be changed by layout. Expected 999.`);
+            displayTestResult('Tree Layout', 'Collapsed Node - Child X not laid out', res.success, res.details);
+             res = assertEqual(childUnderCollapsed.y, 999,
+                `Child under collapsed parent Y (${childUnderCollapsed.y}) should not be changed by layout. Expected 999.`);
+            displayTestResult('Tree Layout', 'Collapsed Node - Child Y not laid out', res.success, res.details);
+
+            // Also verify level was not assigned if parent collapsed
+            res = assertEqual(typeof childUnderCollapsed.level, 'undefined', 'Child under collapsed parent should not have a level assigned by layout');
+            displayTestResult('Tree Layout', 'Collapsed Node - Child level not assigned', res.success, res.details);
+        }
+    });
+
     // Final summary update (in case some tests were async, though these are sync)
     updateSummary();
 
