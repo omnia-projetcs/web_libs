@@ -16,6 +16,7 @@
     <button id="clear-local-storage-btn">Clear Local Data</button>
     <button id="save-to-server-btn">Save to Server (Sim)</button> <!-- Text updated slightly -->
     <button id="load-from-server-btn">Load from Server (Sim)</button>
+    <button id="zoom-to-fit-btn">Zoom to Fit</button>
     <hr style="margin: 5px 0;">
     <div>
       <label for="import-file-input">Import from JSON File:</label>
@@ -24,6 +25,9 @@
   </div>
   <div id="feedback-message" class="feedback-message" style="display:none;"></div>
   <div id="mindmap-container">
+    <div id="mindmap-content-wrapper" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+      <!-- Nodes will be appended here by JavaScript -->
+    </div>
     <svg id="mindmap-svg-layer"></svg>
   </div>
 

@@ -747,6 +747,152 @@
     // Final summary update (in case some tests were async, though these are sync)
     updateSummary();
 
+    runTestGroup('Zoom-to-Fit Logic', () => {
+        // Mock mindmapContainer for offsetWidth/Height
+        const mockMindmapContainer = {
+            offsetWidth: 1000,
+            offsetHeight: 600,
+            // Add other properties if zoomToFit starts using them (e.g., scrollLeft)
+        };
+        // Store original and replace mindmapContainer for these tests if zoomToFit uses the global one
+        const originalMindmapContainerRef = window.mindmapContainer;
+        window.mindmapContainer = mockMindmapContainer;
+
+
+        // Test calculateOverallBoundingBox
+        resetMindmapDataForTest();
+        let testBoundsData = JSON.parse(JSON.stringify(originalMindmapData));
+
+        // Single node
+        testBoundsData.root = { id: 'root', text: 'Root', x: 10, y: 20, width: 100, height: 40, children: [] };
+        let bounds = calculateOverallBoundingBox(testBoundsData.root);
+        let res = assertDeepEqual(bounds, { minX: 10, minY: 20, maxX: 110, maxY: 60 }, 'Bounding box for single root node');
+        displayTestResult('Zoom-to-Fit', 'calculateOverallBoundingBox - Single Node', res.success, res.details);
+
+        // Parent with children
+        testBoundsData.root = {
+            id: 'root', text: 'Root', x: 100, y: 100, width: 150, height: 50,
+            children: [
+                { id: 'c1', text: 'C1', x: 50, y: 200, width: 80, height: 30, children: [] },
+                { id: 'c2', text: 'C2', x: 200, y: 200, width: 90, height: 35, children: [] }
+            ]
+        };
+        bounds = calculateOverallBoundingBox(testBoundsData.root);
+        // Expected: minX from c1 (50), minY from root (100), maxX from c2 (200+90=290), maxY from children (200+35=235 for c2)
+        res = assertDeepEqual(bounds, { minX: 50, minY: 100, maxX: 290, maxY: 235 }, 'Bounding box for parent with children');
+        displayTestResult('Zoom-to-Fit', 'calculateOverallBoundingBox - Parent with Children', res.success, res.details);
+
+        // Parent with collapsed child (child should be ignored)
+        testBoundsData.root = {
+            id: 'root', text: 'Root', x: 10, y: 20, width: 100, height: 40,
+            isCollapsed: false,
+            children: [
+                { id: 'c1', text: 'C1', x: 0, y: 100, width: 80, height: 30, isCollapsed: true, children: [
+                    { id: 'gc1', text: 'GC1', x: -10, y: 150, width: 70, height: 20 } // This should be ignored
+                ] }
+            ]
+        };
+        bounds = calculateOverallBoundingBox(testBoundsData.root);
+        // Expected: minX from root (10), minY from root (20), maxX from root (10+100=110), maxY from c1 (100+30=130)
+        // because c1 itself is part of bounds, but its children (gc1) are not.
+        res = assertDeepEqual(bounds, { minX: 10, minY: 20, maxX: 110, maxY: 130 }, 'Bounding box with collapsed child (childs children ignored)');
+        displayTestResult('Zoom-to-Fit', 'calculateOverallBoundingBox - Collapsed Child', res.success, res.details);
+
+        // Test with no valid nodes (e.g. root has no x/y)
+        testBoundsData.root = { id: 'root', text: 'Invalid Root', children: [] }; // No x,y,width,height
+        bounds = calculateOverallBoundingBox(testBoundsData.root);
+        res = assertEqual(bounds, null, 'Bounding box for invalid node should be null');
+        displayTestResult('Zoom-to-Fit', 'calculateOverallBoundingBox - Invalid Node', res.success, res.details);
+
+
+        // Restore original mindmapContainer if it was changed
+        window.mindmapContainer = originalMindmapContainerRef;
+        window.TEST_ENV = false; // Clear test environment flag
+    });
+
+    runTestGroup('Zoom-to-Fit Calculations', () => {
+        const mockMindmapContainer = {
+            offsetWidth: 1000,
+            offsetHeight: 600,
+            // Mock getElementById for content wrapper if zoomToFit tries to get it for transform
+            // However, we are only testing calculations here, not the transform application.
+        };
+        const originalMindmapContainerRef = window.mindmapContainer;
+        window.mindmapContainer = mockMindmapContainer;
+        window.TEST_ENV = true; // Enable storing of calculation results
+
+        resetMindmapDataForTest();
+        let testZoomData = JSON.parse(JSON.stringify(originalMindmapData));
+
+        // Scenario 1: Simple case, content smaller than container
+        testZoomData.root = {
+            id: 'root', text: 'Root', x: 200, y: 100, width: 100, height: 50,
+            children: []
+        };
+        window.mindmapData = testZoomData; // Set global for zoomToFit to use
+
+        // Manually run dimension calculations as renderMindmap would
+        let tempContainer = getOrCreateTempMeasurementContainer();
+        if (!document.body.contains(tempContainer)) document.body.appendChild(tempContainer);
+        calculateAndStoreNodeDimensions(window.mindmapData.root, tempContainer);
+        // No need for subtree calc for single node, width/height is subtreeW/H
+
+        zoomToFit(); // This will populate window.lastZoomToFitCalculations
+
+        let calc = window.lastZoomToFitCalculations;
+        let res = assertNotNull(calc, "zoomToFit calculations should be stored for Scenario 1");
+        displayTestResult('Zoom-to-Fit Calc', 'Scenario 1 - Results Stored', res.success, res.details);
+
+        if (res.success) {
+            // Expected: content is 100x50. Container 1000x600. Padding 50.
+            // Available drawing area: 1000-100 = 900 (width), 600-100 = 500 (height).
+            // ScaleX = 900/100 = 9. ScaleY = 500/50 = 10. Min scale = 9.
+            // Scaled content: 100*9=900, 50*9=450.
+            // DesiredX = (1000-900)/2 = 50. DesiredY = (600-450)/2 = 75.
+            // tx = 50 - (200*9) = 50 - 1800 = -1750
+            // ty = 75 - (100*9) = 75 - 900 = -825
+            res = assertEqual(calc.scale.toFixed(3), "9.000", `Scenario 1 Scale: Expected 9.000, Got ${calc.scale.toFixed(3)}`);
+            displayTestResult('Zoom-to-Fit Calc', 'Scenario 1 - Scale', res.success, res.details);
+            res = assertEqual(calc.translateX.toFixed(2), "-1750.00", `Scenario 1 TranslateX: Expected -1750.00, Got ${calc.translateX.toFixed(2)}`);
+            displayTestResult('Zoom-to-Fit Calc', 'Scenario 1 - TranslateX', res.success, res.details);
+            res = assertEqual(calc.translateY.toFixed(2), "-825.00", `Scenario 1 TranslateY: Expected -825.00, Got ${calc.translateY.toFixed(2)}`);
+            displayTestResult('Zoom-to-Fit Calc', 'Scenario 1 - TranslateY', res.success, res.details);
+        }
+
+        // Scenario 2: Content wider than padded container
+        resetMindmapDataForTest();
+        testZoomData = JSON.parse(JSON.stringify(originalMindmapData));
+        testZoomData.root = {
+            id: 'root', text: 'Root', x: 0, y: 0, width: 1000, height: 100, // Content width 1000
+            children: []
+        };
+        window.mindmapData = testZoomData;
+        calculateAndStoreNodeDimensions(window.mindmapData.root, tempContainer);
+        zoomToFit();
+        calc = window.lastZoomToFitCalculations;
+        res = assertNotNull(calc, "zoomToFit calculations should be stored for Scenario 2");
+        displayTestResult('Zoom-to-Fit Calc', 'Scenario 2 - Results Stored', res.success, res.details);
+        if(res.success){
+            // Available drawing width: 900. Content width: 1000. ScaleX = 900/1000 = 0.9
+            // Available drawing height: 500. Content height: 100. ScaleY = 500/100 = 5. Min scale = 0.9
+            // Scaled content: 1000*0.9=900, 100*0.9=90.
+            // DesiredX = (1000-900)/2 = 50. DesiredY = (600-90)/2 = 255.
+            // tx = 50 - (0*0.9) = 50
+            // ty = 255 - (0*0.9) = 255
+            res = assertEqual(calc.scale.toFixed(3), "0.900", `Scenario 2 Scale: Expected 0.900, Got ${calc.scale.toFixed(3)}`);
+            displayTestResult('Zoom-to-Fit Calc', 'Scenario 2 - Scale', res.success, res.details);
+            res = assertEqual(calc.translateX.toFixed(2), "50.00", `Scenario 2 TranslateX: Expected 50.00, Got ${calc.translateX.toFixed(2)}`);
+            displayTestResult('Zoom-to-Fit Calc', 'Scenario 2 - TranslateX', res.success, res.details);
+            res = assertEqual(calc.translateY.toFixed(2), "255.00", `Scenario 2 TranslateY: Expected 255.00, Got ${calc.translateY.toFixed(2)}`);
+            displayTestResult('Zoom-to-Fit Calc', 'Scenario 2 - TranslateY', res.success, res.details);
+        }
+
+
+        window.mindmapContainer = originalMindmapContainerRef; // Restore
+        window.TEST_ENV = false; // Clear flag
+        window.lastZoomToFitCalculations = null; // Clear stored results
+    });
+
 })();
 
 // Helper to make nodeIdCounter resettable from tests if it were global in mindmap.js

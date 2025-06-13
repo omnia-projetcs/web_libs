@@ -27,6 +27,8 @@ const SIBLING_SEPARATION = 40; // Moved from calculateTreeLayout
 const LEVEL_SEPARATION = 90;   // Moved from calculateTreeLayout
 
 let nodeIdCounter = 0;
+let needsReRenderAfterCharts = false;
+let chartReRenderTimer = null;
 let svgLayer = null; // For SVG connection lines
 let mindmapContainer = null; // Reference to the main mindmap container DOM element
 let selectedNodeId = null; // ID of the currently selected node
@@ -196,7 +198,7 @@ function calculateAndStoreNodeDimensions(nodeData, tempContainer) {
 }
 
 function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
-  console.log("Calculating tree layout for root:", rootNodeData.id, "within width:", mindmapContainerWidth);
+  // console.log("Calculating tree layout for root:", rootNodeData.id, "within width:", mindmapContainerWidth);
   const initialYOffset = 50;
   // Using global SIBLING_SEPARATION and LEVEL_SEPARATION
 
@@ -302,10 +304,9 @@ function calculateSubtreeDimensionsRecursive(nodeData) {
 
   // Assumes nodeData.width and nodeData.height are already calculated.
   if (typeof nodeData.width !== 'number' || typeof nodeData.height !== 'number') {
-    console.warn("Node dimensions not calculated for:", nodeData.id, " Subtree calculation might be inaccurate.");
-    // Fallback or force calculation if possible, for now, we assume they are pre-calculated by calculateAndStoreNodeDimensions
-    nodeData.width = nodeData.width || 100; // Default fallback
-    nodeData.height = nodeData.height || 40;  // Default fallback
+    // console.warn("Node dimensions not calculated for:", nodeData.id, " Subtree calculation might be inaccurate.");
+    nodeData.width = nodeData.width || 100;
+    nodeData.height = nodeData.height || 40;
   }
 
   if (!nodeData.children || nodeData.children.length === 0 || nodeData.isCollapsed) {
@@ -335,6 +336,147 @@ function calculateSubtreeDimensionsRecursive(nodeData) {
   }
 }
 
+function calculateOverallBoundingBox(node) {
+    // If node is not valid or lacks position/dimensions, it cannot contribute.
+    if (!node || typeof node.x !== 'number' || typeof node.y !== 'number' ||
+        typeof node.width !== 'number' || typeof node.height !== 'number') {
+        return null;
+    }
+
+    // Initialize bounds with the current node's dimensions
+    let minX = node.x;
+    let minY = node.y;
+    let maxX = node.x + node.width;
+    let maxY = node.y + node.height;
+
+    // If the node has children and is not collapsed, recurse for children
+    if (node.children && node.children.length > 0 && !node.isCollapsed) {
+        node.children.forEach(child => {
+            const childBounds = calculateOverallBoundingBox(child);
+            if (childBounds) { // If child (and its descendants) contributed valid bounds
+                minX = Math.min(minX, childBounds.minX);
+                minY = Math.min(minY, childBounds.minY);
+                maxX = Math.max(maxX, childBounds.maxX);
+                maxY = Math.max(maxY, childBounds.maxY);
+            }
+        });
+    }
+
+    // Check if initial node was valid but had no valid children to expand bounds
+    if (minX === Infinity && node.x !== undefined) { // Should not happen with current logic if node itself is valid
+        return { minX: node.x, minY: node.y, maxX: node.x + node.width, maxY: node.y + node.height };
+    }
+    if (minX === Infinity) return null; // No valid nodes found at all starting from this path
+
+    return { minX, minY, maxX, maxY };
+}
+
+function zoomToFit() {
+    if (!mindmapData || !mindmapData.root) {
+        // console.warn("[ZoomToFit] No mindmap data available.");
+        return;
+    }
+    if (!mindmapContainer) {
+        // console.warn("[ZoomToFit] Mindmap container not found.");
+        return;
+    }
+
+    const bounds = calculateOverallBoundingBox(mindmapData.root);
+
+    if (!bounds || bounds.minX === Infinity) {
+        // console.warn("[ZoomToFit] Could not calculate valid bounds for the mindmap content.");
+        if (mindmapData.root && typeof mindmapData.root.x === 'number') {
+             // console.log(`[ZoomToFit] Fallback: Centering on root node. X: ${mindmapData.root.x}, Y: ${mindmapData.root.y}`);
+        }
+        return;
+    }
+
+    const contentWidth = bounds.maxX - bounds.minX;
+    const contentHeight = bounds.maxY - bounds.minY;
+
+    if (contentWidth <= 0 || contentHeight <= 0) {
+        // console.warn("[ZoomToFit] Content has zero or negative dimensions. Cannot calculate scale.", bounds);
+        return;
+    }
+
+    const containerWidth = mindmapContainer.offsetWidth;
+    const containerHeight = mindmapContainer.offsetHeight;
+    const PADDING = 50; // Add some padding around the content
+
+    const scaleX = (containerWidth - 2 * PADDING) / contentWidth;
+    const scaleY = (containerHeight - 2 * PADDING) / contentHeight;
+    const scale = Math.min(scaleX, scaleY); // Use the smaller scale to fit both dimensions
+
+    // Calculate translation to center the scaled content
+    // Target bounding box of scaled content
+    const scaledContentWidth = contentWidth * scale;
+    const scaledContentHeight = contentHeight * scale;
+
+    // Desired top-left corner of the scaled content *within the container*
+    const desiredX = (containerWidth - scaledContentWidth) / 2;
+    const desiredY = (containerHeight - scaledContentHeight) / 2;
+
+    // The translation needed for the original content's top-left corner (bounds.minX, bounds.minY)
+    // such that after scaling by 'scale' and then translating, it ends up at (desiredX, desiredY)
+    // Let T = (tx, ty) be the translation.
+    // (bounds.minX * scale) + tx = desiredX  => tx = desiredX - (bounds.minX * scale)
+    // (bounds.minY * scale) + ty = desiredY  => ty = desiredY - (bounds.minY * scale)
+    const translateX = desiredX - (bounds.minX * scale);
+    const translateY = desiredY - (bounds.minY * scale);
+
+    // console.log(`[ZoomToFit] Calculated Bounding Box:`, bounds);
+    // console.log(`[ZoomToFit] Content Dimensions: width=${contentWidth}, height=${contentHeight}`);
+    // console.log(`[ZoomToFit] Container Dimensions: width=${containerWidth}, height=${containerHeight}`);
+    // console.log(`[ZoomToFit] Required Scale: ${scale.toFixed(3)} (scaleX: ${scaleX.toFixed(3)}, scaleY: ${scaleY.toFixed(3)})`);
+    // console.log(`[ZoomToFit] Required Translation: tx=${translateX.toFixed(2)}, ty=${translateY.toFixed(2)}`);
+
+    const mindmapContentWrapper = document.getElementById('mindmap-content-wrapper');
+    if (mindmapContentWrapper) {
+        mindmapContentWrapper.style.transformOrigin = '0 0'; // Top left origin
+        mindmapContentWrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+
+        // After applying the transform, we might need to redraw lines.
+        // A full renderMindmap() could be too much as it recalculates layout based on original data.
+        // For now, let's just clear and redraw lines based on current visual positions.
+        // This assumes node elements inside wrapper now have transformed getBoundingClientRect().
+        if (svgLayer && mindmapData.root) {
+            clearSvgLayer();
+            const rootElementForLines = mindmapContentWrapper.querySelector(`.mindmap-node[data-id='${mindmapData.root.id}']`);
+            if (rootElementForLines) {
+                 requestAnimationFrame(() => { // Ensure DOM has updated from transform
+                    traverseAndDrawLines(rootElementForLines);
+                });
+            }
+        }
+        showFeedback(`Zoomed to fit. Scale: ${scale.toFixed(2)}. Note: Further interactions may reset zoom.`, false);
+
+    } else {
+        // console.error("[ZoomToFit] mindmap-content-wrapper not found. Cannot apply transform.");
+    }
+
+    // For testing purposes:
+    if (typeof window.TEST_ENV !== 'undefined' && window.TEST_ENV) {
+        window.lastZoomToFitCalculations = { scale, translateX, translateY, bounds, contentWidth, contentHeight };
+    }
+}
+
+// Example of how node positions might be adjusted (NOT part of this subtask's core implementation)
+/*
+function adjustAllNodePositions(scale, tx, ty, node = mindmapData.root) {
+    if (!node) return;
+    if (typeof node.x === 'number' && typeof node.y === 'number') {
+        node.x = node.x * scale + tx;
+        node.y = node.y * scale + ty;
+        // node.width and node.height would also need scaling if visual zoom is applied
+        // node.width *= scale;
+        // node.height *= scale;
+        // node.isManuallyPositioned = true; // After zoom-to-fit, positions are effectively manual relative to new viewport
+    }
+    if (node.children) {
+        node.children.forEach(child => adjustAllNodePositions(scale, tx, ty, child));
+    }
+}
+*/
 
 // --- DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -351,8 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentlySelectedElement.classList.remove('selected-node');
           }
           selectedNodeId = null;
-          console.log('Mindmap container clicked, node deselected.');
-          // Optionally, re-render or update UI if deselection needs to trigger other changes
+          // console.log('Mindmap container clicked, node deselected.');
         }
       }
     });
@@ -377,6 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const importFileInput = document.getElementById('import-file-input');
   const exportJsonBtn = document.getElementById('export-json-btn');
   const clearMindmapBtn = document.getElementById('clear-mindmap-btn');
+  const zoomToFitBtn = document.getElementById('zoom-to-fit-btn');
 
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
     const text = nodeTextInput.value.trim();
@@ -710,7 +852,7 @@ function deleteNode(nodeId) {
         currentlySelectedElement.classList.remove('selected-node');
     }
     selectedNodeId = null;
-    console.log(`Selected node ${nodeId} was deleted. Selection cleared.`);
+    // console.log(`Selected node ${nodeId} was deleted. Selection cleared.`);
   }
 
   renderMindmap(mindmapData, 'mindmap-container');
@@ -944,23 +1086,16 @@ function createNodeElement(nodeData) {
     imgElement.alt = nodeData.image.alt || 'Node image';
 
     imgElement.onload = () => {
-        console.log(`Image loaded: ${nodeData.image.src}, for node: ${nodeData.id}. Triggering re-render.`);
-        // It's crucial to ensure that the nodeData itself isn't stale if renderMindmap
-        // operates on a global mindmapData object that might have been updated elsewhere.
-        // renderMindmap takes the main mindmapData object as an argument.
-        // We use window.mindmapData to ensure we're always passing the latest global state.
+        // console.log(`Image loaded: ${nodeData.image.src}, for node: ${nodeData.id}. Triggering re-render.`);
         if (window.mindmapData && typeof renderMindmap === 'function') {
             renderMindmap(window.mindmapData, 'mindmap-container');
         } else {
-            console.error("renderMindmap or window.mindmapData not available for image onload handler.");
+            // console.error("renderMindmap or window.mindmapData not available for image onload handler.");
         }
     };
 
     imgElement.onerror = () => {
-        console.error(`Failed to load image: ${nodeData.image.src}, for node: ${nodeData.id}.`);
-        // Optionally, trigger re-render if broken image icon or alt text causes size changes.
-        // For now, no re-render on error, to avoid potential loops if server keeps erroring.
-        // If alt text styling is significant, a re-render might be considered.
+        // console.error(`Failed to load image: ${nodeData.image.src}, for node: ${nodeData.id}.`);
     };
 
     nodeElement.appendChild(imgElement);
@@ -1010,6 +1145,7 @@ function createNodeElement(nodeData) {
     } else {
       chartContainer.textContent = `Chart (PureChart N/A): ${nodeData.chart.type} - L: ${nodeData.chart.labels.join(',')}, V: ${nodeData.chart.values.join(',')}`;
     }
+        needsReRenderAfterCharts = true; // Flag that a chart was encountered
   }
 
   const controlsContainer = document.createElement('div');
@@ -1101,13 +1237,8 @@ function createNodeElement(nodeData) {
     if (selectedNodeId !== nodeData.id) {
         nodeElement.classList.add('selected-node');
         selectedNodeId = nodeData.id;
-        console.log(`Node ${selectedNodeId} selected.`);
+        // console.log(`Node ${selectedNodeId} selected.`);
     } else {
-        // If clicking the already selected node, maybe deselect it? Or keep it selected.
-        // For now, clicking an already selected node keeps it selected.
-        // To deselect on clicking again:
-        // nodeElement.classList.remove('selected-node');
-        // selectedNodeId = null;
         // console.log(`Node ${nodeData.id} deselected by clicking again.`);
     }
     event.stopPropagation(); // Stop click from bubbling to mindmapContainer to prevent immediate deselection
@@ -1165,7 +1296,7 @@ function onDragEnd(event) {
 
   let currentDraggedNodeBox = getBoundingBox(draggedNodeElement, mindmapContainer);
   if (!currentDraggedNodeBox) {
-      console.error("Could not get bounding box for dragged node in onDragEnd.");
+      // console.error("Could not get bounding box for dragged node in onDragEnd.");
       isDragging = false; draggedNodeElement = null; draggedNodeId = null;
       return;
   }
@@ -1227,6 +1358,22 @@ function renderMindmap(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) { console.error("Mindmap container not found!"); return; }
 
+  let contentWrapper = document.getElementById('mindmap-content-wrapper');
+  if (!contentWrapper) {
+    console.error("'mindmap-content-wrapper' not found! Creating it.");
+    contentWrapper = document.createElement('div');
+    contentWrapper.id = 'mindmap-content-wrapper';
+    contentWrapper.style.position = 'absolute';
+    contentWrapper.style.top = '0';
+    contentWrapper.style.left = '0';
+    contentWrapper.style.width = '100%';
+    contentWrapper.style.height = '100%';
+    container.insertBefore(contentWrapper, container.firstChild); // Insert before SVG layer if it's first
+  }
+  // Clear previous nodes from the wrapper
+  contentWrapper.innerHTML = '';
+
+
   // 1. Ensure all node dimensions are calculated and stored in nodeData
   const tempContainer = getOrCreateTempMeasurementContainer();
   calculateAndStoreNodeDimensions(data.root, tempContainer); // This calculates individual nodeData.width/height
@@ -1242,14 +1389,17 @@ function renderMindmap(data, containerId) {
       calculateTreeLayout(data.root, 600); // Fallback width
   }
 
+  // SVG layer remains a direct child of 'container'
   let svgLayerElement = container.querySelector('#mindmap-svg-layer');
-  const existingNodes = container.querySelectorAll('.mindmap-node');
-  existingNodes.forEach(node => node.remove());
-
   if (!svgLayerElement) {
     svgLayerElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgLayerElement.id = 'mindmap-svg-layer';
-    container.insertBefore(svgLayerElement, container.firstChild);
+    // Ensure SVG is after content wrapper if both are direct children of container
+    if (contentWrapper.nextSibling) {
+        container.insertBefore(svgLayerElement, contentWrapper.nextSibling);
+    } else {
+        container.appendChild(svgLayerElement);
+    }
   }
   svgLayer = svgLayerElement;
   clearSvgLayer();
@@ -1260,9 +1410,10 @@ function renderMindmap(data, containerId) {
   rootNodeElement.style.left = (data.root.x || 50) + 'px';
   rootNodeElement.style.top = (data.root.y || 50) + 'px';
 
-  container.appendChild(rootNodeElement);
+  contentWrapper.appendChild(rootNodeElement); // Append root to the wrapper
 
   // Update global dimensions for root again AFTER it's in the main DOM and styled
+  // Note: getBoundingBox uses mindmapContainer (the overall container) for its calculations
   const finalRootBox = getBoundingBox(rootNodeElement, mindmapContainer);
   if (finalRootBox) {
     data.root.width = finalRootBox.width;
@@ -1290,6 +1441,23 @@ function renderMindmap(data, containerId) {
       traverseAndDrawLines(rootElementForLines);
     }
   });
+
+  if (needsReRenderAfterCharts) {
+    // console.log('[Mindmap Log] Charts were rendered, scheduling a delayed re-render for layout adjustment.');
+    if (chartReRenderTimer) {
+        clearTimeout(chartReRenderTimer); // Clear any existing timer
+    }
+    chartReRenderTimer = setTimeout(() => {
+        // console.log('[Mindmap Log] Executing delayed re-render after chart rendering.');
+        needsReRenderAfterCharts = false; // Reset flag BEFORE the call
+        chartReRenderTimer = null; // Clear the timer ID
+        if (window.mindmapData && typeof renderMindmap === 'function') { // Ensure globals still exist
+            renderMindmap(window.mindmapData, 'mindmap-container');
+        } else {
+            // console.error("[Mindmap Log] Cannot execute delayed re-render: mindmapData or renderMindmap no longer available.");
+        }
+    }, 250); // Delay of 250ms (adjust if needed)
+  }
 }
 
 function clearSvgLayer() {
@@ -1432,7 +1600,7 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
         }
       } while (!overlapResolved && nudges < maxNudges);
 
-      if (nudges >= maxNudges) console.warn("Max nudges reached for node (algorithmic):", childData.text);
+      if (nudges >= maxNudges) { /* console.warn("Max nudges reached for node (algorithmic):", childData.text); */ }
       actualRelativeX = tempCurrentX;
 
       placedSiblingBoxesLocal.push({
