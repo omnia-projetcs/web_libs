@@ -23,6 +23,15 @@ let mindmapData = {
 const LOCAL_STORAGE_KEY = 'userMindmapData';
 let nodeIdCounter = 0;
 let svgLayer = null; // For SVG connection lines
+
+// --- Drag State Variables ---
+let isDragging = false;
+let draggedNodeElement = null;
+let draggedNodeId = null;
+let initialMouseOffsetX = 0;
+let initialMouseOffsetY = 0;
+let mindmapContainerRect = null; // To store container offset and dimensions
+
 function generateNodeId() { return `node-${Date.now()}-${nodeIdCounter++}`; }
 
 // --- Feedback Utility ---
@@ -192,6 +201,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const importFileInput = document.getElementById('import-file-input');
   const exportJsonBtn = document.getElementById('export-json-btn');
   svgLayer = document.getElementById('mindmap-svg-layer');
+
+  const mindmapContainer = document.getElementById('mindmap-container');
+  function updateContainerRect() {
+    if (mindmapContainer) { // Ensure container exists
+        mindmapContainerRect = mindmapContainer.getBoundingClientRect();
+    }
+  }
+  updateContainerRect(); // Initial call
+  window.addEventListener('resize', updateContainerRect); // Update on resize
 
 
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
@@ -620,21 +638,119 @@ function createNodeElement(nodeData) {
     controlsContainer.appendChild(deleteBtn);
   }
   nodeElement.appendChild(controlsContainer);
+
+  // Add mousedown event listener for dragging
+  nodeElement.addEventListener('mousedown', (event) => {
+    if (event.button !== 0) return; // Only allow dragging with the primary mouse button
+    onDragStart(event, nodeData.id, nodeElement);
+  });
+
   return nodeElement;
 }
+
+function onDragStart(event, nodeId, nodeElement) {
+  if (!nodeElement) return;
+  isDragging = true;
+  draggedNodeElement = nodeElement;
+  draggedNodeId = nodeId;
+
+  updateContainerRect(); // Refresh container dimensions and position
+
+  const nodeRect = nodeElement.getBoundingClientRect();
+  // Calculate mouse offset relative to the node's top-left corner
+  // This accounts for where on the node the user clicked.
+  initialMouseOffsetX = event.clientX - nodeRect.left;
+  initialMouseOffsetY = event.clientY - nodeRect.top;
+
+  // Improve visual feedback during drag
+  draggedNodeElement.style.cursor = 'grabbing';
+  draggedNodeElement.style.opacity = '0.8'; // Make it slightly transparent
+
+  event.preventDefault(); // Prevent default text selection or other drag behaviors
+
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+}
+
+function onDragMove(event) {
+  if (!isDragging || !draggedNodeElement || !mindmapContainerRect) return;
+  event.preventDefault();
+
+  // Calculate new position relative to the mindmap-container
+  // event.clientX/Y are viewport-relative.
+  // mindmapContainerRect.left/top are also viewport-relative.
+  // window.scrollX/Y are needed if the *page* scrolls, not just the container.
+  // If mindmap-container is the scrollable element, its own scrollLeft/Top are needed.
+
+  let newLeft = event.clientX - initialMouseOffsetX - mindmapContainerRect.left + mindmapContainer.scrollLeft;
+  let newTop = event.clientY - initialMouseOffsetY - mindmapContainerRect.top + mindmapContainer.scrollTop;
+
+  // Boundary checks (optional, to keep node within container)
+  // newLeft = Math.max(0, Math.min(newLeft, mindmapContainerRect.width - draggedNodeElement.offsetWidth));
+  // newTop = Math.max(0, Math.min(newTop, mindmapContainerRect.height - draggedNodeElement.offsetHeight));
+
+
+  draggedNodeElement.style.left = newLeft + 'px';
+  draggedNodeElement.style.top = newTop + 'px';
+
+  requestAnimationFrame(() => {
+    clearSvgLayer();
+    const rootNodeForLines = document.querySelector(`#mindmap-container > .mindmap-node[data-id='${mindmapData.root.id}']`);
+    if (rootNodeForLines && svgLayer) {
+        traverseAndDrawLines(rootNodeForLines);
+    }
+  });
+}
+
+function onDragEnd(event) {
+  if (!isDragging || !draggedNodeId || !draggedNodeElement || !mindmapContainerRect) return;
+
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+
+  draggedNodeElement.style.cursor = 'move'; // Reset cursor
+  draggedNodeElement.style.opacity = '1'; // Reset opacity
+
+  // Final position calculation relative to the mindmap-container, including container's scroll
+  const finalNodeRect = draggedNodeElement.getBoundingClientRect(); // This is viewport-relative
+  const finalLeft = finalNodeRect.left - mindmapContainerRect.left + mindmapContainer.scrollLeft;
+  const finalTop = finalNodeRect.top - mindmapContainerRect.top + mindmapContainer.scrollTop;
+
+  const nodeData = findNodeById(mindmapData.root, draggedNodeId);
+  if (nodeData) {
+    nodeData.x = finalLeft;
+    nodeData.y = finalTop;
+    // No special handling for root needed here as findNodeById handles all nodes.
+  }
+
+  saveMindmapToLocalStorage(); // Save the new position
+
+  isDragging = false;
+  draggedNodeElement = null;
+  draggedNodeId = null;
+  // A final redraw of lines happens implicitly if onDragMove's last RAF call executes after this.
+  // Or explicitly call renderMindmap if needed, but might be redundant if positions are directly set.
+  // For now, the RAF in onDragMove should cover the final state.
+}
+
 
 function renderMindmap(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) { console.error("Mindmap container not found!"); return; }
-  container.innerHTML = ''; // Clear previous rendering
+  const mindmapSvgLayer = container.querySelector('#mindmap-svg-layer');
+  container.innerHTML = '';
+  if(mindmapSvgLayer) container.appendChild(mindmapSvgLayer);
 
-  // Create and position the root node
   const rootNodeElement = createNodeElement(data.root);
-  // For the root node, we can set its position here or assume it's handled by CSS (e.g., normal flow or specific ID style)
-  // If it needs to be positioned by JS:
-  rootNodeElement.style.position = 'absolute'; // Explicitly position root
-  rootNodeElement.style.left = '50px';
-  rootNodeElement.style.top = '50px';
+  rootNodeElement.style.position = 'absolute';
+  if (typeof data.root.x === 'number' && typeof data.root.y === 'number') {
+    rootNodeElement.style.left = data.root.x + 'px';
+    rootNodeElement.style.top = data.root.y + 'px';
+  } else {
+    // Default initial position for root if not dragged before
+    rootNodeElement.style.left = '50px';
+    rootNodeElement.style.top = '50px';
+  }
   container.appendChild(rootNodeElement);
 
   // Create a children container for the root node if it has children
@@ -775,40 +891,49 @@ function renderChildren(childrenData, parentNodeElement) {
 
   childrenContainer.innerHTML = ''; // Clear previous children before re-rendering/re-positioning
 
-  let currentX = 10; // Start with padding inside childrenContainer (matches CSS padding)
-  let currentY = 10; // Start with padding
+  let currentX = 10; // Default starting X for algorithmic layout (inside padding of childrenContainer)
+  let currentY = 10; // Default starting Y
   let maxChildHeightInRow = 0;
-  const horizontalSpacing = 25; // Space between horizontal nodes
-  const verticalSpacing = 20; // Space between rows if wrapping were fully implemented
+  const horizontalSpacing = 25;
+  const verticalSpacing = 20; // Not fully used yet without wrapping
 
   childrenData.forEach(childData => {
     const childNodeElement = createNodeElement(childData);
 
-    // Temporarily append to get dimensions, then position
-    childNodeElement.style.visibility = 'hidden'; // Avoid flicker
+    // Append hidden to measure, then position
+    childNodeElement.style.visibility = 'hidden';
     childrenContainer.appendChild(childNodeElement);
 
     const childWidth = childNodeElement.offsetWidth;
     const childHeight = childNodeElement.offsetHeight;
-    maxChildHeightInRow = Math.max(maxChildHeightInRow, childHeight);
-
-    // Basic wrapping logic (optional, for now, simple horizontal row)
-    // const containerMaxWidth = childrenContainer.offsetWidth - 20; // Example: childrenContainer.clientWidth
-    // if (containerMaxWidth > 0 && currentX + childWidth > containerMaxWidth && currentX > 10) { // Check currentX > 10 to ensure at least one item is in the row
-    //   currentX = 10;
-    //   currentY += maxChildHeightInRow + verticalSpacing;
-    //   maxChildHeightInRow = childHeight;
-    // }
 
     childNodeElement.style.position = 'absolute';
-    childNodeElement.style.left = currentX + 'px';
-    childNodeElement.style.top = currentY + 'px';
+    let placedByDrag = false;
+
+    if (typeof childData.x === 'number' && typeof childData.y === 'number') {
+      // Node has been manually dragged, use its stored position
+      childNodeElement.style.left = childData.x + 'px';
+      childNodeElement.style.top = childData.y + 'px';
+      placedByDrag = true;
+      // For a more robust layout, we might update currentX/Y based on this dragged node
+      // but for simplicity, the current algorithmic flow is independent of dragged nodes.
+    } else {
+      // Position algorithmically (simple horizontal row)
+      childNodeElement.style.left = currentX + 'px';
+      childNodeElement.style.top = currentY + 'px';
+    }
+
     childNodeElement.style.visibility = 'visible';
 
-    currentX += childWidth + horizontalSpacing;
+    // Update currentX for the next *algorithmically* placed node.
+    // Dragged nodes currently don't shift the algorithmic flow of their siblings.
+    if (!placedByDrag) {
+         currentX += childWidth + horizontalSpacing;
+    }
+    maxChildHeightInRow = Math.max(maxChildHeightInRow, childHeight);
+
 
     // If child itself has children and is not collapsed, recursively call renderChildren for it.
-    // Ensure the childNodeElement has a children-container, typically added by createNodeElement.
     if (childData.children && childData.children.length > 0) {
         let grandChildrenContainer = childNodeElement.querySelector('.mindmap-children-container');
         if (!grandChildrenContainer) {
