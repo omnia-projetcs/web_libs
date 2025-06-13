@@ -206,3 +206,45 @@ body {
   border: 2px solid #007bff !important; /* A distinct blue border, !important to override existing border */
   box-shadow: 0 0 10px rgba(0,123,255,0.5);
 }
+
+/* --- Start of Diagnostic CSS --- */
+
+#toolbar { /* Ensure toolbar itself is visible and identifiable */
+    display: flex !important;
+    position: fixed !important; /* Re-affirm fixed position */
+    top: 110px !important; /* Position below the on-page JS diagnostic log */
+    left: 0 !important;
+    width: 100% !important;
+    min-height: 40px !important; /* Ensure it has some height */
+    background-color: #fffacd !important; /* LemonChiffon - distinct background */
+    border: 3px dashed #ff4500 !important; /* OrangeRed border */
+    z-index: 99990 !important; /* High z-index, but below diag-log-container */
+    padding: 5px !important;
+    box-sizing: border-box !important;
+}
+
+#clear-mindmap-btn {
+    display: inline-block !important;
+    visibility: visible !important;
+    width: auto !important; /* Let content determine width */
+    height: auto !important; /* Let content determine height */
+    padding: 10px 15px !important; /* Make it chunky */
+    font-size: 16px !important; /* Make text large */
+    font-weight: bold !important;
+    background-color: #32cd32 !important; /* LimeGreen */
+    color: #000000 !important; /* Black text */
+    border: 3px solid #ff0000 !important; /* Bright red border */
+    z-index: 99999 !important; /* Ensure it's on top of other toolbar items if needed */
+    opacity: 1 !important;
+    margin: 5px !important; /* Add some margin to separate it */
+    cursor: pointer !important;
+}
+
+/* Optional: Make other toolbar buttons also stand out slightly less aggressively */
+/* to ensure they are not an issue, but clear-mindmap-btn is the focus */
+#toolbar button {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* --- End of Diagnostic CSS --- */
