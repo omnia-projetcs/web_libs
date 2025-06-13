@@ -19,9 +19,12 @@ This is a web-based interactive mindmap application that allows users to create,
     *   **Collapsible Branches**: Click the `[+]` or `[-]` toggle next to a node's text to expand or collapse its child branches, making it easier to navigate large mindmaps.
     *   **Curved Connection Lines**: Visual lines (curved Bézier paths) are now drawn between parent and child nodes, making the mindmap structure clearer and more aesthetically pleasing.
     *   **Improved Node Spacing**: Default spacing between nodes and branches has been enhanced to reduce clutter and minimize visual overlaps.
-    *   **Horizontal Child Node Layout**: Child nodes are now primarily arranged in a horizontal row relative to their parent, controlled by JavaScript. This is a foundational step towards more dynamic and organized mindmap structures.
     *   **Draggable Nodes with Global Collision Avoidance**: Nodes can be manually repositioned by clicking and dragging. When a node is dropped, the application now attempts to find a clear spot by checking for overlaps with **all other nodes** on the mindmap and subtly adjusting the final position if needed. Custom positions are saved (as global coordinates relative to the main canvas) and restored.
-    *   **Algorithmic Vertical Stacking of Main Branches**: To improve initial clarity, direct child branches of the root node are now automatically stacked vertically. This layout respects previously dragged positions of these main branches and uses estimates for vertical spacing.
+    *   **Hierarchical Tree Layout Algorithm (Phase 1)**: For nodes not manually repositioned, the mindmap now utilizes a foundational tree layout algorithm to determine their initial placement. This algorithm aims to:
+        *   Assign vertical positions (`y`-coordinates) based on the node's level in the hierarchy, ensuring clear separation between levels.
+        *   Horizontally position children, typically centering them as a group beneath their parent node.
+        *   Respect manually dragged positions: nodes moved by the user will maintain their position unless their ancestors are algorithmically repositioned.
+        *   This approach provides a more organized, classic tree-like structure by default and significantly reduces initial node overlaps compared to previous layout methods.
 *   **Data Persistence & Portability**:
     *   **Local Storage**: Your mindmap is automatically saved to your browser's local storage as you make changes. It will be reloaded when you revisit the page.
     *   **Clear Local Data**: Option to clear the mindmap data stored in your browser.
@@ -67,9 +70,10 @@ This is a web-based interactive mindmap application that allows users to create,
 
 ## Known Limitations
 
-*   **Overall Layout Sophistication**:
-    *   While direct child branches of the root are now algorithmically stacked vertically, this stacking uses an *estimated* height for spacing, so branches with exceptionally large content or many levels of children might still appear too close or too far from their vertical siblings.
-    *   The horizontal layout of children within each branch is basic and does not wrap; very wide branches can still cause horizontal overflow or overlap with other elements if not managed manually.
-    *   Collision avoidance for manually dragged nodes (global check with a local 'nudge') and for algorithmically placed siblings (local horizontal 'nudge') are basic. They may not always find an optimal non-overlapping position in very crowded scenarios.
-    *   The system does not yet perform a full, dynamic reflow of the entire map when nodes are added, deleted, or significantly repositioned (like in advanced tools such as MindMeister). Preventing all potential overlaps in complex, dense maps remains an area for ongoing improvement.
+- **Tree Layout Algorithm (Phase 1 Limitations)**:
+    *   The current tree layout algorithm is a foundational implementation. While it improves structure and reduces many overlaps, it does not yet handle all complex scenarios perfectly.
+    *   **Subtree Overlaps**: It may not prevent overlaps between distant subtrees in very dense or complex maps (e.g., the children of one main branch expanding significantly and overlapping with children of another main branch). True collision avoidance between all subtrees is an advanced feature for future development.
+    *   **Balancing**: The algorithm performs basic centering of children but does not yet implement advanced tree balancing techniques if child subtrees have vastly different widths or depths.
+    *   **Dynamic Reflow for Content Changes**: If a node's size changes dramatically *after* the initial layout (e.g., due to adding a very large image or table without triggering a full re-layout), the overall tree structure does not automatically reflow to accommodate this. A manual adjustment or a subsequent full layout (e.g., on next node add/delete) would be needed.
+    *   The 'nudge' strategy for collision avoidance during manual node dragging remains basic and might not find an optimal position in highly congested areas.
 *   **Node Dimension Calculation with Asynchronous Content**: The application calculates node sizes for layout and collision detection when nodes are first rendered. If a node contains content that loads asynchronously (e.g., images from URLs, or complex charts that take time to render), its dimensions might be calculated based on the placeholder size before the content fully loads and expands the node. This can occasionally lead to suboptimal layouts or temporary visual overlaps until the content appears. A future enhancement could involve re-calculating layout after asynchronous content has loaded.

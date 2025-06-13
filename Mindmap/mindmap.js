@@ -12,11 +12,12 @@ let mindmapData = {
     notes: 'This is the central idea of our mindmap.',
     table: null, image: null, chart: null,
     x: 50, y: 50, // Default global position for root
+    isManuallyPositioned: false,
     children: [
-      { id: 'child1', text: 'Child 1', notes: '', table: null, image: null, chart: null, children: [] },
+      { id: 'child1', text: 'Child 1', notes: '', table: null, image: null, chart: null, children: [], isManuallyPositioned: false },
       { id: 'child2', text: 'Child 2', notes: 'Initial notes.', table: null, image: null, chart: null, children: [
-        { id: 'grandchild21', text: 'Grandchild 2.1', notes: '', table: null, image: null, chart: null, children: [] }
-      ]},
+        { id: 'grandchild21', text: 'Grandchild 2.1', notes: '', table: null, image: null, chart: null, children: [], isManuallyPositioned: false }
+      ],isManuallyPositioned: false },
     ],
   },
 };
@@ -79,6 +80,7 @@ function loadMindmapFromLocalStorage() {
       if (!mindmapData.root.x || !mindmapData.root.y) {
           mindmapData.root.x = 50;
           mindmapData.root.y = 50;
+          mindmapData.root.isManuallyPositioned = false;
       }
     }
   } catch (e) {
@@ -87,6 +89,7 @@ function loadMindmapFromLocalStorage() {
      if (!mindmapData.root.x || !mindmapData.root.y) {
         mindmapData.root.x = 50;
         mindmapData.root.y = 50;
+        mindmapData.root.isManuallyPositioned = false;
     }
   }
   renderMindmap(mindmapData, 'mindmap-container');
@@ -100,7 +103,7 @@ function clearLocalStorage() {
     mindmapData = {
         root: {
             id: 'root', text: 'Default Root', notes:'Cleared local data', children: [],
-            x: 50, y: 50
+            x: 50, y: 50, isManuallyPositioned: false
         }
     };
     nodeIdCounter = 0;
@@ -137,11 +140,11 @@ async function loadMindmapFromServer(mindmapId = 'sample-map-from-server') {
     const sampleServerData = {
       root: {
         id: 'server-root', text: `Loaded: ${mindmapId}`, notes: 'This data came from a (simulated) server.',
-        x: 50, y: 50,
+        x: 50, y: 50, isManuallyPositioned: false,
         image: {src: 'https://via.placeholder.com/120/007bff/ffffff?text=Server+Image', alt:'Server Image'},
         children: [
-          { id: generateNodeId(), text: 'Server Child 1', children: [] },
-          { id: generateNodeId(), text: 'Server Child 2', notes: 'Has server notes!', children: [] }
+          { id: generateNodeId(), text: 'Server Child 1', children: [], isManuallyPositioned: false },
+          { id: generateNodeId(), text: 'Server Child 2', notes: 'Has server notes!', children: [], isManuallyPositioned: false }
         ]
       }
     };
@@ -159,6 +162,124 @@ async function loadMindmapFromServer(mindmapId = 'sample-map-from-server') {
     showFeedback(`Failed to load mindmap "${mindmapId}" from server. ${error.message}`, true, true);
   }
 }
+
+// --- Layout & Dimension Calculation ---
+function getOrCreateTempMeasurementContainer() {
+  let container = document.getElementById('mindmap-temp-measurement-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'mindmap-temp-measurement-container';
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '-9999px';
+    container.style.visibility = 'hidden';
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
+function calculateAndStoreNodeDimensions(nodeData, tempContainer) {
+  const tempNodeElement = createNodeElement(nodeData); // createNodeElement should not append to main DOM
+  tempContainer.innerHTML = '';
+  tempContainer.appendChild(tempNodeElement);
+
+  nodeData.width = tempNodeElement.offsetWidth;
+  nodeData.height = tempNodeElement.offsetHeight;
+
+  if (nodeData.children && nodeData.children.length > 0) {
+    nodeData.children.forEach(child => calculateAndStoreNodeDimensions(child, tempContainer));
+  }
+}
+
+function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
+  console.log("Calculating tree layout for root:", rootNodeData.id, "within width:", mindmapContainerWidth);
+  const initialYOffset = 50;
+  const levelSeparation = 75;
+  const siblingSeparation = 30;
+
+  // 1. Assign Levels and Y-coordinates using BFS
+  if (!rootNodeData) return;
+
+  let nodesByLevel = {};
+  let q = [];
+
+  rootNodeData.level = 0;
+  q.push(rootNodeData);
+
+  let maxLevel = 0;
+
+  while(q.length > 0) {
+      const currentNode = q.shift();
+      if (!nodesByLevel[currentNode.level]) {
+          nodesByLevel[currentNode.level] = [];
+      }
+      nodesByLevel[currentNode.level].push(currentNode);
+      maxLevel = Math.max(maxLevel, currentNode.level);
+
+      if (currentNode.children) {
+          currentNode.children.forEach(child => {
+              child.level = currentNode.level + 1;
+              q.push(child);
+          });
+      }
+  }
+
+  let currentY = initialYOffset;
+  for (let i = 0; i <= maxLevel; i++) {
+      if (!nodesByLevel[i] || nodesByLevel[i].length === 0) continue;
+
+      let maxHeightInLevel = 0;
+      nodesByLevel[i].forEach(node => {
+          if (!node.isManuallyPositioned || typeof node.y !== 'number') {
+              node.y = currentY;
+          } else {
+            // If manually positioned, its Y might influence currentY for this level if it's lower
+            currentY = Math.max(currentY, node.y);
+            // Then ensure this node also uses this possibly updated currentY if it was the one pushing it down
+            if (node.y < currentY) node.y = currentY;
+          }
+          maxHeightInLevel = Math.max(maxHeightInLevel, node.height || 50);
+      });
+      currentY += maxHeightInLevel + levelSeparation;
+  }
+
+  // 2. Assign X-coordinates recursively
+  function assignAlgorithmicXRecursive(parentNodeData) {
+    if (!parentNodeData.children || parentNodeData.children.length === 0) {
+      return;
+    }
+
+    const algoChildren = parentNodeData.children.filter(
+      child => !(child.isManuallyPositioned && typeof child.x === 'number')
+    );
+
+    if (algoChildren.length > 0) {
+      const totalAlgoChildrenWidth = algoChildren.reduce((sum, child) => sum + (child.width || 50), 0) +
+                                   (Math.max(0, algoChildren.length - 1) * siblingSeparation);
+
+      let currentXForAlgoBlock = (parentNodeData.x + (parentNodeData.width || 50) / 2) - totalAlgoChildrenWidth / 2;
+
+      algoChildren.forEach(child => {
+        child.x = currentXForAlgoBlock;
+        currentXForAlgoBlock += (child.width || 50) + siblingSeparation;
+      });
+    }
+
+    parentNodeData.children.forEach(child => {
+      assignAlgorithmicXRecursive(child);
+    });
+  }
+
+  if (!rootNodeData.isManuallyPositioned || typeof rootNodeData.x !== 'number') {
+    rootNodeData.x = (mindmapContainerWidth / 2) - (rootNodeData.width || 50) / 2;
+  }
+  if (typeof rootNodeData.y !== 'number') { // Ensure root Y is set if it was 'isManuallyPositioned' but Y was missing
+      rootNodeData.y = initialYOffset;
+  }
+
+  assignAlgorithmicXRecursive(rootNodeData);
+}
+
 
 // --- DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -304,8 +425,10 @@ function addNode(parentId, text) {
   const parentNode = findNodeById(mindmapData.root, parentId);
   if (!parentNode) return;
   if (!parentNode.children) parentNode.children = [];
-  const newNode = { id: generateNodeId(), text: text, notes: '', children: [] };
-  // Remove x,y from newNode so it's algorithmically placed
+  const newNode = {
+    id: generateNodeId(), text: text, notes: '', children: [],
+    isManuallyPositioned: false // New nodes are not manually positioned
+  };
   delete newNode.x;
   delete newNode.y;
   parentNode.children.push(newNode);
@@ -665,15 +788,11 @@ function onDragEnd(event) {
     }
   }
 
-  // The style update here is primarily for immediate visual feedback if renderMindmap was slow.
-  // However, renderMindmap will be called right after and is the source of truth for positioning.
-  // draggedNodeElement.style.left = currentPosition.x + 'px';
-  // draggedNodeElement.style.top = currentPosition.y + 'px';
-
   const nodeData = findNodeById(mindmapData.root, draggedNodeId);
   if (nodeData) {
     nodeData.x = currentPosition.x;
     nodeData.y = currentPosition.y;
+    nodeData.isManuallyPositioned = true; // Mark as manually positioned
   }
   saveMindmapToLocalStorage();
   renderMindmap(mindmapData, 'mindmap-container');
@@ -686,42 +805,45 @@ function renderMindmap(data, containerId) {
   const container = document.getElementById(containerId);
   if (!container) { console.error("Mindmap container not found!"); return; }
 
+  // 1. Ensure all node dimensions are calculated and stored in nodeData
+  const tempContainer = getOrCreateTempMeasurementContainer();
+  calculateAndStoreNodeDimensions(data.root, tempContainer);
+
+  // 2. Calculate tree layout (populates nodeData.x and nodeData.y for all nodes)
+  if (mindmapContainer) {
+        calculateTreeLayout(data.root, mindmapContainer.offsetWidth);
+  } else {
+      console.error("mindmapContainer DOM element not found for layout calculation.");
+      calculateTreeLayout(data.root, 600); // Fallback width
+  }
+
   let svgLayerElement = container.querySelector('#mindmap-svg-layer');
-  // Clear only node elements, not the SVG layer itself
   const existingNodes = container.querySelectorAll('.mindmap-node');
   existingNodes.forEach(node => node.remove());
 
-  if (!svgLayerElement) { // If it wasn't found (e.g. first render or was removed by full container.innerHTML)
+  if (!svgLayerElement) {
     svgLayerElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgLayerElement.id = 'mindmap-svg-layer';
-    container.insertBefore(svgLayerElement, container.firstChild); // Insert SVG layer before any nodes
+    container.insertBefore(svgLayerElement, container.firstChild);
   }
-  svgLayer = svgLayerElement; // Update global reference
-  clearSvgLayer(); // Clear previous lines from SVG layer
+  svgLayer = svgLayerElement;
+  clearSvgLayer();
 
 
   const rootNodeElement = createNodeElement(data.root);
   rootNodeElement.style.position = 'absolute';
-  if (typeof data.root.x === 'number' && typeof data.root.y === 'number') {
-    rootNodeElement.style.left = data.root.x + 'px';
-    rootNodeElement.style.top = data.root.y + 'px';
-  } else {
-    rootNodeElement.style.left = '50px';
-    rootNodeElement.style.top = '50px';
-    if (data.root.x === undefined || data.root.y === undefined) {
-        data.root.x = 50;
-        data.root.y = 50;
-    }
-  }
+  rootNodeElement.style.left = (data.root.x || 50) + 'px';
+  rootNodeElement.style.top = (data.root.y || 50) + 'px';
+
   container.appendChild(rootNodeElement);
 
-  const globalRootBox = getBoundingBox(rootNodeElement, mindmapContainer);
-  if (globalRootBox) {
-    data.root.width = globalRootBox.width; // Update width/height based on rendered size
-    data.root.height = globalRootBox.height;
-    // data.root.x and data.root.y are already global, so no need to update them from globalRootBox here
-    // unless there's a discrepancy we want to correct, but style should match data.
+  // Update global dimensions for root again AFTER it's in the main DOM and styled
+  const finalRootBox = getBoundingBox(rootNodeElement, mindmapContainer);
+  if (finalRootBox) {
+    data.root.width = finalRootBox.width;
+    data.root.height = finalRootBox.height;
   }
+
 
   if (data.root.children && data.root.children.length > 0) {
     let childrenContainer = rootNodeElement.querySelector('.mindmap-children-container');
@@ -730,29 +852,7 @@ function renderMindmap(data, containerId) {
         childrenContainer.classList.add('mindmap-children-container');
         rootNodeElement.appendChild(childrenContainer);
     }
-
-    const verticalBranchSpacing = 50;
-    const estimatedNodeHeight = data.root.height || 50;
-    const estimatedChildrenAreaHeight = 100;
-    let currentGlobalYForBranch = (data.root.y || 50) + estimatedNodeHeight + verticalBranchSpacing;
-    const horizontalIndentForBranch = (data.root.x || 50) + (data.root.width ? data.root.width / 4 : 20);
-
-    data.root.children.forEach(rootChildData => {
-      if (typeof rootChildData.x !== 'number' || typeof rootChildData.y !== 'number') {
-        rootChildData.x = horizontalIndentForBranch;
-        rootChildData.y = currentGlobalYForBranch;
-
-        const selfHeight = rootChildData.height || 50; // Use self estimate if available
-        const childrenHeightEstimate = (rootChildData.children && rootChildData.children.length > 0 && !rootChildData.isCollapsed) ? estimatedChildrenAreaHeight : 0;
-        currentGlobalYForBranch += selfHeight + childrenHeightEstimate + verticalBranchSpacing;
-      } else {
-        const selfHeight = rootChildData.height || 50;
-        const childrenHeightEstimate = (rootChildData.children && rootChildData.children.length > 0 && !rootChildData.isCollapsed) ? estimatedChildrenAreaHeight : 0;
-        const draggedBranchBottom = rootChildData.y + selfHeight + childrenHeightEstimate;
-        currentGlobalYForBranch = Math.max(currentGlobalYForBranch, draggedBranchBottom + verticalBranchSpacing);
-      }
-    });
-
+    // Vertical stacking for root's children was already handled by calculateTreeLayout setting their global Y
     if (!data.root.isCollapsed) {
         renderChildren(data.root.children, rootNodeElement, mindmapContainer);
     }
@@ -850,29 +950,36 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
     childNodeElement.style.position = 'absolute';
     let actualRelativeX, actualRelativeY;
 
-    if (typeof childData.x === 'number' && typeof childData.y === 'number') {
+    if (childData.isManuallyPositioned && typeof childData.x === 'number' && typeof childData.y === 'number') {
       const childrenContainerGlobalBox = getBoundingBox(childrenContainer, mainMindmapContainer);
       if (childrenContainerGlobalBox) {
         actualRelativeX = childData.x - childrenContainerGlobalBox.x;
         actualRelativeY = childData.y - childrenContainerGlobalBox.y;
 
-        currentXLocal = Math.max(currentXLocal, actualRelativeX + childNodeElement.offsetWidth + horizontalSpacing);
-        maxChildHeightInRow = Math.max(maxChildHeightInRow, (actualRelativeY - currentYLocal) + childNodeElement.offsetHeight );
+        currentXLocal = Math.max(currentXLocal, actualRelativeX + (childData.width || childNodeElement.offsetWidth) + horizontalSpacing);
+        maxChildHeightInRow = Math.max(maxChildHeightInRow, (actualRelativeY - currentYLocal) + (childData.height || childNodeElement.offsetHeight) );
 
       } else {
         console.error("Could not get childrenContainer global box for positioning child:", childData.id);
         actualRelativeX = currentXLocal;
         actualRelativeY = currentYLocal;
-        currentXLocal += childNodeElement.offsetWidth + horizontalSpacing;
-        maxChildHeightInRow = Math.max(maxChildHeightInRow, childNodeElement.offsetHeight);
+        maxChildHeightInRow = Math.max(maxChildHeightInRow, (childData.height || childNodeElement.offsetHeight));
+        currentXLocal += (childData.width || childNodeElement.offsetWidth) + horizontalSpacing;
       }
       placedSiblingBoxesLocal.push({
             x: actualRelativeX, y: actualRelativeY,
-            width: childNodeElement.offsetWidth, height: childNodeElement.offsetHeight,
+            width: (childData.width || childNodeElement.offsetWidth), height: (childData.height || childNodeElement.offsetHeight),
             id: childData.id
       });
     } else {
-      actualRelativeY = currentYLocal;
+      // Algorithmic placement: X is determined by this function, Y by calculateTreeLayout (converted to local)
+      const childrenContainerGlobalBox = getBoundingBox(childrenContainer, mainMindmapContainer);
+      if (childrenContainerGlobalBox && typeof childData.y === 'number') { // childData.y is global from layout
+          actualRelativeY = childData.y - childrenContainerGlobalBox.y;
+      } else {
+          actualRelativeY = currentYLocal; // Fallback if global Y somehow not set
+          if(typeof childData.y !== 'number') childData.y = actualRelativeY + (childrenContainerGlobalBox ? childrenContainerGlobalBox.y : 0); // Store an estimated global Y
+      }
       childNodeElement.style.top = actualRelativeY + 'px';
 
       let overlapResolved = false;
@@ -882,7 +989,7 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
       do {
         const currentChildBoxLocal = {
             x: tempCurrentX, y: actualRelativeY,
-            width: childNodeElement.offsetWidth, height: childNodeElement.offsetHeight,
+            width: (childData.width || childNodeElement.offsetWidth), height: (childData.height || childNodeElement.offsetHeight),
             id: childData.id
         };
         let isOverlapping = false;
@@ -905,23 +1012,29 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
 
       placedSiblingBoxesLocal.push({
           x: actualRelativeX, y: actualRelativeY,
-          width: childNodeElement.offsetWidth, height: childNodeElement.offsetHeight,
+          width: (childData.width || childNodeElement.offsetWidth), height: (childData.height || childNodeElement.offsetHeight),
           id: childData.id
       });
-      currentXLocal = actualRelativeX + childNodeElement.offsetWidth + horizontalSpacing;
-      maxChildHeightInRow = Math.max(maxChildHeightInRow, childNodeElement.offsetHeight);
+      currentXLocal = actualRelativeX + (childData.width || childNodeElement.offsetWidth) + horizontalSpacing;
+      maxChildHeightInRow = Math.max(maxChildHeightInRow, (childData.height || childNodeElement.offsetHeight));
+
+      // Store the calculated global X for this algorithmically placed node
+      if (childrenContainerGlobalBox) {
+        childData.x = actualRelativeX + childrenContainerGlobalBox.x;
+      } else {
+        childData.x = actualRelativeX; // Fallback, less accurate
+      }
     }
 
     childNodeElement.style.left = actualRelativeX + 'px';
     childNodeElement.style.top = actualRelativeY + 'px';
 
-    // After child is positioned, update its global data fields
+    // After child is positioned, update its global data fields (width/height might have changed slightly if content wrapped)
     const globalChildBox = getBoundingBox(childNodeElement, mainMindmapContainer);
     if (globalChildBox) {
-        childData.x = globalChildBox.x;
-        childData.y = globalChildBox.y;
-        childData.width = globalChildBox.width;
+        childData.width = globalChildBox.width; // Re-capture final width/height
         childData.height = globalChildBox.height;
+        // childData.x and childData.y should already be global from logic above or drag
     }
 
     if (childData.children && childData.children.length > 0) {
@@ -938,7 +1051,12 @@ function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
   });
 
   if (childrenData.length > 0) {
-    childrenContainer.style.height = (currentYLocal + maxChildHeightInRow + 10) + 'px';
+    // Adjust height based on the maximum extent of children, considering their individual Ys
+    let maxBottom = 0;
+    placedSiblingBoxesLocal.forEach(box => {
+        maxBottom = Math.max(maxBottom, box.y + box.height);
+    });
+    childrenContainer.style.height = (maxBottom + 10) + 'px'; // 10 for bottom padding
   } else {
     childrenContainer.style.height = 'auto';
   }
