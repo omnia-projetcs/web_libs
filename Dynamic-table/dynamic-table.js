@@ -1292,6 +1292,14 @@ function createDynamicTable(config) {
 
                     const cell = row.insertCell();
                     cell.innerHTML = ''; // Clear previous content
+
+                    if (typeof colConfig.format === 'string') {
+                        if (colConfig.format.startsWith('currency:')) {
+                            cell.classList.add('dt-currency-cell');
+                        } else if (colConfig.format.startsWith('percent')) { // This will catch 'percent' and 'percent_neutral'
+                            cell.classList.add('dt-percentage-cell');
+                        }
+                    }
                     
                     const value = item[colConfig.key];
 
@@ -1303,6 +1311,10 @@ function createDynamicTable(config) {
                         // Create inner wrapper for canvas
                         const canvasWrapper = document.createElement('div');
                         canvasWrapper.className = 'dt-chart-canvas-wrapper';
+
+                        const chartWidth = colConfig.chartConfig.width || 150; // Get configured width, default to 150
+                        canvasWrapper.style.minWidth = chartWidth + 'px';
+
                         cell.appendChild(canvasWrapper);
 
                         const canvasId = `${containerId}-chart-${startIndex + itemIndex}-${colIndexOriginal}`; // Use original index for unique ID
