@@ -114,6 +114,10 @@
             // If mindmap.js directly exposes nodeIdCounter, reset it. This is less ideal.
             // For now, generateNodeId relies on Date.now(), making it mostly unique.
         }
+        // Reset selectedNodeId if it's being used globally by mindmap.js
+        if (typeof window.selectedNodeId !== 'undefined') {
+            window.selectedNodeId = null;
+        }
     }
 
     // Mock localStorage
@@ -277,6 +281,174 @@
         const noParentForRoot = findParentNode(window.mindmapData.root, 'root');
         res = assertEqual(noParentForRoot, null, 'findParentNode() should return null for root');
         displayTestResult('Helper Functions', 'findParentNode - for root', res.success, res.details);
+    });
+
+    runTestGroup('Enhanced Node Creation (Direct Logic)', () => {
+        resetMindmapDataForTest();
+        // Test addChildNode
+        let parentNode = findNodeById(window.mindmapData.root, 'root');
+        parentNode.isCollapsed = true; // Set conditions for collapse test
+        parentNode.children = []; // Ensure no children initially for collapse test
+
+        addChildNode('root', 'Child 1 via addChildNode');
+        parentNode = findNodeById(window.mindmapData.root, 'root'); // Re-fetch parent
+        let res = assertEqual(parentNode.children.length, 1, 'Parent should have 1 child after addChildNode');
+        displayTestResult('Enhanced Node Creation', 'addChildNode - child count', res.success, res.details);
+        if (res.success) {
+            res = assertEqual(parentNode.children[0].text, 'Child 1 via addChildNode', 'Child node text should be correct');
+            displayTestResult('Enhanced Node Creation', 'addChildNode - child text', res.success, res.details);
+            res = assertFalse(parentNode.isCollapsed, 'Parent should be expanded if it was collapsed and child was added');
+            displayTestResult('Enhanced Node Creation', 'addChildNode - parent expansion', res.success, res.details);
+        }
+
+        resetMindmapDataForTest();
+        // Test addSiblingNode
+        addNode('root', 'Child A'); // Initial child
+        const childA_id = window.mindmapData.root.children[0].id;
+        addSiblingNode(childA_id, 'Sibling B');
+        parentNode = findNodeById(window.mindmapData.root, 'root');
+        res = assertEqual(parentNode.children.length, 2, 'Root should have 2 children after addSiblingNode to Child A');
+        displayTestResult('Enhanced Node Creation', 'addSiblingNode - sibling count', res.success, res.details);
+        if (res.success) {
+            res = assertEqual(parentNode.children[1].text, 'Sibling B', 'Sibling node text should be correct');
+            displayTestResult('Enhanced Node Creation', 'addSiblingNode - sibling text', res.success, res.details);
+        }
+
+        resetMindmapDataForTest();
+        // Test addSiblingNode to root (should not add)
+        addSiblingNode('root', 'Sibling to Root Attempt');
+        parentNode = findNodeById(window.mindmapData.root, 'root');
+        res = assertEqual(parentNode.children.length, 0, 'addSiblingNode should not add a sibling to the root node');
+        displayTestResult('Enhanced Node Creation', 'addSiblingNode - to root (no op)', res.success, res.details);
+
+        resetMindmapDataForTest();
+        addNode('root', 'Parent C');
+        const parentC_id = window.mindmapData.root.children[0].id;
+        addChildNode(parentC_id, 'Child C.1');
+        const childC1_id = window.mindmapData.root.children[0].children[0].id;
+        addSiblingNode(childC1_id, 'Child C.2 (Sibling to C.1)');
+        const parentC_node = findNodeById(window.mindmapData.root, parentC_id);
+        res = assertEqual(parentC_node.children.length, 2, 'Parent C should have 2 children after adding sibling to C.1');
+        displayTestResult('Enhanced Node Creation', 'addSiblingNode - to child of root', res.success, res.details);
+         if (res.success) {
+            res = assertEqual(parentC_node.children[1].text, 'Child C.2 (Sibling to C.1)', 'Sibling node C.2 text');
+            displayTestResult('Enhanced Node Creation', 'addSiblingNode - to child of root text check', res.success, res.details);
+        }
+    });
+
+    runTestGroup('Selection and Interaction Logic', () => {
+        resetMindmapDataForTest();
+        addNode('root', 'Node For Delete Test');
+        const nodeToDeleteId = window.mindmapData.root.children[0].id;
+        window.selectedNodeId = nodeToDeleteId; // Simulate selection
+
+        deleteNode(nodeToDeleteId);
+        let res = assertEqual(window.selectedNodeId, null, 'selectedNodeId should be null after deleting the selected node');
+        displayTestResult('Selection Logic', 'deleteNode - selectedNodeId reset', res.success, res.details);
+
+        // Test underlying logic for keyboard shortcuts
+        resetMindmapDataForTest();
+        addNode('root', 'Selected Node for Tab');
+        const selectedForTab_id = window.mindmapData.root.children[0].id;
+        window.selectedNodeId = selectedForTab_id;
+        addChildNode(selectedForTab_id, 'Child via Tab Logic'); // Simulates Tab action
+        const parentAfterTab = findNodeById(window.mindmapData.root, selectedForTab_id);
+        res = assertEqual(parentAfterTab.children.length, 1, 'Selected node should have 1 child after Tab key logic');
+        displayTestResult('Selection Logic', 'Logic after Tab key (addChildNode to selected)', res.success, res.details);
+        if(res.success) {
+            res = assertEqual(parentAfterTab.children[0].text, 'Child via Tab Logic', 'Child text from Tab logic');
+            displayTestResult('Selection Logic', 'Logic after Tab key - text check', res.success, res.details);
+        }
+        window.selectedNodeId = null; // Reset selection
+
+        resetMindmapDataForTest();
+        addNode('root', 'Selected Node for Enter');
+        const selectedForEnter_id = window.mindmapData.root.children[0].id;
+        window.selectedNodeId = selectedForEnter_id;
+        addSiblingNode(selectedForEnter_id, 'Sibling via Enter Logic'); // Simulates Enter action
+        const rootAfterEnter = findNodeById(window.mindmapData.root, 'root');
+        res = assertEqual(rootAfterEnter.children.length, 2, 'Root should have 2 children after Enter key logic on first child');
+        displayTestResult('Selection Logic', 'Logic after Enter key (addSiblingNode to selected)', res.success, res.details);
+         if(res.success) {
+            res = assertEqual(rootAfterEnter.children[1].text, 'Sibling via Enter Logic', 'Sibling text from Enter logic');
+            displayTestResult('Selection Logic', 'Logic after Enter key - text check', res.success, res.details);
+        }
+        window.selectedNodeId = null; // Reset selection
+    });
+
+    runTestGroup('Data Sanitization', () => {
+        // Test with a minimal node
+        let minimalNode = { id: 'test1', text: 'Minimal' };
+        let sanitized = sanitizeNodeData(JSON.parse(JSON.stringify(minimalNode))); // Test with copy
+        let res = assertNotNull(sanitized, 'Sanitized minimal node should not be null');
+        displayTestResult('Data Sanitization', 'Minimal node - not null', res.success, res.details);
+        if(res.success) {
+            res = assertDeepEqual(sanitized.children, [], 'Minimal node - default children');
+            displayTestResult('Data Sanitization', 'Minimal node - default children', res.success, res.details);
+            res = assertEqual(sanitized.notes, '', 'Minimal node - default notes');
+            displayTestResult('Data Sanitization', 'Minimal node - default notes', res.success, res.details);
+            res = assertEqual(sanitized.image, null, 'Minimal node - default image');
+            displayTestResult('Data Sanitization', 'Minimal node - default image', res.success, res.details);
+            res = assertEqual(sanitized.table, null, 'Minimal node - default table');
+            displayTestResult('Data Sanitization', 'Minimal node - default table', res.success, res.details);
+            res = assertEqual(sanitized.chart, null, 'Minimal node - default chart');
+            displayTestResult('Data Sanitization', 'Minimal node - default chart', res.success, res.details);
+            res = assertFalse(sanitized.isManuallyPositioned, 'Minimal node - default isManuallyPositioned');
+            displayTestResult('Data Sanitization', 'Minimal node - default isManuallyPositioned', res.success, res.details);
+            res = assertFalse(sanitized.isCollapsed, 'Minimal node - default isCollapsed');
+            displayTestResult('Data Sanitization', 'Minimal node - default isCollapsed', res.success, res.details);
+        }
+
+        // Test with some properties missing
+        let partialNode = { id: 'test2', text: 'Partial', children: [{id: 'child', text: 'Child'}] };
+        sanitized = sanitizeNodeData(JSON.parse(JSON.stringify(partialNode)));
+        res = assertNotNull(sanitized, 'Sanitized partial node should not be null');
+        displayTestResult('Data Sanitization', 'Partial node - not null', res.success, res.details);
+         if(res.success) {
+            res = assertEqual(sanitized.notes, '', 'Partial node - default notes');
+            displayTestResult('Data Sanitization', 'Partial node - default notes (when missing)', res.success, res.details);
+            res = assertNotNull(sanitized.children[0], 'Partial node - child should still exist');
+            displayTestResult('Data Sanitization', 'Partial node - child existence', res.success, res.details);
+            if(sanitized.children[0]){
+                 res = assertFalse(sanitized.children[0].isCollapsed, 'Partial node - child default isCollapsed');
+                 displayTestResult('Data Sanitization', 'Partial node - child default isCollapsed', res.success, res.details);
+            }
+        }
+
+        // Test with incorrectly typed properties
+        let mistypedNode = { id: 'test3', text: 'Mistyped', isCollapsed: "true", notes: 123 };
+        sanitized = sanitizeNodeData(JSON.parse(JSON.stringify(mistypedNode)));
+        res = assertNotNull(sanitized, 'Sanitized mistyped node should not be null');
+        displayTestResult('Data Sanitization', 'Mistyped node - not null', res.success, res.details);
+        if(res.success) {
+            // Current sanitizeNodeData does not coerce isCollapsed from "true" to true, it defaults to false if not boolean.
+            res = assertFalse(sanitized.isCollapsed, 'Mistyped node - isCollapsed (string "true" becomes false)');
+            displayTestResult('Data Sanitization', 'Mistyped node - isCollapsed coercion to false', res.success, res.details);
+            // Current sanitizeNodeData defaults notes to '' if not a string.
+            res = assertEqual(sanitized.notes, '', 'Mistyped node - notes (number 123 becomes empty string)');
+            displayTestResult('Data Sanitization', 'Mistyped node - notes coercion to empty string', res.success, res.details);
+        }
+
+        // Test with x and y as non-numeric
+        let nonNumericPosNode = { id: 'test4', text: 'NonNumericPos', x: "invalid", y: "also_invalid" };
+        sanitized = sanitizeNodeData(JSON.parse(JSON.stringify(nonNumericPosNode)));
+        res = assertNotNull(sanitized, 'Sanitized non-numeric position node should not be null');
+        displayTestResult('Data Sanitization', 'Non-numeric position - not null', res.success, res.details);
+        if(res.success) {
+            res = assertEqual(sanitized.x, undefined, 'Non-numeric x should become undefined');
+            displayTestResult('Data Sanitization', 'Non-numeric x to undefined', res.success, res.details);
+            res = assertEqual(sanitized.y, undefined, 'Non-numeric y should become undefined');
+            displayTestResult('Data Sanitization', 'Non-numeric y to undefined', res.success, res.details);
+        }
+
+        // Test with null image/table/chart properties
+        let nullRichContent = { id: 'test5', text: 'NullRich', image: null, table: { headers: [], rows: "not_an_array"}};
+        sanitized = sanitizeNodeData(JSON.parse(JSON.stringify(nullRichContent)));
+        res = assertEqual(sanitized.image, null, 'Null image should remain null');
+        displayTestResult('Data Sanitization', 'Null image', res.success, res.details);
+        res = assertEqual(sanitized.table, null, 'Malformed table should become null');
+        displayTestResult('Data Sanitization', 'Malformed table', res.success, res.details);
+
     });
 
     // --- Test Execution ---
