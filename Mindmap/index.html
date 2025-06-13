@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mindmap</title>
+  <link rel="stylesheet" href="mindmap.css">
+  <!-- Assuming PureChart is in a sibling directory -->
+  <link rel="stylesheet" href="../PureChart/PureChart.css">
+</head>
+<body>
+  <div id="controls">
+    <input type="text" id="node-text-input" placeholder="Enter node text">
+    <button id="add-node-btn">Add Node to Root</button>
+    <button id="save-locally-btn">Save Locally</button>
+    <button id="clear-local-storage-btn">Clear Local Data</button>
+    <button id="save-to-server-btn">Save to Server (Sim)</button> <!-- Text updated slightly -->
+    <button id="load-from-server-btn">Load from Server (Sim)</button>
+  </div>
+  <div id="feedback-message" class="feedback-message" style="display:none;"></div>
+  <div id="mindmap-container"></div>
+
+  <!-- Assuming PureChart is in a sibling directory -->
+  <script src="../PureChart/PureChart.js"></script>
+  <script src="mindmap.js"></script>
+</body>
+</html>
