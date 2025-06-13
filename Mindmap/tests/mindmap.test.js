@@ -893,6 +893,67 @@
         window.lastZoomToFitCalculations = null; // Clear stored results
     });
 
+    runTestGroup('Clear Mindmap Functionality & Root Deletion', () => {
+        resetMindmapDataForTest(); // Resets mindmapData, selectedNodeId
+
+        // Setup: Add some initial state that clear should remove/reset
+        addNode('root', 'Initial Child 1');
+        addNode('root', 'Initial Child 2');
+        window.selectedNodeId = window.mindmapData.root.children[0].id;
+        window.needsReRenderAfterCharts = true; // Simulate a pending chart re-render
+        window.chartReRenderTimer = setTimeout(() => {}, 1000); // Simulate an active timer
+
+        const nodeTextInput = document.getElementById('node-text-input');
+        if (nodeTextInput) nodeTextInput.value = 'Some text';
+
+
+        // Test handleClearAllMindmap directly
+        handleClearAllMindmap();
+
+        let res = assertEqual(window.mindmapData.root.children.length, 0, 'handleClearAllMindmap - Root should have no children');
+        displayTestResult('Clear Mindmap', 'handleClearAllMindmap - Children cleared', res.success, res.details);
+
+        res = assertEqual(window.mindmapData.root.text, 'Root Node', 'handleClearAllMindmap - Root text should be default'); // Default text
+        displayTestResult('Clear Mindmap', 'handleClearAllMindmap - Root text default', res.success, res.details);
+
+        res = assertEqual(window.selectedNodeId, null, 'handleClearAllMindmap - selectedNodeId should be null');
+        displayTestResult('Clear Mindmap', 'handleClearAllMindmap - selectedNodeId reset', res.success, res.details);
+
+        res = assertFalse(window.needsReRenderAfterCharts, 'handleClearAllMindmap - needsReRenderAfterCharts should be false');
+        displayTestResult('Clear Mindmap', 'handleClearAllMindmap - chart flag reset', res.success, res.details);
+
+        res = assertEqual(window.chartReRenderTimer, null, 'handleClearAllMindmap - chartReRenderTimer should be null');
+        displayTestResult('Clear Mindmap', 'handleClearAllMindmap - chart timer cleared', res.success, res.details);
+
+        if (nodeTextInput) {
+            res = assertEqual(nodeTextInput.value, '', 'handleClearAllMindmap - Text input field should be cleared');
+            displayTestResult('Clear Mindmap', 'handleClearAllMindmap - Text input cleared', res.success, res.details);
+        }
+
+        // Test deleteNode('root') behavior
+        resetMindmapDataForTest();
+        addNode('root', 'Another Initial Child');
+        window.selectedNodeId = window.mindmapData.root.children[0].id;
+        if (nodeTextInput) nodeTextInput.value = 'Text before root delete';
+
+        // Call deleteNode with the root's ID
+        deleteNode('root');
+
+        res = assertEqual(window.mindmapData.root.children.length, 0, "deleteNode('root') - Root should have no children after deleting root");
+        displayTestResult('Clear Mindmap', "deleteNode('root') - Children cleared", res.success, res.details);
+
+        res = assertEqual(window.mindmapData.root.text, 'Root Node', "deleteNode('root') - Root text should be default");
+        displayTestResult('Clear Mindmap', "deleteNode('root') - Root text default", res.success, res.details);
+
+        res = assertEqual(window.selectedNodeId, null, "deleteNode('root') - selectedNodeId should be null");
+        displayTestResult('Clear Mindmap', "deleteNode('root') - selectedNodeId reset", res.success, res.details);
+
+        if (nodeTextInput) {
+            res = assertEqual(nodeTextInput.value, '', "deleteNode('root') - Text input field should be cleared");
+            displayTestResult('Clear Mindmap', "deleteNode('root') - Text input cleared", res.success, res.details);
+        }
+    });
+
 })();
 
 // Helper to make nodeIdCounter resettable from tests if it were global in mindmap.js

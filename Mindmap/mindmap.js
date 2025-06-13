@@ -655,74 +655,84 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- New/Clear Map Function ---
 function handleClearAllMindmap() {
-  const defaultRootText = 'Root Node';
-  const initialX = 50;
-  const initialY = 50;
+    // appendToDiagLog('[handleClearAllMindmap] Function called.');
+    // console.log('[handleClearAllMindmap] Called. Current mindmapData:', JSON.stringify(window.mindmapData, null, 2));
 
-  // Measure default node size for better initial data
+    // Reset global states related to rendering or selection
+    selectedNodeId = null;
+    if (chartReRenderTimer) {
+        clearTimeout(chartReRenderTimer);
+        chartReRenderTimer = null;
+    }
+    needsReRenderAfterCharts = false;
+
+    const nodeTextInput = document.getElementById('node-text-input');
+    if (nodeTextInput) nodeTextInput.value = '';
+
+    const defaultRootText = 'Root Node';
+    const initialX = 50; // Default X if container width not available
+  const initialY = 50; // Default Y
+
   const measureContainer = getOrCreateTempMeasurementContainer();
-  // Create a minimal nodeData for measurement. createNodeElement should handle this gracefully.
-  const tempNodeDataForMeasure = {
-    id: 'root-measure', // Temporary ID for measurement
-    text: defaultRootText,
-    children: [],
-    // No need to specify notes, table, image, chart for measurement of basic structure
-  };
+  const tempNodeDataForMeasure = { id: 'root-measure', text: defaultRootText, children: [] };
   const tempNodeElement = createNodeElement(tempNodeDataForMeasure);
-
-  measureContainer.innerHTML = ''; // Clear before measure
+  measureContainer.innerHTML = '';
   measureContainer.appendChild(tempNodeElement);
-  const rootWidth = tempNodeElement.offsetWidth || 100;  // Fallback width
-  const rootHeight = tempNodeElement.offsetHeight || 40; // Fallback height
-  measureContainer.innerHTML = ''; // Clean up measurement container
+  const rootWidth = tempNodeElement.offsetWidth || 100;
+  const rootHeight = tempNodeElement.offsetHeight || 40;
+  measureContainer.innerHTML = '';
 
   mindmapData = {
-    root: {
-      id: 'root', // Consistent root ID
-      text: defaultRootText,
-      children: [],
-      x: initialX,
-      y: initialY,
-      width: rootWidth,
-      height: rootHeight,
-      isManuallyPositioned: false,
-      notes: '',
-      table: null,
-      image: null,
-      chart: null,
-      isCollapsed: false // Default to expanded
-    }
+      root: {
+          id: 'root',
+          text: defaultRootText,
+          children: [],
+          x: initialX, // Will be overridden by layout if possible
+          y: initialY, // Will be overridden by layout if possible
+          width: rootWidth,
+          height: rootHeight,
+          isManuallyPositioned: false,
+          notes: '',
+          table: null,
+          image: null,
+          chart: null,
+          isCollapsed: false
+      }
   };
-  nodeIdCounter = Date.now(); // Reset node ID counter
+  nodeIdCounter = Date.now(); // Reset node ID generation base
 
-  // Perform full dimension calculation and layout for the new minimal map
-  // Check if functions exist, useful if this code is ever run in a context where they might not be defined
+  // console.log('[handleClearAllMindmap] mindmapData reset. New root structure:', JSON.stringify(mindmapData.root, null, 2));
+  // appendToDiagLog('[handleClearAllMindmap] mindmapData has been reset to new root.');
+
+  // Ensure dimensions are calculated for the new root before layout
   if (typeof calculateAndStoreNodeDimensions === 'function') {
-    calculateAndStoreNodeDimensions(mindmapData.root, measureContainer);
+      calculateAndStoreNodeDimensions(mindmapData.root, measureContainer);
   }
-   // Re-fetch width/height after calculateAndStoreNodeDimensions which might refine them
-  const finalRootWidth = mindmapData.root.width || rootWidth;
-  const finalRootHeight = mindmapData.root.height || rootHeight;
-  mindmapData.root.width = finalRootWidth;
-  mindmapData.root.height = finalRootHeight;
+  // Update root width/height based on actual calculation
+  mindmapData.root.width = mindmapData.root.width || rootWidth; // Fallback if calculate didn't set it
+  mindmapData.root.height = mindmapData.root.height || rootHeight;
 
-  if (typeof calculateTreeLayout === 'function' && mindmapContainer) {
-    // Ensure root x is centered if not manually positioned (which it isn't for a new map)
-    mindmapData.root.x = (mindmapContainer.offsetWidth / 2) - (finalRootWidth / 2);
-    mindmapData.root.y = initialY; // Reset Y to initial Y for the layout
-    calculateTreeLayout(mindmapData.root, mindmapContainer.offsetWidth);
-  } else if (mindmapContainer) { // Basic fallback if calculateTreeLayout is missing
-     mindmapData.root.x = (mindmapContainer.offsetWidth / 2) - (finalRootWidth / 2);
-     mindmapData.root.y = initialY;
-  } else { // Absolute fallback
-     mindmapData.root.x = initialX;
-     mindmapData.root.y = initialY;
+
+  // Position the new root node (typically centered)
+  if (typeof calculateTreeLayout === 'function' && mindmapContainer && mindmapContainer.offsetWidth > 0) {
+      // Temporary assignment for centering logic, layout will refine this.
+      mindmapData.root.x = (mindmapContainer.offsetWidth / 2) - (mindmapData.root.width / 2);
+      mindmapData.root.y = initialY; // Use initialY as base for the first level
+      // Full layout calculation will set final x,y and potentially update width/height again via getBoundingBox in render.
+  } else {
+      mindmapData.root.x = initialX;
+      mindmapData.root.y = initialY;
   }
 
-  renderMindmap(mindmapData, 'mindmap-container'); // Render the new minimal map
-  saveMindmapToLocalStorage(); // Persist the cleared state
+  // console.log('[handleClearAllMindmap] About to call renderMindmap with new data.');
+  // appendToDiagLog('[handleClearAllMindmap] Preparing to render new default map.');
 
+  renderMindmap(mindmapData, 'mindmap-container');
+  saveMindmapToLocalStorage();
   showFeedback('Mindmap cleared. New map started.', false);
+
+  // console.log('[handleClearAllMindmap] Completed.');
+  // appendToDiagLog('[handleClearAllMindmap] Function completed.');
 }
 
 
@@ -880,7 +890,13 @@ function addNode(parentId, text) {
   saveMindmapToLocalStorage();
 }
 function deleteNode(nodeId) {
-  if (nodeId === mindmapData.root.id) { alert("Cannot delete root."); return; }
+  if (nodeId === mindmapData.root.id) {
+      // Instead of alerting, call handleClearAllMindmap to reset the mindmap
+      // appendToDiagLog('[deleteNode] Attempting to delete root node. Calling handleClearAllMindmap.');
+      // console.log('[deleteNode] Root node deletion triggered. Calling handleClearAllMindmap.');
+      handleClearAllMindmap();
+      return; // Important to return here to prevent rest of deleteNode logic
+  }
   let parentNode = findParentNode(mindmapData.root, nodeId);
   if (parentNode && parentNode.children) {
     parentNode.children = parentNode.children.filter(child => child.id !== nodeId);
