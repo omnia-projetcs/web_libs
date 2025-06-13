@@ -322,6 +322,47 @@ function handleFileUpload(event) {
   reader.readAsText(file);
 }
 
+// --- Utility Functions ---
+/**
+ * Calculates the bounding box of a node element relative to its offsetParent.
+ * Assumes nodeElement is positioned absolutely or relatively within a container
+ * that serves as the coordinate system for layout (e.g., #mindmap-container or .mindmap-children-container).
+ * @param {HTMLElement} nodeElement The DOM element of the node.
+ * @returns {object} An object { x, y, width, height, id }.
+ */
+function getBoundingBox(nodeElement) {
+  if (!nodeElement) return null;
+  return {
+    x: nodeElement.offsetLeft,
+    y: nodeElement.offsetTop,
+    width: nodeElement.offsetWidth,
+    height: nodeElement.offsetHeight,
+    id: nodeElement.dataset.id
+  };
+}
+
+/**
+ * Checks if two rectangular boxes overlap.
+ * @param {object} box1 - An object with { x, y, width, height }.
+ * @param {object} box2 - An object with { x, y, width, height }.
+ * @returns {boolean} True if the rectangles overlap, false otherwise.
+ */
+function doNodesOverlap(box1, box2) {
+  if (!box1 || !box2) return false;
+
+  // Check if one rectangle is entirely to the side of the other
+  if (box1.x + box1.width <= box2.x || box2.x + box2.width <= box1.x) {
+    return false;
+  }
+  // Check if one rectangle is entirely above or below the other
+  if (box1.y + box1.height <= box2.y || box2.y + box2.height <= box1.y) {
+    return false;
+  }
+  // If neither of the above (no overlap) conditions are met, they overlap
+  return true;
+}
+
+
 // --- Core Mindmap Logic (adapted for auto-save) ---
 // ... (All existing functions: findNodeById, findParentNode, addNode, deleteNode, editNodeText, etc.)
 // ... (These functions should continue to call saveMindmapToLocalStorage() for auto-save)
@@ -709,21 +750,104 @@ function onDragEnd(event) {
   document.removeEventListener('mouseup', onDragEnd);
 
   draggedNodeElement.style.cursor = 'move'; // Reset cursor
-  draggedNodeElement.style.opacity = '1'; // Reset opacity
+  draggedNodeElement.style.opacity = '1';   // Reset opacity
 
-  // Final position calculation relative to the mindmap-container, including container's scroll
-  const finalNodeRect = draggedNodeElement.getBoundingClientRect(); // This is viewport-relative
-  const finalLeft = finalNodeRect.left - mindmapContainerRect.left + mindmapContainer.scrollLeft;
-  const finalTop = finalNodeRect.top - mindmapContainerRect.top + mindmapContainer.scrollTop;
+  // --- Collision Detection and Avoidance on Drag End ---
+  const DRAG_NUDGE_AMOUNT = 10;
+  const MAX_DRAG_NUDGES = 30;
+
+  // Initial intended position (where the mouse was released)
+  // Note: draggedNodeElement.style.left and top are already set by the last onDragMove
+  // but these might be slightly different due to RAF, so recalculate from final mouse.
+  // However, for simplicity and consistency with what user saw last, we can use current style.left/top
+  // OR recalculate based on event - for now, let's assume onDragMove set it sufficiently.
+  // The critical part is that these are relative to the *parent container* of the dragged node.
+  // If draggedNodeElement is root, parent is mindmapContainer. If child, parent is a .mindmap-children-container.
+
+  // We need the position relative to the direct positioning parent (offsetParent) for getBoundingBox
+  // and for storing in nodeData (x,y should be relative to childrenContainer for children).
+  let finalProposedLeft = parseFloat(draggedNodeElement.style.left);
+  let finalProposedTop = parseFloat(draggedNodeElement.style.top);
+
+  const draggedNodeWidth = draggedNodeElement.offsetWidth;
+  const draggedNodeHeight = draggedNodeElement.offsetHeight;
+
+  let currentPosition = { x: finalProposedLeft, y: finalProposedTop };
+  let draggedNodeBox = {
+    x: currentPosition.x, y: currentPosition.y,
+    width: draggedNodeWidth, height: draggedNodeHeight,
+    id: draggedNodeId
+  };
+
+  // Collect bounding boxes of all *other* nodes within the same positioning context
+  // This is tricky because getBoundingBox uses offsetLeft/Top, which is relative to offsetParent.
+  // We only need to check against siblings within the same childrenContainer, or all nodes if root.
+  const parentOfDragged = draggedNodeElement.parentElement;
+  let allOtherNodeBoxes = [];
+  const potentialSiblings = parentOfDragged ? parentOfDragged.querySelectorAll('.mindmap-node') : [];
+
+  potentialSiblings.forEach(otherNodeEl => {
+    if (otherNodeEl.dataset.id !== draggedNodeId) {
+      const box = getBoundingBox(otherNodeEl); // This is relative to parentOfDragged
+      if (box) allOtherNodeBoxes.push(box);
+    }
+  });
+
+  // If dragging the root node, check against all other top-level nodes (none in current structure, but for future)
+  // For now, this primarily handles sibling collision within a childrenContainer.
+
+  let isOverlappingGlobal = false;
+  for (let nudgeCount = 0; nudgeCount < MAX_DRAG_NUDGES; nudgeCount++) {
+    isOverlappingGlobal = false;
+    let overlappedWith = null;
+    for (const otherBox of allOtherNodeBoxes) {
+      if (doNodesOverlap(draggedNodeBox, otherBox)) {
+        isOverlappingGlobal = true;
+        overlappedWith = otherBox;
+        break;
+      }
+    }
+
+    if (isOverlappingGlobal && overlappedWith) {
+      const overlapCenterX = overlappedWith.x + overlappedWith.width / 2;
+      const overlapCenterY = overlappedWith.y + overlappedWith.height / 2;
+      const draggedCenterX = currentPosition.x + draggedNodeWidth / 2;
+      const draggedCenterY = currentPosition.y + draggedNodeHeight / 2;
+
+      const deltaX = draggedCenterX - overlapCenterX;
+      const deltaY = draggedCenterY - overlapCenterY;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        currentPosition.x += (deltaX > 0 ? DRAG_NUDGE_AMOUNT : -DRAG_NUDGE_AMOUNT);
+      } else {
+        currentPosition.y += (deltaY > 0 ? DRAG_NUDGE_AMOUNT : -DRAG_NUDGE_AMOUNT);
+      }
+      draggedNodeBox.x = currentPosition.x;
+      draggedNodeBox.y = currentPosition.y;
+    } else {
+      break;
+    }
+  }
+
+  // Update node style with the final (potentially nudged) position
+  draggedNodeElement.style.left = currentPosition.x + 'px';
+  draggedNodeElement.style.top = currentPosition.y + 'px';
 
   const nodeData = findNodeById(mindmapData.root, draggedNodeId);
   if (nodeData) {
-    nodeData.x = finalLeft;
-    nodeData.y = finalTop;
-    // No special handling for root needed here as findNodeById handles all nodes.
+    nodeData.x = currentPosition.x; // These are relative to the node's direct container
+    nodeData.y = currentPosition.y;
+    // If it's the root, x/y are relative to mindmap-container.
+    // If it's a child, x/y are relative to its parent's .mindmap-children-container.
+    // This is consistent with how getBoundingBox and renderChildren are set up.
   }
 
-  saveMindmapToLocalStorage(); // Save the new position
+  saveMindmapToLocalStorage();
+
+  // Re-render to ensure all lines are correct after potential nudging,
+  // especially if the nudging changed the visual position significantly from the last onDragMove.
+  // This also ensures that if other nodes were algorithmically placed, they might adjust (though current algo is simple).
+  renderMindmap(mindmapData, 'mindmap-container');
 
   isDragging = false;
   draggedNodeElement = null;
@@ -858,82 +982,106 @@ function traverseAndDrawLines(nodeElement) {
 
 
 function renderChildren(childrenData, parentNodeElement) {
-  // parentNodeElement is the DOM element of the parent node.
   const childrenContainer = parentNodeElement.querySelector('.mindmap-children-container');
 
   if (!childrenContainer) {
-    // This case should ideally be handled by createNodeElement ensuring such a container exists if nodeData.children is present.
-    // For robustness, if it's missing for a node that *should* have one (because it has children and isn't collapsed), create it.
     if (childrenData && childrenData.length > 0) {
-        console.warn("Missing .mindmap-children-container for parent:", parentNodeElement, "Creating one.");
-        const newContainer = document.createElement('div');
-        newContainer.classList.add('mindmap-children-container');
-        parentNodeElement.appendChild(newContainer);
-        // It's tricky to re-assign childrenContainer here without affecting outer scope if it was passed.
-        // The most robust way is to ensure createNodeElement *always* creates it if children might exist.
-        // For now, we'll assume createNodeElement has added it if children are present.
-        // If not, the querySelector above would be null.
-        // Let's re-query, though ideally createNodeElement should handle this.
-        const reQueriedContainer = parentNodeElement.querySelector('.mindmap-children-container');
-        if (!reQueriedContainer) {
-            console.error("Failed to create and find .mindmap-children-container for parent:", parentNodeElement);
-            return;
-        }
-        // This direct reassignment won't work due to scope. Better to ensure createNodeElement does its job.
-        // For this implementation, we'll rely on createNodeElement having done this.
-        // If childrenContainer is null, it means the parent node didn't render one, which is an issue in createNodeElement.
+      console.error("Critical: .mindmap-children-container missing in parent for renderChildren:", parentNodeElement);
+      // Fallback: try to create it, though createNodeElement should handle this.
+      const newContainer = document.createElement('div');
+      newContainer.classList.add('mindmap-children-container');
+      parentNodeElement.appendChild(newContainer);
+      // This re-assignment won't work as childrenContainer is const.
+      // The original logic in renderMindmap/createNodeElement should ensure container exists.
+      // For now, if it's still not found, we must exit.
+      if (!parentNodeElement.querySelector('.mindmap-children-container')) return;
     } else {
-        // No children data, so no container needed.
-        if (childrenContainer) childrenContainer.innerHTML = ''; // Clear if it exists but no data.
-        return;
+      if (childrenContainer) childrenContainer.innerHTML = '';
+      return;
     }
   }
 
-  childrenContainer.innerHTML = ''; // Clear previous children before re-rendering/re-positioning
+  childrenContainer.innerHTML = ''; // Clear previous children
 
-  let currentX = 10; // Default starting X for algorithmic layout (inside padding of childrenContainer)
-  let currentY = 10; // Default starting Y
+  let placedSiblingBoxes = [];
+  let currentX = 10; // Initial X offset (from CSS padding of childrenContainer)
+  let currentY = 10; // Initial Y offset (from CSS padding of childrenContainer)
   let maxChildHeightInRow = 0;
-  const horizontalSpacing = 25;
-  const verticalSpacing = 20; // Not fully used yet without wrapping
+  const horizontalSpacing = 25; // Defined space between non-overlapping nodes
+  const nudgeAmount = 10;       // Amount to shift X if overlap detected
+  const maxNudges = 50;         // Max attempts to resolve overlap for one node
 
   childrenData.forEach(childData => {
     const childNodeElement = createNodeElement(childData);
-
-    // Append hidden to measure, then position
-    childNodeElement.style.visibility = 'hidden';
-    childrenContainer.appendChild(childNodeElement);
-
-    const childWidth = childNodeElement.offsetWidth;
-    const childHeight = childNodeElement.offsetHeight;
+    childrenContainer.appendChild(childNodeElement); // Append to DOM to allow measurements
 
     childNodeElement.style.position = 'absolute';
-    let placedByDrag = false;
+    childNodeElement.style.top = currentY + 'px'; // Y is constant for a simple horizontal row for now
 
     if (typeof childData.x === 'number' && typeof childData.y === 'number') {
-      // Node has been manually dragged, use its stored position
+      // Node has been manually dragged, use its stored position relative to its container
       childNodeElement.style.left = childData.x + 'px';
-      childNodeElement.style.top = childData.y + 'px';
-      placedByDrag = true;
-      // For a more robust layout, we might update currentX/Y based on this dragged node
-      // but for simplicity, the current algorithmic flow is independent of dragged nodes.
+      childNodeElement.style.top = childData.y + 'px'; // Respect dragged Y as well
+      // Add its box to placedSiblingBoxes to be considered by subsequent algorithmically placed nodes
+      placedSiblingBoxes.push(getBoundingBox(childNodeElement));
+      // Update currentX to be to the right of this dragged node for the next potential algorithmic node
+      // This is a simple approach; a more complex one might try to fill gaps.
+      currentX = Math.max(currentX, childData.x + childNodeElement.offsetWidth + horizontalSpacing);
+      maxChildHeightInRow = Math.max(maxChildHeightInRow, childNodeElement.offsetHeight + (childData.y - currentY) );
+
+
     } else {
-      // Position algorithmically (simple horizontal row)
-      childNodeElement.style.left = currentX + 'px';
-      childNodeElement.style.top = currentY + 'px';
+      // Algorithmic placement with overlap detection
+      let overlapResolved = false;
+      let nudges = 0;
+      let tempCurrentX = currentX;
+
+      do {
+        childNodeElement.style.left = tempCurrentX + 'px';
+        // getBoundingBox uses offsetLeft/Top, which are relative to the offsetParent (childrenContainer).
+        // This is correct as placedSiblingBoxes will also have coordinates relative to childrenContainer.
+        const currentChildBox = getBoundingBox(childNodeElement);
+
+        let isOverlapping = false;
+        if (currentChildBox) { // Ensure box was created
+            for (const siblingBox of placedSiblingBoxes) {
+                if (doNodesOverlap(currentChildBox, siblingBox)) {
+                    isOverlapping = true;
+                    break;
+                }
+            }
+        } else { // Should not happen if nodeElement is valid
+            console.error("Could not get bounding box for child", childNodeElement);
+            overlapResolved = true; // Break loop to prevent infinite loop
+            break;
+        }
+
+        if (isOverlapping) {
+          tempCurrentX += nudgeAmount;
+          nudges++;
+        } else {
+          overlapResolved = true;
+        }
+      } while (!overlapResolved && nudges < maxNudges);
+
+      if (nudges >= maxNudges) {
+        console.warn("Max nudges reached for node:", childData.text, "Layout may not be optimal.");
+      }
+
+      childNodeElement.style.left = tempCurrentX + 'px'; // Set final position
+
+      const finalBox = getBoundingBox(childNodeElement);
+      if (finalBox) {
+        placedSiblingBoxes.push(finalBox);
+        currentX = finalBox.x + finalBox.width + horizontalSpacing;
+        maxChildHeightInRow = Math.max(maxChildHeightInRow, finalBox.height);
+      } else { // Fallback if box couldn't be determined
+        currentX = tempCurrentX + childNodeElement.offsetWidth + horizontalSpacing;
+        maxChildHeightInRow = Math.max(maxChildHeightInRow, childNodeElement.offsetHeight);
+      }
     }
 
-    childNodeElement.style.visibility = 'visible';
-
-    // Update currentX for the next *algorithmically* placed node.
-    // Dragged nodes currently don't shift the algorithmic flow of their siblings.
-    if (!placedByDrag) {
-         currentX += childWidth + horizontalSpacing;
-    }
-    maxChildHeightInRow = Math.max(maxChildHeightInRow, childHeight);
-
-
-    // If child itself has children and is not collapsed, recursively call renderChildren for it.
+    // Ensure children container exists within this child, then recurse if needed
     if (childData.children && childData.children.length > 0) {
         let grandChildrenContainer = childNodeElement.querySelector('.mindmap-children-container');
         if (!grandChildrenContainer) {
