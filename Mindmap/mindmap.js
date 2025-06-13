@@ -940,7 +940,29 @@ function createNodeElement(nodeData) {
   if (nodeData.image && nodeData.image.src) {
     const imgElement = document.createElement('img');
     imgElement.classList.add('node-image');
-    imgElement.src = nodeData.image.src; imgElement.alt = nodeData.image.alt || 'Node image';
+    imgElement.src = nodeData.image.src;
+    imgElement.alt = nodeData.image.alt || 'Node image';
+
+    imgElement.onload = () => {
+        console.log(`Image loaded: ${nodeData.image.src}, for node: ${nodeData.id}. Triggering re-render.`);
+        // It's crucial to ensure that the nodeData itself isn't stale if renderMindmap
+        // operates on a global mindmapData object that might have been updated elsewhere.
+        // renderMindmap takes the main mindmapData object as an argument.
+        // We use window.mindmapData to ensure we're always passing the latest global state.
+        if (window.mindmapData && typeof renderMindmap === 'function') {
+            renderMindmap(window.mindmapData, 'mindmap-container');
+        } else {
+            console.error("renderMindmap or window.mindmapData not available for image onload handler.");
+        }
+    };
+
+    imgElement.onerror = () => {
+        console.error(`Failed to load image: ${nodeData.image.src}, for node: ${nodeData.id}.`);
+        // Optionally, trigger re-render if broken image icon or alt text causes size changes.
+        // For now, no re-render on error, to avoid potential loops if server keeps erroring.
+        // If alt text styling is significant, a re-render might be considered.
+    };
+
     nodeElement.appendChild(imgElement);
   }
   if (nodeData.notes) {
