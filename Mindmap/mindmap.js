@@ -23,6 +23,9 @@ let mindmapData = {
 };
 
 const LOCAL_STORAGE_KEY = 'userMindmapData';
+const SIBLING_SEPARATION = 40; // Moved from calculateTreeLayout
+const LEVEL_SEPARATION = 90;   // Moved from calculateTreeLayout
+
 let nodeIdCounter = 0;
 let svgLayer = null; // For SVG connection lines
 let mindmapContainer = null; // Reference to the main mindmap container DOM element
@@ -195,10 +198,9 @@ function calculateAndStoreNodeDimensions(nodeData, tempContainer) {
 function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
   console.log("Calculating tree layout for root:", rootNodeData.id, "within width:", mindmapContainerWidth);
   const initialYOffset = 50;
-  const levelSeparation = 90; // Increased from 75
-  const siblingSeparation = 40; // Increased from 30
+  // Using global SIBLING_SEPARATION and LEVEL_SEPARATION
 
-  // 1. Assign Levels and Y-coordinates using BFS
+  // 1. Assign Levels and Y-coordinates using BFS (modified)
   if (!rootNodeData) return;
 
   let nodesByLevel = {};
@@ -206,7 +208,6 @@ function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
 
   rootNodeData.level = 0;
   q.push(rootNodeData);
-
   let maxLevel = 0;
 
   while(q.length > 0) {
@@ -217,7 +218,8 @@ function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
       nodesByLevel[currentNode.level].push(currentNode);
       maxLevel = Math.max(maxLevel, currentNode.level);
 
-      if (currentNode.children) {
+      // Only consider children for next level if parent is not collapsed
+      if (currentNode.children && !currentNode.isCollapsed) {
           currentNode.children.forEach(child => {
               child.level = currentNode.level + 1;
               q.push(child);
@@ -225,29 +227,42 @@ function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
       }
   }
 
-  let currentY = initialYOffset;
+  let levelYPosition = initialYOffset; // Starting Y for the current level being processed
   for (let i = 0; i <= maxLevel; i++) {
       if (!nodesByLevel[i] || nodesByLevel[i].length === 0) continue;
 
-      let maxHeightInLevel = 0;
+      let maxSubtreeReachInCurrentLevel = 0;
       nodesByLevel[i].forEach(node => {
           if (!node.isManuallyPositioned || typeof node.y !== 'number') {
-              node.y = currentY;
+              node.y = levelYPosition;
           } else {
-            // If manually positioned, its Y might influence currentY for this level if it's lower
-            currentY = Math.max(currentY, node.y);
-            // Then ensure this node also uses this possibly updated currentY if it was the one pushing it down
-            if (node.y < currentY) node.y = currentY;
+              // If manually positioned, its Y might influence levelYPosition for this level if it's lower
+              // However, all nodes in the same algorithmic level should share the same base Y.
+              // So, if a manual node is 'pulled up', it doesn't change the level's Y.
+              // If it's 'pushed down', other nodes in this level are not affected by its manual Y directly,
+              // but the start of the NEXT level will be affected.
+              // For simplicity now: manual Y is respected, but doesn't push other nodes in same level down.
+              // The `levelYPosition` for the *next* level will be determined by max reach.
+              // This means a manually positioned node might visually appear at a different "level"
+              // if its Y is significantly different from `levelYPosition`.
+              // This behavior might need further refinement if strict level alignment is desired for manual nodes.
+              // For now, `node.y` will be its manual y.
           }
-          maxHeightInLevel = Math.max(maxHeightInLevel, node.height || 50);
+          // Track the furthest point this node's subtree reaches FROM THE TOP (0)
+          // node.y is the top of the current node. node.subtreeHeight is its full vertical extent.
+          maxSubtreeReachInCurrentLevel = Math.max(maxSubtreeReachInCurrentLevel, node.y + (node.subtreeHeight || node.height || 0));
       });
-      currentY += maxHeightInLevel + levelSeparation;
+      // Next level should start after the current level's deepest subtree and separation
+      // Only update if there was some content in the level, otherwise levelYPosition remains for potentially empty levels
+      if (nodesByLevel[i].length > 0) {
+           levelYPosition = maxSubtreeReachInCurrentLevel + LEVEL_SEPARATION;
+      }
   }
 
   // 2. Assign X-coordinates recursively
   function assignAlgorithmicXRecursive(parentNodeData) {
-    if (!parentNodeData.children || parentNodeData.children.length === 0) {
-      return;
+    if (!parentNodeData.children || parentNodeData.children.length === 0 || parentNodeData.isCollapsed) {
+      return; // No children to position or parent is collapsed
     }
 
     const algoChildren = parentNodeData.children.filter(
@@ -272,13 +287,52 @@ function calculateTreeLayout(rootNodeData, mindmapContainerWidth) {
   }
 
   if (!rootNodeData.isManuallyPositioned || typeof rootNodeData.x !== 'number') {
-    rootNodeData.x = (mindmapContainerWidth / 2) - (rootNodeData.width || 50) / 2;
+    // Use subtreeWidth to center the entire tree, not just the root node's own width
+    rootNodeData.x = (mindmapContainerWidth / 2) - ((rootNodeData.subtreeWidth || rootNodeData.width || 50) / 2);
   }
   if (typeof rootNodeData.y !== 'number') { // Ensure root Y is set if it was 'isManuallyPositioned' but Y was missing
       rootNodeData.y = initialYOffset;
   }
 
   assignAlgorithmicXRecursive(rootNodeData);
+}
+
+function calculateSubtreeDimensionsRecursive(nodeData) {
+  if (!nodeData) return;
+
+  // Assumes nodeData.width and nodeData.height are already calculated.
+  if (typeof nodeData.width !== 'number' || typeof nodeData.height !== 'number') {
+    console.warn("Node dimensions not calculated for:", nodeData.id, " Subtree calculation might be inaccurate.");
+    // Fallback or force calculation if possible, for now, we assume they are pre-calculated by calculateAndStoreNodeDimensions
+    nodeData.width = nodeData.width || 100; // Default fallback
+    nodeData.height = nodeData.height || 40;  // Default fallback
+  }
+
+  if (!nodeData.children || nodeData.children.length === 0 || nodeData.isCollapsed) {
+    nodeData.subtreeWidth = nodeData.width;
+    nodeData.subtreeHeight = nodeData.height;
+    return;
+  }
+
+  let currentChildrenTotalSubtreeWidth = 0;
+  let maxChildSubtreeHeight = 0;
+
+  for (let i = 0; i < nodeData.children.length; i++) {
+    const child = nodeData.children[i];
+    calculateSubtreeDimensionsRecursive(child); // Recursive call
+
+    currentChildrenTotalSubtreeWidth += child.subtreeWidth;
+    if (i < nodeData.children.length - 1) {
+      currentChildrenTotalSubtreeWidth += SIBLING_SEPARATION;
+    }
+    maxChildSubtreeHeight = Math.max(maxChildSubtreeHeight, child.subtreeHeight);
+  }
+
+  nodeData.subtreeWidth = Math.max(nodeData.width, currentChildrenTotalSubtreeWidth);
+  nodeData.subtreeHeight = nodeData.height;
+  if (maxChildSubtreeHeight > 0) { // Only add separation if there were actual children processed
+    nodeData.subtreeHeight += LEVEL_SEPARATION + maxChildSubtreeHeight;
+  }
 }
 
 
@@ -1153,7 +1207,10 @@ function renderMindmap(data, containerId) {
 
   // 1. Ensure all node dimensions are calculated and stored in nodeData
   const tempContainer = getOrCreateTempMeasurementContainer();
-  calculateAndStoreNodeDimensions(data.root, tempContainer);
+  calculateAndStoreNodeDimensions(data.root, tempContainer); // This calculates individual nodeData.width/height
+
+  // 1b. Calculate subtree dimensions for all nodes based on individual dimensions
+  calculateSubtreeDimensionsRecursive(data.root);
 
   // 2. Calculate tree layout (populates nodeData.x and nodeData.y for all nodes)
   if (mindmapContainer) {
