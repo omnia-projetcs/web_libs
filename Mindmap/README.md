@@ -21,11 +21,13 @@ This is a web-based interactive mindmap application that allows users to create,
     *   **Improved Node Spacing**: Default spacing between nodes and branches has been enhanced to reduce clutter and minimize visual overlaps.
     *   **Horizontal Child Node Layout**: Child nodes are now primarily arranged in a horizontal row relative to their parent, controlled by JavaScript. This is a foundational step towards more dynamic and organized mindmap structures.
     *   **Draggable Nodes with Global Collision Avoidance**: Nodes can be manually repositioned by clicking and dragging. When a node is dropped, the application now attempts to find a clear spot by checking for overlaps with **all other nodes** on the mindmap and subtly adjusting the final position if needed. Custom positions are saved (as global coordinates relative to the main canvas) and restored.
+    *   **Algorithmic Vertical Stacking of Main Branches**: To improve initial clarity, direct child branches of the root node are now automatically stacked vertically. This layout respects previously dragged positions of these main branches and uses estimates for vertical spacing.
 *   **Data Persistence & Portability**:
     *   **Local Storage**: Your mindmap is automatically saved to your browser's local storage as you make changes. It will be reloaded when you revisit the page.
     *   **Clear Local Data**: Option to clear the mindmap data stored in your browser.
     *   **JSON Export**: Download your current mindmap as a `.json` file. This is useful for backups or sharing.
     *   **JSON Import**: Load a mindmap from a previously exported `.json` file.
+    *   **Consistent Global Node State**: The internal data for each node now reliably stores its global position (x,y) and dimensions (width,height) on the canvas after every render.
 *   **Simulated Server Interaction**:
     *   Buttons for "Save to Server (Sim)" and "Load from Server (Sim)" demonstrate conceptual integration with a backend. Currently, these are simulations and do not connect to a real server.
 *   **Visual Presentation**:
@@ -65,7 +67,9 @@ This is a web-based interactive mindmap application that allows users to create,
 
 ## Known Limitations
 
-*   The current horizontal layout for child nodes is basic. It does not yet implement automatic wrapping for a large number of children in a single row, which may cause horizontal overflow within the children's container.
-*   Node positioning is primarily handled for the root and its direct children's horizontal layout. More complex, multi-depth automatic layout algorithms (e.g., tree layout, force-directed) are not yet implemented. Nodes are positioned based on their order and basic spacing calculations.
-*   **Layout Dynamics with Dragged Nodes**: When a node is manually dragged, it attempts to find a clear spot by checking against all other nodes globally and may 'nudge' to avoid overlaps upon being dropped. However, other algorithmically placed nodes on the map do not yet perform a full dynamic reflow around the dragged node's new global position (though direct siblings in the same parent container will attempt to adjust their starting algorithmic position). This means that in very dense areas, achieving perfect non-overlap or ideal spacing via dragging might still be challenging, as the 'nudge' strategy is basic. More sophisticated global layout reflowing is an area for future enhancement.
+*   **Overall Layout Sophistication**:
+    *   While direct child branches of the root are now algorithmically stacked vertically, this stacking uses an *estimated* height for spacing, so branches with exceptionally large content or many levels of children might still appear too close or too far from their vertical siblings.
+    *   The horizontal layout of children within each branch is basic and does not wrap; very wide branches can still cause horizontal overflow or overlap with other elements if not managed manually.
+    *   Collision avoidance for manually dragged nodes (global check with a local 'nudge') and for algorithmically placed siblings (local horizontal 'nudge') are basic. They may not always find an optimal non-overlapping position in very crowded scenarios.
+    *   The system does not yet perform a full, dynamic reflow of the entire map when nodes are added, deleted, or significantly repositioned (like in advanced tools such as MindMeister). Preventing all potential overlaps in complex, dense maps remains an area for ongoing improvement.
 *   **Node Dimension Calculation with Asynchronous Content**: The application calculates node sizes for layout and collision detection when nodes are first rendered. If a node contains content that loads asynchronously (e.g., images from URLs, or complex charts that take time to render), its dimensions might be calculated based on the placeholder size before the content fully loads and expands the node. This can occasionally lead to suboptimal layouts or temporary visual overlaps until the content appears. A future enhancement could involve re-calculating layout after asynchronous content has loaded.
