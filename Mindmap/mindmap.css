@@ -4,8 +4,13 @@ body {
     background-color: #f4f4f4;
 }
 
+#mindmap-container {
+  position: relative; /* Needed for absolute positioning of SVG layer */
+}
+
+/* This is the existing .mindmap-container style, ensure #mindmap-container properties are merged or handled */
 .mindmap-container {
-    position: relative;
+    /* position: relative; -- Already handled by #mindmap-container ID selector */
     width: 100%;
     height: 500px; /* Adjust as needed */
     border: 1px solid #ccc;
@@ -13,15 +18,28 @@ body {
     background-color: #fff;
 }
 
+#mindmap-svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0; /* Behind nodes */
+  pointer-events: none; /* Allow clicks to pass through to nodes */
+}
+
 .mindmap-node {
-    position: absolute;
+    position: absolute; /* Changed to absolute for explicit positioning for lines */
+    /* position: relative; Ensure nodes have a stacking context for z-index. If using absolute, this is less direct. z-index will work on positioned elements. */
+    z-index: 1; /* Above SVG layer */
+    background-color: white; /* Ensure nodes have a background to hide lines passing 'under' them */
     padding: 8px 12px;
     border: 1px solid #007bff;
-    background-color: #fff;
     border-radius: 5px;
     cursor: grab; /* Indicates draggable */
     box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     white-space: nowrap; /* Prevent text wrapping */
+    margin-bottom: 15px; /* Increased spacing between sibling nodes */
 }
 
 .mindmap-node:active {
@@ -59,4 +77,10 @@ body {
     border-radius: 3px;
     display: inline-block; /* Ensure it behaves well with other elements */
     user-select: none; /* Prevent text selection on click */
+}
+
+.mindmap-children-container {
+    position: relative; /* Establishes a positioning context for absolutely positioned children */
+    margin-left: 35px;  /* Indent child branches */
+    padding-top: 10px;   /* Space above the first child in a group */
 }

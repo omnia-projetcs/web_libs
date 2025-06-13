@@ -17,6 +17,8 @@ This is a web-based interactive mindmap application that allows users to create,
     *   **Charts**: Display charts (bar, line, pie) using data entered by the user. Powered by `PureChart.js`.
 *   **Interactive Navigation**:
     *   **Collapsible Branches**: Click the `[+]` or `[-]` toggle next to a node's text to expand or collapse its child branches, making it easier to navigate large mindmaps.
+    *   **Curved Connection Lines**: Visual lines (curved Bézier paths) are now drawn between parent and child nodes, making the mindmap structure clearer and more aesthetically pleasing.
+    *   **Improved Node Spacing**: Default spacing between nodes and branches has been enhanced to reduce clutter and minimize visual overlaps.
 *   **Data Persistence & Portability**:
     *   **Local Storage**: Your mindmap is automatically saved to your browser's local storage as you make changes. It will be reloaded when you revisit the page.
     *   **Clear Local Data**: Option to clear the mindmap data stored in your browser.

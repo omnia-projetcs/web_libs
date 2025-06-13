@@ -149,7 +149,9 @@ p.info {
     </div>
   </div>
   <div id="feedback-message" class="feedback-message" style="display:none;"></div>
-  <div id="mindmap-container"></div>
+  <div id="mindmap-container">
+    <svg id="mindmap-svg-layer"></svg>
+  </div>
 
   <script type="text/javascript">
 /**
@@ -2920,34 +2922,47 @@ class PureChart {
 // const API_LIST_MINDMAPS = `${API_BASE_URL}/list`; // GET - Returns list of user's mindmaps {id, name, lastModified}
 
 // Global mindmap data variable for DEMO
+// This is the new structure for mindmapData in demo.html
 let mindmapData = {
   root: {
     id: 'root-demo',
     text: 'Interactive Mindmap Demo',
-    notes: 'This is a self-contained demo of the mindmap application. All CSS and JS are embedded. Try adding nodes, editing, and using the features!',
+    notes: 'This demo showcases curved connectors and improved spacing. All CSS and JS are embedded.',
     isCollapsed: false,
     children: [
       {
-        id: 'demo-child1', text: 'Feature Showcase', notes: 'Explore different node types below.', isCollapsed: false, children: [
-          { id: 'demo-grandchild11', text: 'Node with Notes', notes: 'This node has some interesting text notes! You can add your own too.', children: [] },
-          { id: 'demo-grandchild12', text: 'Node with Image', image: {src: 'https://via.placeholder.com/120/007bff/ffffff?text=Demo+Image', alt:'Demo Image Placeholder'}, children: [] },
-          { id: 'demo-grandchild13', text: 'Node with Table', table: {headers: ['Item', 'Value'], rows: [['Alpha', '100'], ['Beta', '200'], ['Gamma', '300']]}, children: [] },
-          { id: 'demo-grandchild14', text: 'Node with Chart', chart: {type: 'bar', title: 'Sample Bar Chart', labels: ['Section A', 'Section B', 'Section C'], values: [12, 19, 7]}, children: [] }
+        id: 'demo-child1', text: 'Feature Showcase', notes: 'Explore different node types below. This branch is initially expanded.', isCollapsed: false, children: [
+          { id: 'demo-grandchild11', text: 'Node with Notes', notes: 'This node has a text note!', children: [] },
+          { id: 'demo-grandchild12', text: 'Node with Image', image: {src: 'https://via.placeholder.com/100/09f/fff?text=DemoIMG', alt:'Demo Image'}, children: [] },
+          { id: 'demo-grandchild13', text: 'Node with Table', table: {headers: ['Col1', 'Col2'], rows: [['DataA', 'DataB'], ['DataC', 'DataD']]}, children: [] },
+          { id: 'demo-grandchild14', text: 'Node with Chart', chart: {type: 'bar', title: 'Sample Chart', labels: ['A', 'B', 'C'], values: [10, 20, 15]}, children: [] }
         ]
       },
       {
-        id: 'demo-child2', text: 'Collapsible Branch', notes: 'Click the [-] toggle next to my text to collapse this entire branch. Click [+] to expand it again.', isCollapsed: false, children: [
-          { id: 'demo-grandchild21', text: 'Sub-item 1', notes: 'Part of a collapsible branch.', children: [] },
-          { id: 'demo-grandchild22', text: 'Sub-item 2', notes: 'You can create deep hierarchies.', children: [
-            { id: 'demo-greatgrandchild221', text: 'Deeper Item', notes: 'Even deeper!', children: [] }
-          ]}
+        id: 'demo-child2', text: 'Multi-Level Branch', notes: 'This branch demonstrates multiple levels of children, all expanded.', isCollapsed: false, children: [
+          { id: 'demo-grandchild21', text: 'Sub-item 2.1', children: [
+              { id: 'demo-greatgrandchild211', text: 'Sub-sub-item 2.1.1', children: [] },
+              { id: 'demo-greatgrandchild212', text: 'Sub-sub-item 2.1.2', children: [] }
+          ]},
+          { id: 'demo-grandchild22', text: 'Sub-item 2.2', children: [] }
         ]
       },
       {
-        id: 'demo-child3', text: 'Another Branch', notes: 'Feel free to add more children here.', children: [] }
+        id: 'demo-child3', text: 'Initially Collapsed Branch', notes: 'Click the [+] to expand this branch and see its children and connection lines.', isCollapsed: true, children: [
+          { id: 'demo-grandchild31', text: 'Hidden Child 3.1', children: [] },
+          { id: 'demo-grandchild32', text: 'Hidden Child 3.2', children: [] }
+        ]
+      },
+      {
+        id: 'demo-child4', text: 'Another Expanded Branch', notes: 'Just to show more connections.', isCollapsed: false, children: [
+            { id: 'demo-grandchild41', text: 'Item 4.1', children: []},
+            { id: 'demo-grandchild42', text: 'Item 4.2', children: []}
+        ]}
     ]
   }
 };
+// Ensure this new mindmapData declaration replaces the old one.
+// The existing logic in demo.html that bypasses local storage load and calls renderMindmap directly should remain.
 
 const LOCAL_STORAGE_KEY = 'userMindmapData_DEMO'; // Use a different key for demo to avoid conflicts
 let nodeIdCounter = Date.now(); // Initialize for demo

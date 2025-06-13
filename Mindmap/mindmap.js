@@ -22,6 +22,7 @@ let mindmapData = {
 
 const LOCAL_STORAGE_KEY = 'userMindmapData';
 let nodeIdCounter = 0;
+let svgLayer = null; // For SVG connection lines
 function generateNodeId() { return `node-${Date.now()}-${nodeIdCounter++}`; }
 
 // --- Feedback Utility ---
@@ -190,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadFromServerBtn = document.getElementById('load-from-server-btn');
   const importFileInput = document.getElementById('import-file-input');
   const exportJsonBtn = document.getElementById('export-json-btn');
+  svgLayer = document.getElementById('mindmap-svg-layer');
 
 
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
@@ -636,21 +638,110 @@ function renderMindmap(data, containerId) {
   if (data.root.children && data.root.children.length > 0 && !(data.root.isCollapsed)) {
     renderChildren(data.root.children, rootNodeElement);
   }
+
+  // Ensure this runs after the DOM has been updated and layout computed.
+  // Using requestAnimationFrame helps defer execution until the browser is ready to paint.
+  requestAnimationFrame(() => {
+    clearSvgLayer();
+    const rootElement = document.querySelector(`#${containerId} > .mindmap-node[data-id='${data.root.id}']`);
+    if (rootElement && svgLayer) { // Check svgLayer is not null
+      traverseAndDrawLines(rootElement);
+    }
+  });
 }
+
+function clearSvgLayer() {
+  if (svgLayer) {
+    while (svgLayer.firstChild) {
+      svgLayer.removeChild(svgLayer.firstChild);
+    }
+  }
+}
+
+function drawConnectionLine(parentElement, childElement) {
+  if (!svgLayer || !parentElement || !childElement) return;
+  const mindmapContainer = document.getElementById('mindmap-container');
+  if (!mindmapContainer) return;
+
+  const containerRect = mindmapContainer.getBoundingClientRect();
+
+  // Adjust for scroll position of the container IF it's the scrolling element.
+  // If body/document scrolls, window.scrollX/Y is needed.
+  // Assuming mindmapContainer is the scrollable parent for node positions.
+  const scrollLeft = mindmapContainer.scrollLeft;
+  const scrollTop = mindmapContainer.scrollTop;
+
+  const parentRect = parentElement.getBoundingClientRect();
+  const childRect = childElement.getBoundingClientRect();
+
+  // Connection points: Middle-right of parent to middle-left of child.
+  // Calculations are relative to the viewport, then adjusted for container's viewport offset and scroll.
+  const startX = (parentRect.right - containerRect.left) + scrollLeft;
+  const startY = (parentRect.top + parentRect.height / 2 - containerRect.top) + scrollTop;
+  const endX = (childRect.left - containerRect.left) + scrollLeft;
+  const endY = (childRect.top + childRect.height / 2 - containerRect.top) + scrollTop;
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+  // Control points for a cubic Bezier curve to make it S-shaped horizontally
+  // The control point offset can be a percentage of the distance or a fixed value.
+  const controlOffsetX = Math.max(50, Math.abs(endX - startX) * 0.4);
+
+  const c1X = startX + controlOffsetX;
+  const c1Y = startY; // Keep Y the same for horizontal start of curve
+  const c2X = endX - controlOffsetX;
+  const c2Y = endY;   // Keep Y the same for horizontal end of curve
+
+  const pathData = `M ${startX} ${startY} C ${c1X} ${c1Y}, ${c2X} ${c2Y}, ${endX} ${endY}`;
+
+  path.setAttribute('d', pathData);
+  path.setAttribute('stroke', '#555'); // Line color
+  path.setAttribute('stroke-width', '2'); // Line thickness
+  path.setAttribute('fill', 'none');
+  svgLayer.appendChild(path);
+}
+
+function traverseAndDrawLines(nodeElement) {
+  if (!nodeElement || !findNodeById) return;
+  const nodeId = nodeElement.getAttribute('data-id');
+  if (!nodeId) return;
+
+  const nodeData = findNodeById(mindmapData.root, nodeId);
+
+  if (nodeData && nodeData.children && nodeData.children.length > 0 && !nodeData.isCollapsed) {
+    const childrenContainer = nodeElement.querySelector('.mindmap-children-container');
+    if (childrenContainer) {
+      // Get child .mindmap-node elements that are direct children of this childrenContainer
+      const childNodeElements = Array.from(childrenContainer.children).filter(el => el.matches('.mindmap-node'));
+
+      childNodeElements.forEach(childElement => {
+        // Ensure childElement is indeed a direct .mindmap-node intended for connection
+        // This check is somewhat redundant if the selector above is precise, but good for safety.
+        if (childElement.classList.contains('mindmap-node')) {
+            drawConnectionLine(nodeElement, childElement);
+            traverseAndDrawLines(childElement); // Recurse for grandchildren
+        }
+      });
+    }
+  }
+}
+
 
 function renderChildren(children, parentElement) {
   const childrenContainer = document.createElement('div');
   childrenContainer.classList.add('mindmap-children-container');
-  parentElement.appendChild(childrenContainer);
+  parentElement.appendChild(childrenContainer); // Append to the actual parent DOM element
+
   children.forEach(childNodeData => {
     const childNodeElement = createNodeElement(childNodeData);
-    // TODO: Implement actual positioning logic for children relative to parent
-    // For now, they will just stack inside the parent's childrenContainer
+    // Basic absolute positioning relative to parent's childrenContainer
+    // More sophisticated layout would calculate these based on siblings, depth, etc.
+    // For now, this will stack them based on their own content size within the container.
+    // The actual X, Y for lines will be based on getBoundingClientRect relative to svgLayer.
     childrenContainer.appendChild(childNodeElement);
 
-    // Render grandchildren only if the child has children and is not collapsed
     if (childNodeData.children && childNodeData.children.length > 0 && !(childNodeData.isCollapsed)) {
-      renderChildren(childNodeData.children, childNodeElement);
+      renderChildren(childNodeData.children, childNodeElement); // Pass childNodeElement as the new parentElement
     }
   });
 }
