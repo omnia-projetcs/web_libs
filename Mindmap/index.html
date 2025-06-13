@@ -11,9 +11,15 @@
     <input type="text" id="node-text-input" placeholder="Enter node text">
     <button id="add-node-btn">Add Node to Root</button>
     <button id="save-locally-btn">Save Locally</button>
+    <button id="export-json-btn">Download as JSON</button>
     <button id="clear-local-storage-btn">Clear Local Data</button>
     <button id="save-to-server-btn">Save to Server (Sim)</button> <!-- Text updated slightly -->
     <button id="load-from-server-btn">Load from Server (Sim)</button>
+    <hr style="margin: 5px 0;">
+    <div>
+      <label for="import-file-input">Import from JSON File:</label>
+      <input type="file" id="import-file-input" accept=".json" style="margin-left: 5px;">
+    </div>
   </div>
   <div id="feedback-message" class="feedback-message" style="display:none;"></div>
   <div id="mindmap-container"></div>
