@@ -2,38 +2,38 @@
   "type": "pill",
   "data": {},
   "options": {
-    "title": {
-      "display": false,
-      "text": "Pill Chart Example: Task Completion",
-      "font": "16px Arial bold",
-      "color": "#333"
-    },
-    "width": 600,
-    "height": 120,
-    "padding": { "top": 10, "right": 10, "bottom": 40, "left": 10 },
     "pill": {
       "min": 0,
-      "max": 100,
-      "zoneMin": 60,
-      "zoneMax": 90,
+      "max": 150,
       "value": 75,
-      "borderRadius": 10,
-      "pillHeight": 40,
-      "pillBorderWidth": 2,
-      "fillLightenPercent": 70,
+      "zoneMin": 30,
+      "zoneMax": 120,
+      "borderRadius": 8,
+      "pillHeight": 25,
       "colors": {
-        "mainBackground": "#000000",
-        "zoneBackground": "#50E3C2",
-        "cursor": "#D0021B",
-        "minMaxText": "#4A4A4A",
-        "valueText": "#2F2F2F"
+        "mainBackground": "#DDDDDD",
+        "zoneBackground": "#B0B0B0",
+        "cursor": "#FF3300",
+        "text": "#101010",
+        "minMaxText": "#444444",
+        "valueText": "#000000"
       },
-      "cursorThickness": 4,
-      "cursorLengthExtension": 8,
+      "cursorThickness": 3,
+      "cursorLengthExtension": 6,
       "showMinMaxLabels": true,
       "showValueLabel": true,
       "valueLabelPosition": "below",
-      "labelFont": "12px Arial"
+      "labelFont": "12px Courier New",
+      "pillBorderWidth": 2,
+      "fillLightenPercent": 60,
+      "zoneOverflowAmount": 7,
+      "showZoneMinMaxLabels": true,
+      "zoneLabelFont": "11px Verdana",
+      "zoneLabelColor": "#FFFFFF",
+      "zoneLabelOffset": 5,
+      "zoneLabelBackgroundPadding": 3,
+      "zoneLabelBackgroundColor": "rgba(0, 0, 0, 0.6)",
+      "zoneLabelPosition": "on"
     }
   }
 }
