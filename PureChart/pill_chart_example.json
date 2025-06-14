@@ -3,26 +3,26 @@
   "data": {},
   "options": {
     "title": {
-      "display": true,
+      "display": false,
       "text": "Pill Chart Example: Task Completion",
       "font": "16px Arial bold",
       "color": "#333"
     },
     "width": 600,
     "height": 120,
-    "padding": { "top": 20, "right": 50, "bottom": 20, "left": 50 },
+    "padding": { "top": 10, "right": 10, "bottom": 40, "left": 10 },
     "pill": {
       "min": 0,
       "max": 100,
       "zoneMin": 60,
       "zoneMax": 90,
       "value": 75,
-      "borderRadius": 20,
+      "borderRadius": 10,
       "pillHeight": 40,
       "pillBorderWidth": 2,
       "fillLightenPercent": 70,
       "colors": {
-        "mainBackground": "#4A90E2",
+        "mainBackground": "#000000",
         "zoneBackground": "#50E3C2",
         "cursor": "#D0021B",
         "minMaxText": "#4A4A4A",
