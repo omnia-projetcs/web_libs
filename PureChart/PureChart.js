@@ -572,21 +572,34 @@ class PureChart {
                 this.config.options.yAxes[0].display = this.config.options.yAxes[0].display ?? false;
             }
             this.config.options.legend.display = this.config.options.legend.display ?? false;
-        } else { // bar, line
+        } else if (this.config.type === 'pill') {
+            // Basic validation for pill chart: ensure data object exists (even if empty for now)
+            if (!this.config.data) {
+                console.error("PureChart Error (pill): data object is required.");
+                this.isValid = false;
+                return;
+            }
+            // For pill charts, axes and legend are off by default
+            this.config.options.xAxis.display = this.config.options.xAxis.display ?? false;
+            if (this.config.options.yAxes && this.config.options.yAxes.length > 0) {
+                this.config.options.yAxes[0].display = this.config.options.yAxes[0].display ?? false;
+            }
+            this.config.options.legend.display = this.config.options.legend.display ?? false;
+        } else { // Default case for 'bar', 'line', or mixed
             if (!this.config.data || !this.config.data.labels || !this.config.data.datasets) {
-                console.error("PureChart Error (bar/line): data.labels and data.datasets are required.");
-                this.isValid = false; return;
+                console.error("PureChart Error (bar/line/other): data.labels and data.datasets are required.");
+                this.isValid = false;
+                return;
             }
             if (this.isValid) { // Only proceed if still valid
                 this.config.data.datasets.forEach((ds, index) => {
                     const datasetEffectiveType = ds.type || this.config.type;
-
                     // Validate 'values' array presence only if not an SMA type (which generates its own values)
                     // and not a 'percentageDistribution' chart (which uses 'items')
                     // Note: this.config.type !== 'percentageDistribution' is already handled by the outer if/else block structure.
                     if (datasetEffectiveType !== 'sma') {
                         if (!ds.values || !Array.isArray(ds.values)) {
-                            console.error(`PureChart Error (bar/line): Dataset ${index} ('${ds.label || 'Untitled'}') missing 'values' array.`);
+                            console.error(`PureChart Error (bar/line/other): Dataset ${index} ('${ds.label || 'Untitled'}') missing 'values' array.`);
                             this.isValid = false;
                         }
                     }
@@ -598,18 +611,7 @@ class PureChart {
                 });
             }
             if (!this.isValid) return;
-        } else if (this.config.type === 'pill') {
-            // Basic validation for pill chart: ensure data object exists (even if empty for now)
-            if (!this.config.data) {
-                console.error("PureChart Error (pill): data object is required.");
-                this.isValid = false; return;
-            }
-            // For pill charts, axes and legend are off by default
-            this.config.options.xAxis.display = this.config.options.xAxis.display ?? false;
-            if (this.config.options.yAxes && this.config.options.yAxes.length > 0) {
-                this.config.options.yAxes[0].display = this.config.options.yAxes[0].display ?? false;
-            }
-            this.config.options.legend.display = this.config.options.legend.display ?? false;
+            // Note: Default axis/legend display for bar/line is true, so no specific overrides here unless intended.
         }
     }
 
