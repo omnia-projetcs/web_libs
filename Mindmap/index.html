@@ -167,7 +167,9 @@
                     return;
                 }
                 const nodeText = mindmap.getNodeById(selectedNodeId).text;
-                const confirmRemove = confirm(\`Are you sure you want to remove node "\${nodeText}" and all its children?\`);
+                // Corrected line below:
+                const confirmMessage = "Are you sure you want to remove node \"" + nodeText + "\" and all its children?";
+                const confirmRemove = confirm(confirmMessage);
                 if (confirmRemove) {
                     const parentOfSelected = mindmap.getNodeById(selectedNodeId).parentId;
                     mindmap.removeNode(selectedNodeId);
