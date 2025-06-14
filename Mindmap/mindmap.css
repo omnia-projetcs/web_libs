@@ -1,0 +1,11 @@
+/* Mindmap Library Styles */
+.mindmap-node { border: 1px solid black; padding: 5px; position: absolute; background-color: white; }
+
+.mindmap-connector {
+    position: absolute;
+    background-color: black;
+    height: 1px; /* Pour les lignes horizontales simples */
+    width: 1px; /* Pour les lignes verticales simples */
+    /* Le positionnement et la taille exacts seront gérés par JS */
+    z-index: -1; /* Pour que les lignes soient derrière les nœuds */
+}
