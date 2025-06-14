@@ -33,21 +33,6 @@ let svgLayer = null; // For SVG connection lines
 let mindmapContainer = null; // Reference to the main mindmap container DOM element
 let selectedNodeId = null; // ID of the currently selected node
 
-// --- On-Page Diagnostic Logging Helper ---
-function appendToDiagLog(message) {
-    const diagContainer = document.getElementById('diag-log-container');
-    if (diagContainer) {
-        const entry = document.createElement('div');
-        // Basic sanitization to prevent HTML injection if message somehow contains it
-        entry.textContent = message;
-        diagContainer.appendChild(entry);
-        diagContainer.scrollTop = diagContainer.scrollHeight; // Auto-scroll to bottom
-    } else {
-        // Fallback for very early logs before diag-log-container might be parsed
-        console.log('[Diag Early Fallback] ' + message);
-    }
-}
-
 // --- Drag State Variables ---
 let isDragging = false;
 let draggedNodeElement = null;
@@ -495,7 +480,7 @@ function adjustAllNodePositions(scale, tx, ty, node = mindmapData.root) {
 
 // --- DOMContentLoaded ---
 document.addEventListener('DOMContentLoaded', () => {
-  appendToDiagLog('DOMContentLoaded event fired.');
+  // appendToDiagLog('DOMContentLoaded event fired.');
   mindmapContainer = document.getElementById('mindmap-container');
   svgLayer = document.getElementById('mindmap-svg-layer');
 
@@ -534,47 +519,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const importFileInput = document.getElementById('import-file-input');
   const exportJsonBtn = document.getElementById('export-json-btn');
 
-  appendToDiagLog('Attempting to find #toolbar.');
-  // const toolbar = document.getElementById('toolbar'); // Assuming toolbar var is needed later
-  if (document.getElementById('toolbar')) {
-      appendToDiagLog('#toolbar element found in DOM.');
-  } else {
-      appendToDiagLog('#toolbar element NOT found in DOM.');
-  }
+  // appendToDiagLog('Attempting to find #toolbar.');
+  // if (document.getElementById('toolbar')) {
+      // appendToDiagLog('#toolbar element found in DOM.');
+  // } else {
+      // appendToDiagLog('#toolbar element NOT found in DOM.');
+  // }
 
-  appendToDiagLog('Attempting to find #clear-mindmap-btn.');
+  // appendToDiagLog('Attempting to find #clear-mindmap-btn.');
   const clearMindmapBtn = document.getElementById('clear-mindmap-btn');
   if (clearMindmapBtn) {
-      appendToDiagLog('#clear-mindmap-btn element found. Attaching click listener.');
-
-      clearMindmapBtn.addEventListener('click', () => {
-          // --- Start of new visual feedback logic ---
-          appendToDiagLog('#clear-mindmap-btn clicked! (Visual feedback triggered)');
-
-          // Direct style change for immediate feedback
-          clearMindmapBtn.style.backgroundColor = '#ffA500'; // Orange
-          clearMindmapBtn.style.color = '#000000'; // Black text
-          clearMindmapBtn.style.borderColor = '#0000ff'; // Blue border
-          clearMindmapBtn.textContent = 'Processing...';
-          // --- End of new visual feedback logic ---
-
-          // Call the original handler after a short delay
-          setTimeout(() => {
-              handleClearAllMindmap(); // The original function to clear the mindmap
-          }, 200); // 200ms delay
-      });
-      appendToDiagLog('Visual feedback click listener attached to #clear-mindmap-btn.');
+      // appendToDiagLog('#clear-mindmap-btn element found. Attaching click listener.');
+      // Revert to simple listener:
+      clearMindmapBtn.addEventListener('click', handleClearAllMindmap);
   } else {
-      appendToDiagLog('#clear-mindmap-btn element NOT found in DOM.');
+      // appendToDiagLog('#clear-mindmap-btn element NOT found in DOM.');
   }
 
-  appendToDiagLog('Attempting to find #zoom-to-fit-btn.');
+  // appendToDiagLog('Attempting to find #zoom-to-fit-btn.');
   const zoomToFitBtn = document.getElementById('zoom-to-fit-btn');
   if (zoomToFitBtn) {
-      appendToDiagLog('#zoom-to-fit-btn element found. Attaching click listener.');
-      // Event listener will be attached in a later step as per the plan
+      // appendToDiagLog('#zoom-to-fit-btn element found. Attaching click listener.');
+      zoomToFitBtn.addEventListener('click', zoomToFit); // Simple listener
   } else {
-      appendToDiagLog('#zoom-to-fit-btn element NOT found in DOM.');
+      // appendToDiagLog('#zoom-to-fit-btn element NOT found in DOM.');
   }
 
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
@@ -591,7 +559,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (clearLocalBtn) clearLocalBtn.addEventListener('click', clearLocalStorage);
   if (importFileInput) importFileInput.addEventListener('change', handleFileUpload);
   if (exportJsonBtn) exportJsonBtn.addEventListener('click', handleExportMindmapAsJson);
-  if (clearMindmapBtn) clearMindmapBtn.addEventListener('click', handleClearAllMindmap);
+  // The clearMindmapBtn listener is now correctly set up above.
+  // No need for this line: if (clearMindmapBtn) clearMindmapBtn.addEventListener('click', handleClearAllMindmap);
+
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (event) => {
@@ -599,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const nodeData = findNodeById(mindmapData.root, selectedNodeId);
     if (!nodeData) {
-        console.warn("Selected node data not found for keydown event:", selectedNodeId);
+        // console.warn("Selected node data not found for keydown event:", selectedNodeId);
         selectedNodeId = null; // Clear invalid selection
         return;
     }
@@ -1271,7 +1241,8 @@ function createNodeElement(nodeData) {
         deleteNode(nodeData.id);
       }
     };
-    controlsContainer.appendChild(deleteBtn);
+    // controlsContainer.appendChild(deleteBtn); // OLD LINE
+    nodeElement.appendChild(deleteBtn);      // NEW LINE - Append to nodeElement directly
   }
   nodeElement.appendChild(controlsContainer);
 
