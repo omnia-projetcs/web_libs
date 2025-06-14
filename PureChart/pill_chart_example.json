@@ -24,6 +24,8 @@
       "showValueLabel": true,
       "valueLabelPosition": "below",
       "labelFont": "12px Courier New",
+      "mainLabelFont": "bold 12px Arial, sans-serif",
+      "minMaxLabelPosition": "aboveEnds",
       "pillBorderWidth": 2,
       "fillLightenPercent": 60,
       "zoneOverflowAmount": 7,

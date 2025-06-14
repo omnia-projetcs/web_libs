@@ -192,7 +192,9 @@ class PureChart {
                     showMinMaxLabels: true,
                     showValueLabel: true,
                     valueLabelPosition: 'below', // 'above', 'below', 'inside'
-                    labelFont: '10px Arial',
+                    labelFont: '10px Arial', // General font for Min/Max/Value labels if mainLabelFont is not specified
+                    mainLabelFont: '11px Arial', // Specific font for Min, Max, and Value labels
+                    minMaxLabelPosition: 'ends', // Options: 'ends', 'aboveEnds', 'belowEnds'
                     pillBorderWidth: 1,
                     fillLightenPercent: 70,
                     zoneOverflowAmount: 5, // Default overflow amount in pixels
@@ -2959,27 +2961,56 @@ class PureChart {
 
         // Draw Min/Max Labels
         if (pillOptions.showMinMaxLabels) {
-            this.ctx.font = pillOptions.labelFont;
+            this.ctx.font = pillOptions.mainLabelFont || pillOptions.labelFont; // Prioritize mainLabelFont
             this.ctx.fillStyle = pillOptions.colors.minMaxText;
-            const labelY = pillY + pillOptions.pillHeight / 2;
 
-            // Min Label
-            this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'middle';
-            // Small padding from the edge, ensure it's within the component bounds
-            const minLabelX = Math.max(drawArea.x + 2, drawArea.x + pillOptions.borderRadius / 2 + 2) ;
-            this.ctx.fillText(String(pillOptions.min), minLabelX, labelY);
+            const minMaxLabelPosition = pillOptions.minMaxLabelPosition;
+            const originalLabelY = pillY + pillOptions.pillHeight / 2;
+            let minLabelX, maxLabelX, currentLabelY, minTextAlign, maxTextAlign, currentTextBaseline;
+            const labelOffset = pillOptions.zoneLabelOffset || 5; // Using zoneLabelOffset as a generic offset
 
-            // Max Label
-            this.ctx.textAlign = 'right';
-            this.ctx.textBaseline = 'middle';
-            const maxLabelX = Math.min(drawArea.x + drawArea.width - 2, drawArea.x + drawArea.width - pillOptions.borderRadius / 2 - 2);
-            this.ctx.fillText(String(pillOptions.max), maxLabelX, labelY);
+            switch(minMaxLabelPosition) {
+                case 'aboveEnds':
+                    currentLabelY = pillY - labelOffset;
+                    currentTextBaseline = 'bottom';
+                    minTextAlign = 'left';
+                    maxTextAlign = 'right';
+                    minLabelX = drawArea.x + (pillOptions.borderRadius / 2 || 0) + 2;
+                    maxLabelX = drawArea.x + drawArea.width - (pillOptions.borderRadius / 2 || 0) - 2;
+                    break;
+                case 'belowEnds':
+                    currentLabelY = pillY + pillOptions.pillHeight + labelOffset;
+                    currentTextBaseline = 'top';
+                    minTextAlign = 'left';
+                    maxTextAlign = 'right';
+                    minLabelX = drawArea.x + (pillOptions.borderRadius / 2 || 0) + 2;
+                    maxLabelX = drawArea.x + drawArea.width - (pillOptions.borderRadius / 2 || 0) - 2;
+                    break;
+                case 'ends':
+                default:
+                    currentLabelY = originalLabelY;
+                    currentTextBaseline = 'middle';
+                    minTextAlign = 'left';
+                    maxTextAlign = 'right';
+                    minLabelX = Math.max(drawArea.x + 2, drawArea.x + pillOptions.borderRadius / 2 + 2);
+                    maxLabelX = Math.min(drawArea.x + drawArea.width - 2, drawArea.x + drawArea.width - pillOptions.borderRadius / 2 - 2);
+                    break;
+            }
+
+            // Drawing Min Label
+            this.ctx.textAlign = minTextAlign;
+            this.ctx.textBaseline = currentTextBaseline;
+            this.ctx.fillText(String(pillOptions.min), minLabelX, currentLabelY);
+
+            // Drawing Max Label
+            this.ctx.textAlign = maxTextAlign;
+            // this.ctx.textBaseline = currentTextBaseline; // Already set
+            this.ctx.fillText(String(pillOptions.max), maxLabelX, currentLabelY);
         }
 
         // Draw Value Label
         if (pillOptions.showValueLabel) {
-            this.ctx.font = pillOptions.labelFont; // Could be a different font, e.g., pillOptions.valueLabelFont
+            this.ctx.font = pillOptions.mainLabelFont || pillOptions.labelFont; // Prioritize mainLabelFont
             this.ctx.fillStyle = pillOptions.colors.valueText;
             this.ctx.textAlign = 'center';
 
