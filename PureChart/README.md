@@ -60,7 +60,12 @@ The Pill Chart is a horizontal chart designed to display a single value against 
 *   `showMinMaxLabels` (boolean): Whether to display the min and max value labels. Default: `true`.
 *   `showValueLabel` (boolean): Whether to display the current value label. Default: `true`.
 *   `valueLabelPosition` (string): Position of the value label ('above', 'below', 'inside'). Default: `'below'`.
-*   `labelFont` (string): Font style for the labels. Default: `'10px Arial'`.
+*   `labelFont` (string): Font style for the labels. Default: `'10px Arial'`. (Used for Min/Max/Value labels if `mainLabelFont` is not specified).
+*   `mainLabelFont` (string): Specific font for the main Min, Max, and Value labels of the pill chart. If not provided, `labelFont` is used. Example default: `'11px Arial'`.
+*   `minMaxLabelPosition` (string): Position of the main Min and Max labels. Default: `'ends'`.
+    *   `'ends'`: Labels are drawn inside, near the ends of the pill bar.
+    *   `'aboveEnds'`: Labels are drawn above the pill bar, aligned with its ends.
+    *   `'belowEnds'`: Labels are drawn below the pill bar, aligned with its ends.
 *   `zoneOverflowAmount` (number): The amount in pixels by which the highlighted zone (`zoneMin` to `zoneMax`) will extend vertically (both top and bottom) beyond the main `pillHeight`. This creates a visual effect where the zone appears taller than the pill bar. Default: `5`.
 
     *Example of `zoneOverflowAmount` in action:*
@@ -83,6 +88,22 @@ The Pill Chart is a horizontal chart designed to display a single value against 
             zoneLabelColor: 'blue',
             zoneLabelOffset: 8
         }
+    }
+    ```
+
+    *Example: Customizing Main Min/Max/Value Label Font and Min/Max Position*
+    ```javascript
+    options: {
+      pill: {
+        // ... other options
+        showMinMaxLabels: true, // Ensure Min/Max labels are shown
+        mainLabelFont: '12px "Courier New", monospace',
+        minMaxLabelPosition: 'aboveEnds', // Position Min/Max labels above the pill ends
+
+        showValueLabel: true, // Ensure Value label is shown
+        valueLabelPosition: 'below', // Value label will also use mainLabelFont
+        // ... other pill options
+      }
     }
     ```
 

@@ -57,16 +57,16 @@
     </div>
 
     <!-- New Pill Chart with Zone Overflow and Zone Labels Demo -->
-    <div class="chart-container"> <!-- Keep original h2 and p for the section -->
-        <h2>Example 4: Side-by-Side Pill Charts with Zone Labels</h2>
-        <p>These pill charts demonstrate different <code>zoneLabelPosition</code> options ('above' vs 'on') and custom styling for zone labels. They are displayed side-by-side using flexbox.</p>
+    <div class="chart-container"> <!-- Keep original h2 for the section -->
+        <h2>Example 4: Side-by-Side Pill Charts - Main & Zone Labels</h2>
+        <p>These pill charts demonstrate <code>zoneLabelPosition</code>, <code>mainLabelFont</code>, and <code>minMaxLabelPosition</code> options, showcasing various label configurations. They are displayed side-by-side.</p>
         <div class="pill-chart-row">
             <div class="pill-chart-container">
-                <h4>Pill Chart 1 (Labels Above)</h4>
+                <h4>Pill 1: Custom Font, Min/Max Below</h4>
                 <canvas id="pillChartDemo1" width="200" height="120"></canvas>
             </div>
             <div class="pill-chart-container">
-                <h4>Pill Chart 2 (Labels On Zone)</h4>
+                <h4>Pill 2: Default Font, Min/Max Above</h4>
                 <canvas id="pillChartDemo2" width="200" height="120"></canvas>
             </div>
         </div>
@@ -410,12 +410,11 @@
             };
             new PureChart('contourChartCanvas', contourChartConfig);
 
-            // Pill Chart Demo 1: Labels Above
+            // Pill Chart Demo 1: Custom Font, Min/Max Below
             const pillConfig1 = {
                 type: 'pill',
                 data: {},
                 options: {
-                    // No main title for individual small charts, title is in H4
                     pill: {
                         min: 0,
                         max: 100,
@@ -425,6 +424,7 @@
                         pillHeight: 20,
                         borderRadius: 6,
                         zoneOverflowAmount: 8,
+                        // Zone Label options (from previous setup)
                         showZoneMinMaxLabels: true,
                         zoneLabelPosition: 'above',
                         zoneLabelFont: '10px Arial',
@@ -432,18 +432,25 @@
                         zoneLabelOffset: 5,
                         zoneLabelBackgroundColor: 'rgba(230,230,230,0.7)',
                         zoneLabelBackgroundPadding: 2,
+                        // New Main Label options for Min/Max/Value
+                        showMinMaxLabels: true, // Ensure Min/Max labels are shown
+                        mainLabelFont: '12px "Lucida Console", Monaco, monospace',
+                        minMaxLabelPosition: 'belowEnds', // Demonstrate 'belowEnds'
+                        showValueLabel: true, // Ensure value label is shown (will use mainLabelFont)
+                        valueLabelPosition: 'above', // Keep value label above for this example
                         colors: {
                             mainBackground: '#e9ecef',
-                            zoneBackground: '#cfe2ff', // Light blue
+                            zoneBackground: '#cfe2ff',
                             cursor: '#0d6efd',
-                            valueText: '#000'
+                            minMaxText: '#003366', // Darker blue for Min/Max
+                            valueText: '#0066cc'   // Medium blue for Value
                         }
                     }
                 }
             };
             new PureChart('pillChartDemo1', pillConfig1);
 
-            // Pill Chart Demo 2: Labels On Zone
+            // Pill Chart Demo 2: Default Font, Min/Max Above
             const pillConfig2 = {
                 type: 'pill',
                 data: {},
@@ -457,18 +464,27 @@
                         pillHeight: 20,
                         borderRadius: 6,
                         zoneOverflowAmount: 5,
+                        // Zone Label options (from previous setup)
                         showZoneMinMaxLabels: true,
                         zoneLabelPosition: 'on',
                         zoneLabelFont: '9px Arial bold',
-                        zoneLabelColor: '#ffffff', // White text for on-zone
-                        zoneLabelOffset: 4, // Small offset for 'on'
-                        zoneLabelBackgroundColor: 'rgba(0,0,0,0.3)', // Slightly transparent black bg for contrast
+                        zoneLabelColor: '#ffffff',
+                        zoneLabelOffset: 4,
+                        zoneLabelBackgroundColor: 'rgba(0,0,0,0.3)',
                         zoneLabelBackgroundPadding: 1,
+                        // New Main Label options for Min/Max/Value
+                        showMinMaxLabels: true, // Ensure Min/Max labels are shown
+                        minMaxLabelPosition: 'aboveEnds', // Demonstrate 'aboveEnds'
+                        // mainLabelFont is not set here, so it will use fallback (labelFont or default mainLabelFont)
+                        labelFont: '10px Verdana, sans-serif', // Explicitly set labelFont to show fallback mechanism
+                        showValueLabel: true, // Ensure value label is shown
+                        valueLabelPosition: 'below', // Value label will use labelFont or default mainLabelFont
                         colors: {
                             mainBackground: '#e9ecef',
-                            zoneBackground: '#20c997', // Teal/Green
-                            cursor: '#6f42c1', // Purple
-                            valueText: '#000'
+                            zoneBackground: '#20c997',
+                            cursor: '#6f42c1',
+                            minMaxText: '#555',    // Standard gray for Min/Max
+                            valueText: '#222'     // Dark gray for Value
                         }
                     }
                 }
