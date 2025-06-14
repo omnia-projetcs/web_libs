@@ -6,23 +6,70 @@
 
 // Global mindmap data variable
 let mindmapData = {
-  root: {
-    id: 'root',
-    text: 'Root Node',
-    notes: 'This is the central idea of our mindmap.',
-    table: null, image: null, chart: null,
-    x: 50, y: 50, // Default global position for root
-    isManuallyPositioned: false,
-    children: [
-      { id: 'child1', text: 'Child 1', notes: '', table: null, image: null, chart: null, children: [], isManuallyPositioned: false },
-      { id: 'child2', text: 'Child 2', notes: 'Initial notes.', table: null, image: null, chart: null, children: [
-        { id: 'grandchild21', text: 'Grandchild 2.1', notes: '', table: null, image: null, chart: null, children: [], isManuallyPositioned: false }
-      ],isManuallyPositioned: false },
-    ],
-  },
+  nodes: [ // Array to hold all root/floating nodes
+    { // The first node is typically the main root
+      id: 'root',
+      text: 'Root Node',
+      notes: 'This is the central idea of our mindmap.',
+      table: null, image: null, chart: null,
+      x: 50, y: 50, // Default global position for root
+      isManuallyPositioned: false,
+      children: [
+        { id: 'child1', text: 'Child 1', notes: '', table: null, image: null, chart: null, children: [], isManuallyPositioned: false },
+        { id: 'child2', text: 'Child 2', notes: 'Initial notes.', table: null, image: null, chart: null, children: [
+          { id: 'grandchild21', text: 'Grandchild 2.1', notes: '', table: null, image: null, chart: null, children: [], isManuallyPositioned: false }
+        ],isManuallyPositioned: false },
+      ],
+    }
+  ],
+  // Future global settings like viewbox, zoom level, etc. could go here
+  // settings: { autoLayout: true, defaultTheme: 'light' }
 };
 
-const LOCAL_STORAGE_KEY = 'userMindmapData';
+const mindmapThemes = {
+  'default': {
+    node: {
+      shape: 'rectangle',
+      backgroundColor: '#ffffff',
+      borderColor: '#000000',
+      textColor: '#000000',
+      font: { size: '16px', weight: 'normal', style: 'normal' },
+      connectorColor: '#555555',
+      connectorThickness: '2',
+      connectorStyle: 'solid',
+      connectorShape: 'curved'
+    }
+  },
+  'professional': {
+    node: {
+      shape: 'rectangle',
+      backgroundColor: '#f0f4f8',
+      borderColor: '#5d6d7e',
+      textColor: '#34495e',
+      font: { size: '15px', weight: 'normal', style: 'normal' },
+      connectorColor: '#5d6d7e',
+      connectorThickness: '2',
+      connectorStyle: 'solid',
+      connectorShape: 'curved'
+    }
+  },
+  'creative': {
+    node: {
+      shape: 'ellipse',
+      backgroundColor: '#fff5e6',
+      borderColor: '#ff8c00',
+      textColor: '#d2691e',
+      font: { size: '16px', weight: 'bold', style: 'italic' },
+      connectorColor: '#ff8c00',
+      connectorThickness: '2',
+      connectorStyle: 'dashed',
+      connectorShape: 'curved'
+    }
+  }
+};
+let currentThemeName = 'default';
+
+const LOCAL_STORAGE_KEY = 'userMindmapData_v2'; // Changed key to avoid conflict with old structure
 const SIBLING_SEPARATION = 40; // Moved from calculateTreeLayout
 const LEVEL_SEPARATION = 90;   // Moved from calculateTreeLayout
 
@@ -31,7 +78,7 @@ let needsReRenderAfterCharts = false;
 let chartReRenderTimer = null;
 let svgLayer = null; // For SVG connection lines
 let mindmapContainer = null; // Reference to the main mindmap container DOM element
-let selectedNodeId = null; // ID of the currently selected node
+let selectedNodeIds = []; // Array to store IDs of selected nodes
 
 // --- Drag State Variables ---
 let isDragging = false;
@@ -75,44 +122,76 @@ function loadMindmapFromLocalStorage() {
     const jsonData = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (jsonData) {
       const loadedData = JSON.parse(jsonData);
-      if (loadedData && loadedData.root) {
+      // Check for new structure (nodes array) or old structure (root object)
+      if (loadedData && Array.isArray(loadedData.nodes)) {
         mindmapData = loadedData;
+        // Sanitize all loaded nodes after loading the entire structure
+        mindmapData.nodes = mindmapData.nodes.map(node => sanitizeNodeData(node)).filter(node => node !== null);
+        if (mindmapData.nodes.length === 0) { // If all nodes were invalid or empty array
+            initializeDefaultMindmapData(); // Initialize with a default valid structure
+            showFeedback('Loaded data contained no valid nodes. Loaded default map.', true);
+        } else {
+            nodeIdCounter = Date.now(); // Reset based on load time
+            console.log('Mindmap (v2 structure) loaded from local storage.');
+            showFeedback('Mindmap loaded from previous local session.', false);
+        }
+      } else if (loadedData && loadedData.root) {
+        // Old structure found, migrate it
+        console.log('Old mindmap structure found in local storage. Migrating...');
+        const oldRoot = sanitizeNodeData(loadedData.root); // Sanitize the old root
+        if (oldRoot) {
+            mindmapData.nodes = [oldRoot]; // Place old root as the first node
+        } else {
+            initializeDefaultMindmapData(); // Old root was invalid, start fresh
+        }
         nodeIdCounter = Date.now();
-        console.log('Mindmap loaded from local storage.');
-        showFeedback('Mindmap loaded from previous local session.', false);
+        saveMindmapToLocalStorage(); // Save in new format
+        showFeedback('Old mindmap data migrated to new format and loaded.', false);
+      } else {
+        // No valid data or unrecognized format, start fresh with default structure
+        initializeDefaultMindmapData();
+        console.log('No valid mindmap data found in local storage. Starting fresh with default (nodes array).');
       }
     } else {
-      console.log('No mindmap data found in local storage. Starting fresh.');
-      if (!mindmapData.root.x || !mindmapData.root.y) {
-          mindmapData.root.x = 50;
-          mindmapData.root.y = 50;
-          mindmapData.root.isManuallyPositioned = false;
-      }
+      initializeDefaultMindmapData();
+      console.log('No mindmap data found in local storage. Starting fresh with default (nodes array).');
     }
   } catch (e) {
     console.error('Error loading from local storage:', e);
     showFeedback('Could not load data from local storage. Starting fresh.', true);
-     if (!mindmapData.root.x || !mindmapData.root.y) {
-        mindmapData.root.x = 50;
-        mindmapData.root.y = 50;
-        mindmapData.root.isManuallyPositioned = false;
-    }
+    initializeDefaultMindmapData();
   }
   renderMindmap(mindmapData, 'mindmap-container');
 }
 
+function initializeDefaultMindmapData() {
+  mindmapData = {
+    nodes: [
+      {
+        id: 'root', text: 'Root Node', notes: 'Default central idea.', children: [],
+        x: 50, y: 50, isManuallyPositioned: false, isCollapsed: false,
+        table:null, image:null, chart:null, // Ensure all relevant properties are present
+        // Apply default theme styles
+        style: JSON.parse(JSON.stringify(mindmapThemes[currentThemeName].node)), // Deep copy
+        font: JSON.parse(JSON.stringify(mindmapThemes[currentThemeName].node.font)) // Deep copy
+      }
+    ]
+    // settings: { autoLayout: true, defaultTheme: 'light' } // Example for future settings
+  };
+  // Remove font from style object as it's a separate top-level property in nodeData
+  if (mindmapData.nodes[0].style && mindmapData.nodes[0].style.font) {
+    delete mindmapData.nodes[0].style.font;
+  }
+  nodeIdCounter = Date.now(); // Or 0 if preferred for fresh start
+}
+
 function clearLocalStorage() {
   try {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_KEY); // Removes _v2 key
+    localStorage.removeItem('userMindmapData'); // Attempt to remove old key too
     showFeedback('Local mindmap data cleared. Default map loaded.', false);
-    console.log('Local storage cleared for mindmap data.');
-    mindmapData = {
-        root: {
-            id: 'root', text: 'Default Root', notes:'Cleared local data', children: [],
-            x: 50, y: 50, isManuallyPositioned: false
-        }
-    };
-    nodeIdCounter = 0;
+    console.log('Local storage cleared for mindmap data (v2 and old).');
+    initializeDefaultMindmapData(); // Use the new initializer
     renderMindmap(mindmapData, 'mindmap-container');
   } catch (e) {
     console.error('Error clearing local storage:', e);
@@ -372,8 +451,8 @@ function calculateOverallBoundingBox(node) {
 }
 
 function zoomToFit() {
-    if (!mindmapData || !mindmapData.root) {
-        // console.warn("[ZoomToFit] No mindmap data available.");
+    if (!mindmapData || !mindmapData.nodes || mindmapData.nodes.length === 0) {
+        // console.warn("[ZoomToFit] No mindmap data or no nodes available.");
         return;
     }
     if (!mindmapContainer) {
@@ -381,12 +460,20 @@ function zoomToFit() {
         return;
     }
 
-    const bounds = calculateOverallBoundingBox(mindmapData.root);
+    // For now, zoomToFit will operate on the first node (main root)
+    // Later, it could calculate bounds encompassing all floating nodes.
+    const mainRootNode = mindmapData.nodes[0];
+    if (!mainRootNode) {
+        // console.warn("[ZoomToFit] Main root node not found.");
+        return;
+    }
+
+    const bounds = calculateOverallBoundingBox(mainRootNode);
 
     if (!bounds || bounds.minX === Infinity) {
-        // console.warn("[ZoomToFit] Could not calculate valid bounds for the mindmap content.");
-        if (mindmapData.root && typeof mindmapData.root.x === 'number') {
-             // console.log(`[ZoomToFit] Fallback: Centering on root node. X: ${mindmapData.root.x}, Y: ${mindmapData.root.y}`);
+        // console.warn("[ZoomToFit] Could not calculate valid bounds for the main root content.");
+        if (mainRootNode && typeof mainRootNode.x === 'number') {
+             // console.log(`[ZoomToFit] Fallback: Centering on main root node. X: ${mainRootNode.x}, Y: ${mainRootNode.y}`);
         }
         return;
     }
@@ -439,13 +526,19 @@ function zoomToFit() {
         // A full renderMindmap() could be too much as it recalculates layout based on original data.
         // For now, let's just clear and redraw lines based on current visual positions.
         // This assumes node elements inside wrapper now have transformed getBoundingClientRect().
-        if (svgLayer && mindmapData.root) {
+        if (svgLayer && mindmapData.nodes && mindmapData.nodes.length > 0) {
             clearSvgLayer();
-            const rootElementForLines = mindmapContentWrapper.querySelector(`.mindmap-node[data-id='${mindmapData.root.id}']`);
-            if (rootElementForLines) {
-                 requestAnimationFrame(() => { // Ensure DOM has updated from transform
-                    traverseAndDrawLines(rootElementForLines);
-                });
+            // Redraw lines for all root/floating nodes after zoom.
+            // This assumes zoomToFit applies a global transform on mindmap-content-wrapper.
+            // For now, just redraw for the main root as a simplification.
+            const mainRootNodeData = mindmapData.nodes[0];
+            if (mainRootNodeData) {
+                const rootElementForLines = mindmapContentWrapper.querySelector(`.mindmap-node[data-id='${mainRootNodeData.id}']`);
+                if (rootElementForLines) {
+                    requestAnimationFrame(() => { // Ensure DOM has updated from transform
+                        traverseAndDrawLines(rootElementForLines);
+                    });
+                }
             }
         }
         showFeedback(`Zoomed to fit. Scale: ${scale.toFixed(2)}. Note: Further interactions may reset zoom.`, false);
@@ -462,7 +555,12 @@ function zoomToFit() {
 
 // Example of how node positions might be adjusted (NOT part of this subtask's core implementation)
 /*
-function adjustAllNodePositions(scale, tx, ty, node = mindmapData.root) {
+function adjustAllNodePositions(scale, tx, ty) { // Needs to iterate all roots in mindmapData.nodes
+  mindmapData.nodes.forEach(node => {
+    adjustSingleTreePositions(scale, tx, ty, node);
+  });
+}
+function adjustSingleTreePositions(scale, tx, ty, node) {
     if (!node) return;
     if (typeof node.x === 'number' && typeof node.y === 'number') {
         node.x = node.x * scale + tx;
@@ -488,13 +586,13 @@ document.addEventListener('DOMContentLoaded', () => {
     mindmapContainer.addEventListener('click', (event) => {
       // If the click is directly on the container and not on a node or its controls
       if (event.target === mindmapContainer) {
-        if (selectedNodeId) {
-          const currentlySelectedElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${selectedNodeId}']`);
-          if (currentlySelectedElement) {
-            currentlySelectedElement.classList.remove('selected-node');
-          }
-          selectedNodeId = null;
-          // console.log('Mindmap container clicked, node deselected.');
+        if (selectedNodeIds.length > 0) {
+          selectedNodeIds.forEach(id => {
+            const el = mindmapContainer.querySelector(`.mindmap-node[data-id='${id}']`);
+            if (el) el.classList.remove('selected-node');
+          });
+          selectedNodeIds = [];
+          // console.log('Mindmap container clicked, all nodes deselected.');
         }
       }
     });
@@ -518,6 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadFromServerBtn = document.getElementById('load-from-server-btn');
   const importFileInput = document.getElementById('import-file-input');
   const exportJsonBtn = document.getElementById('export-json-btn');
+  const themeSelector = document.getElementById('theme-selector');
 
   // appendToDiagLog('Attempting to find #toolbar.');
   // if (document.getElementById('toolbar')) {
@@ -547,8 +646,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (addNodeBtn) addNodeBtn.addEventListener('click', () => {
     const text = nodeTextInput.value.trim();
-    if (text) { addNode('root', text); nodeTextInput.value = ''; }
-    else { alert('Please enter text for the node.'); }
+    if (text) {
+      // Add to the first root node by default, or create one if none exist.
+      let targetParentId = null;
+      if (mindmapData.nodes.length > 0) {
+        targetParentId = mindmapData.nodes[0].id; // Target the first root node
+         addChildNode(targetParentId, text); // Use addChildNode which calls createNode
+      } else {
+        // If no nodes exist, addCentralTopic can create the very first node.
+        addCentralTopic({ text: text });
+      }
+      nodeTextInput.value = '';
+    } else {
+      alert('Please enter text for the node.');
+    }
   });
   if (saveLocallyBtn) saveLocallyBtn.addEventListener('click', () => {
     saveMindmapToLocalStorage();
@@ -559,62 +670,69 @@ document.addEventListener('DOMContentLoaded', () => {
   if (clearLocalBtn) clearLocalBtn.addEventListener('click', clearLocalStorage);
   if (importFileInput) importFileInput.addEventListener('change', handleFileUpload);
   if (exportJsonBtn) exportJsonBtn.addEventListener('click', handleExportMindmapAsJson);
+  if (themeSelector) {
+    // Populate options from mindmapThemes
+    for (const themeName in mindmapThemes) {
+      const option = document.createElement('option');
+      option.value = themeName;
+      option.textContent = themeName.charAt(0).toUpperCase() + themeName.slice(1);
+      themeSelector.appendChild(option);
+    }
+    themeSelector.value = currentThemeName; // Set initial value
+    themeSelector.addEventListener('change', (event) => {
+      applyTheme(event.target.value);
+    });
+  }
   // The clearMindmapBtn listener is now correctly set up above.
   // No need for this line: if (clearMindmapBtn) clearMindmapBtn.addEventListener('click', handleClearAllMindmap);
 
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (event) => {
-    if (!selectedNodeId) return; // No node selected, do nothing
+    if (selectedNodeIds.length === 0) return; // No nodes selected, do nothing
 
-    const nodeData = findNodeById(mindmapData.root, selectedNodeId);
-    if (!nodeData) {
-        // console.warn("Selected node data not found for keydown event:", selectedNodeId);
-        selectedNodeId = null; // Clear invalid selection
+    // For single-node actions (like add child/sibling), operate on the first selected node.
+    const firstSelectedId = selectedNodeIds[0];
+    const firstNodeData = findNodeById(firstSelectedId);
+
+    if (!firstNodeData && (event.key === 'Enter' || event.key === 'Tab')) {
+        console.warn("Primary selected node data not found for Enter/Tab keydown event:", firstSelectedId);
         return;
     }
 
     let preventDefault = false;
 
     if (event.key === 'Enter') {
-      promptAndAddSibling(selectedNodeId);
+      if (firstNodeData) { // Ensure node data exists for this action
+        promptAndAddSibling(firstNodeData.id);
+      }
       preventDefault = true;
     } else if (event.key === 'Tab') {
-      promptAndAddChild(selectedNodeId);
+      if (firstNodeData) { // Ensure node data exists for this action
+         promptAndAddChild(firstNodeData.id);
+      }
       preventDefault = true;
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
-      if (selectedNodeId !== mindmapData.root.id) {
-        const nodeName = nodeData.text || "this node";
-        const childrenCount = nodeData.children ? nodeData.children.length : 0;
-        let confirmMessage = `Are you sure you want to delete "${nodeName}"?`;
-        if (childrenCount > 0) {
-          confirmMessage += `\n\nThis node has ${childrenCount} direct child/children, which will also be deleted.`;
-        }
-        if (confirm(confirmMessage)) {
-          const parentOfSelected = findParentNode(mindmapData.root, selectedNodeId);
-          deleteNode(selectedNodeId);
-          // Attempt to select the parent after deleting a node
-          if (parentOfSelected) {
-            const parentElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${parentOfSelected.id}']`);
-            if (parentElement) {
-                // Clear previous selection styling
-                const currentlySelectedElement = mindmapContainer.querySelector('.selected-node');
-                if (currentlySelectedElement) currentlySelectedElement.classList.remove('selected-node');
-
-                parentElement.classList.add('selected-node');
-                selectedNodeId = parentOfSelected.id;
-            } else {
-                selectedNodeId = null; // Parent element not found in DOM
-            }
-          } else {
-            selectedNodeId = null; // No parent found (e.g. if root was somehow targeted)
+      let confirmMessage = `Are you sure you want to delete ${selectedNodeIds.length} selected node(s)?`;
+      if (selectedNodeIds.length === 1 && firstNodeData) {
+          const childrenCount = firstNodeData.children ? firstNodeData.children.length : 0;
+          confirmMessage = `Are you sure you want to delete "${firstNodeData.text || 'this node'}"?`;
+          if (childrenCount > 0) {
+            confirmMessage += `\n\nThis node has ${childrenCount} direct child/children, which will also be deleted.`;
           }
-        }
-        preventDefault = true;
-      } else {
-        showFeedback("The root node cannot be deleted.", true);
-        preventDefault = true; // Prevent default even if not deleting, e.g. backspace navigation
       }
+
+      if (confirm(confirmMessage)) {
+        // Store IDs to delete as deleteNode might modify selection and array
+        const idsToDelete = [...selectedNodeIds];
+        idsToDelete.forEach(id => {
+            // deleteNode itself handles rules about not deleting the last node etc.
+            // and updates selection.
+            deleteNode(id);
+        });
+        // selectedNodeIds should be empty or updated by the last deleteNode call.
+      }
+      preventDefault = true;
     }
 
     if (preventDefault) {
@@ -644,60 +762,41 @@ function handleClearAllMindmap() {
   const initialY = 50; // Default Y
 
   const measureContainer = getOrCreateTempMeasurementContainer();
-  const tempNodeDataForMeasure = { id: 'root-measure', text: defaultRootText, children: [] };
-  const tempNodeElement = createNodeElement(tempNodeDataForMeasure);
-  measureContainer.innerHTML = '';
-  measureContainer.appendChild(tempNodeElement);
-  const rootWidth = tempNodeElement.offsetWidth || 100;
-  const rootHeight = tempNodeElement.offsetHeight || 40;
-  measureContainer.innerHTML = '';
+  // For a new map, we initialize with one root node.
+  initializeDefaultMindmapData(); // This sets up mindmapData.nodes with one root
 
-  mindmapData = {
-      root: {
-          id: 'root',
-          text: defaultRootText,
-          children: [],
-          x: initialX, // Will be overridden by layout if possible
-          y: initialY, // Will be overridden by layout if possible
-          width: rootWidth,
-          height: rootHeight,
-          isManuallyPositioned: false,
-          notes: '',
-          table: null,
-          image: null,
-          chart: null,
-          isCollapsed: false
-      }
-  };
-  nodeIdCounter = Date.now(); // Reset node ID generation base
+  // Measure the default root
+  const defaultRootNodeData = mindmapData.nodes[0]; // Access the first node
+  if (defaultRootNodeData) { // Check if defaultRootNodeData exists
+    const tempNodeElement = createNodeElement(defaultRootNodeData); // createNodeElement needs to be robust
+    measureContainer.innerHTML = '';
+    measureContainer.appendChild(tempNodeElement);
+    defaultRootNodeData.width = tempNodeElement.offsetWidth || 100;
+    defaultRootNodeData.height = tempNodeElement.offsetHeight || 40;
+    measureContainer.innerHTML = '';
 
-  // console.log('[handleClearAllMindmap] mindmapData reset. New root structure:', JSON.stringify(mindmapData.root, null, 2));
-  // appendToDiagLog('[handleClearAllMindmap] mindmapData has been reset to new root.');
+    // Ensure dimensions are calculated for the new root before layout
+    if (typeof calculateAndStoreNodeDimensions === 'function') {
+        calculateAndStoreNodeDimensions(defaultRootNodeData, measureContainer);
+    }
+    // Update root width/height based on actual calculation
+    defaultRootNodeData.width = defaultRootNodeData.width || 100;
+    defaultRootNodeData.height = defaultRootNodeData.height || 40;
 
-  // Ensure dimensions are calculated for the new root before layout
-  if (typeof calculateAndStoreNodeDimensions === 'function') {
-      calculateAndStoreNodeDimensions(mindmapData.root, measureContainer);
-  }
-  // Update root width/height based on actual calculation
-  mindmapData.root.width = mindmapData.root.width || rootWidth; // Fallback if calculate didn't set it
-  mindmapData.root.height = mindmapData.root.height || rootHeight;
-
-
-  // Position the new root node (typically centered)
-  if (typeof calculateTreeLayout === 'function' && mindmapContainer && mindmapContainer.offsetWidth > 0) {
-      // Temporary assignment for centering logic, layout will refine this.
-      mindmapData.root.x = (mindmapContainer.offsetWidth / 2) - (mindmapData.root.width / 2);
-      mindmapData.root.y = initialY; // Use initialY as base for the first level
-      // Full layout calculation will set final x,y and potentially update width/height again via getBoundingBox in render.
+    // Position the new root node (typically centered)
+    if (typeof calculateTreeLayout === 'function' && mindmapContainer && mindmapContainer.offsetWidth > 0) {
+        defaultRootNodeData.x = (mindmapContainer.offsetWidth / 2) - (defaultRootNodeData.width / 2);
+        defaultRootNodeData.y = initialY;
+    } else {
+        defaultRootNodeData.x = 50; // Fallback X if container width not available
+        defaultRootNodeData.y = initialY;
+    }
   } else {
-      mindmapData.root.x = initialX;
-      mindmapData.root.y = initialY;
+      console.error("handleClearAllMindmap: No default root node found after initialization.");
   }
+  // console.log('[handleClearAllMindmap] mindmapData reset. New structure:', JSON.stringify(mindmapData, null, 2));
 
-  // console.log('[handleClearAllMindmap] About to call renderMindmap with new data.');
-  // appendToDiagLog('[handleClearAllMindmap] Preparing to render new default map.');
-
-  renderMindmap(mindmapData, 'mindmap-container');
+  renderMindmap(mindmapData, 'mindmap-container'); // renderMindmap needs to handle the new data structure
   saveMindmapToLocalStorage();
   showFeedback('Mindmap cleared. New map started.', false);
 
@@ -709,15 +808,15 @@ function handleClearAllMindmap() {
 // --- File Export/Import & Utility Functions ---
 function handleExportMindmapAsJson() {
   try {
-    const mindmapJsonString = JSON.stringify(mindmapData, null, 2);
+    const mindmapJsonString = JSON.stringify(mindmapData, null, 2); // mindmapData is now { nodes: [...] }
     const blob = new Blob([mindmapJsonString], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    let filename = 'mindmap.json';
-    if (mindmapData && mindmapData.root && mindmapData.root.text) {
-      const safeFilename = mindmapData.root.text.replace(/[^a-z0-9_\-\.]/gi, '_').substring(0, 50);
-      if (safeFilename) filename = `${safeFilename}.json`;
+    let filename = 'mindmap_export.json'; // Generic name as there might be multiple roots
+    if (mindmapData && mindmapData.nodes && mindmapData.nodes.length > 0 && mindmapData.nodes[0].text) {
+      const safeFilename = mindmapData.nodes[0].text.replace(/[^a-z0-9_\-\.]/gi, '_').substring(0, 50);
+      if (safeFilename) filename = `${safeFilename}_mindmap.json`;
     }
     link.setAttribute('download', filename);
     document.body.appendChild(link);
@@ -744,18 +843,42 @@ function handleFileUpload(event) {
   reader.onload = (e) => {
     try {
       const jsonText = e.target.result;
-      const loadedData = JSON.parse(jsonText);
-      if (loadedData && loadedData.root && typeof loadedData.root.text !== 'undefined') {
-        mindmapData = loadedData;
-        nodeIdCounter = Date.now();
-        renderMindmap(mindmapData, 'mindmap-container');
-        saveMindmapToLocalStorage();
-        showFeedback('Mindmap loaded successfully from file!', false);
+      const loadedFileContent = JSON.parse(jsonText);
+
+      if (loadedFileContent && Array.isArray(loadedFileContent.nodes)) { // New format
+        mindmapData = loadedFileContent;
+        // Sanitize all loaded nodes
+        mindmapData.nodes = mindmapData.nodes.map(node => sanitizeNodeData(node)).filter(node => node !== null);
+        if (mindmapData.nodes.length === 0) { // If all nodes were invalid or empty array
+            initializeDefaultMindmapData();
+            showFeedback('Imported file contained no valid nodes. Loaded default map.', true);
+        } else {
+            nodeIdCounter = Date.now();
+            renderMindmap(mindmapData, 'mindmap-container');
+            saveMindmapToLocalStorage();
+            showFeedback('Mindmap (v2 structure) loaded successfully from file!', false);
+        }
+      } else if (loadedFileContent && loadedFileContent.root && typeof loadedFileContent.root.text !== 'undefined') { // Old format
+        const sanitizedRoot = sanitizeNodeData(loadedFileContent.root);
+        if (sanitizedRoot) {
+            mindmapData.nodes = [sanitizedRoot];
+            nodeIdCounter = Date.now();
+            renderMindmap(mindmapData, 'mindmap-container');
+            saveMindmapToLocalStorage(); // Save in new format
+            showFeedback('Old format mindmap loaded and migrated from file!', false);
+        } else {
+            initializeDefaultMindmapData();
+            showFeedback('Old format mindmap file was invalid. Loaded default map.', true);
+        }
       } else {
-        showFeedback('Invalid mindmap file format. Missing root node or essential data.', true);
+        showFeedback('Invalid mindmap file format. Missing root node or nodes array.', true);
+        initializeDefaultMindmapData(); // Ensure a valid state if import fails badly
+        renderMindmap(mindmapData, 'mindmap-container');
       }
     } catch (error) {
       console.error('Error parsing JSON file:', error);
+      initializeDefaultMindmapData(); // Ensure a valid state on error
+      renderMindmap(mindmapData, 'mindmap-container');
       showFeedback('Error reading or parsing the mindmap file. Ensure it is valid JSON.', true);
     } finally {
       if (importFileInput) importFileInput.value = '';
@@ -824,85 +947,133 @@ function doNodesOverlap(box1, box2) {
 }
 
 // --- Core Mindmap Logic ---
-function findNodeById(node, id) {
-    if (node.id === id) return node;
-    if (node.children) {
-        for (const child of node.children) {
-            const found = findNodeById(child, id);
-            if (found) return found;
-        }
+// Updated findNodeById: Searches all root nodes and their children.
+function findNodeById(id) {
+  if (!id || !mindmapData.nodes) return null;
+
+  function findRecursive(currentNode, targetId) {
+    if (currentNode.id === targetId) return currentNode;
+    if (currentNode.children) {
+      for (const child of currentNode.children) {
+        const found = findRecursive(child, targetId);
+        if (found) return found;
+      }
     }
     return null;
+  }
+
+  for (const rootNode of mindmapData.nodes) {
+    const foundInTree = findRecursive(rootNode, id);
+    if (foundInTree) return foundInTree;
+  }
+  return null;
 }
-function findParentNode(node, childId) {
-    if (node.children) {
-        for (const child of node.children) {
-            if (child.id === childId) return node;
-            const foundParent = findParentNode(child, childId);
-            if (foundParent) return foundParent;
-        }
+
+// Updated findParentNode: Searches all trees for the child's parent.
+function findParentNode(childId) {
+  if (!childId || !mindmapData.nodes) return null;
+
+  function findParentRecursive(currentNode, targetChildId) {
+    if (currentNode.children) {
+      for (const child of currentNode.children) {
+        if (child.id === targetChildId) return currentNode; // Current node is the parent
+        const foundParent = findParentRecursive(child, targetChildId);
+        if (foundParent) return foundParent;
+      }
     }
     return null;
+  }
+
+  for (const rootNode of mindmapData.nodes) {
+    // Check if the rootNode itself is the parent (this case is unlikely unless childId is a root node's ID,
+    // in which case it has no parent in the traditional sense of being in a children array).
+    // The main loop handles finding parents of children within a tree.
+    const parentInTree = findParentRecursive(rootNode, childId);
+    if (parentInTree) return parentInTree;
+  }
+  return null;
 }
-function addNode(parentId, text) {
-  const parentNode = findNodeById(mindmapData.root, parentId);
-  if (!parentNode) return;
+
+function addNode(parentId, text) { // This function is now mostly for adding children to existing nodes
+  const parentNode = findNodeById(parentId); // Uses updated findNodeById
+  if (!parentNode) {
+    console.error(`addNode: Parent node with ID "${parentId}" not found.`);
+    showFeedback(`Error: Could not find parent "${parentId}" to add child to.`, true);
+    return;
+  }
   if (!parentNode.children) parentNode.children = [];
   const newNode = {
     id: generateNodeId(), text: text, notes: '', children: [],
     isManuallyPositioned: false // New nodes are not manually positioned
   };
-  delete newNode.x;
+  delete newNode.x; // New children are laid out, not explicitly positioned.
   delete newNode.y;
   parentNode.children.push(newNode);
-  if (parentNode.children.length === 1) parentNode.isCollapsed = false;
+  if (parentNode.children.length === 1) parentNode.isCollapsed = false; // Expand parent if it was collapsed
   renderMindmap(mindmapData, 'mindmap-container');
   saveMindmapToLocalStorage();
 }
+
+// Updated deleteNode: Handles deleting root/floating nodes or child nodes.
 function deleteNode(nodeId) {
-  if (nodeId === mindmapData.root.id) {
-      // Instead of alerting, call handleClearAllMindmap to reset the mindmap
-      // appendToDiagLog('[deleteNode] Attempting to delete root node. Calling handleClearAllMindmap.');
-      // console.log('[deleteNode] Root node deletion triggered. Calling handleClearAllMindmap.');
-      handleClearAllMindmap();
-      return; // Important to return here to prevent rest of deleteNode logic
-  }
-  let parentNode = findParentNode(mindmapData.root, nodeId);
+  let deleted = false;
+  let parentNode = findParentNode(nodeId); // Updated
+
   if (parentNode && parentNode.children) {
+    // It's a child node
+    const originalLength = parentNode.children.length;
     parentNode.children = parentNode.children.filter(child => child.id !== nodeId);
-  } else {
-    // This else block might be legacy or for cases where parentNode is not direct,
-    // e.g. if findParentNode had limitations. Given current findParentNode,
-    // this path might be less common for typical tree structures.
-    // However, keeping the fallback for robustness.
-    function removeInChildren(node, idToRemove) {
-        if (!node.children) return false;
-        const initialLength = node.children.length;
-        node.children = node.children.filter(child => child.id !== idToRemove);
-        if (node.children.length < initialLength) return true;
-        for (const child of node.children) { if (removeInChildren(child, idToRemove)) return true; }
-        return false;
+    if (parentNode.children.length < originalLength) {
+        deleted = true;
+        showFeedback(`Node "${nodeId}" and its children deleted from parent "${parentNode.id}".`, false);
     }
-    if (!removeInChildren(mindmapData.root, nodeId)) {
-        alert(`Node with ID "${nodeId}" not found for deletion.`); return;
+  } else {
+    // Not found as a child, try to remove from root nodes array
+    const originalRootsLength = mindmapData.nodes.length;
+    mindmapData.nodes = mindmapData.nodes.filter(rootNode => rootNode.id !== nodeId);
+    if (mindmapData.nodes.length < originalRootsLength) {
+        deleted = true;
+        showFeedback(`Floating/Root node "${nodeId}" and its children deleted.`, false);
     }
   }
 
-  // If the deleted node was the selected node, clear the selection
+  if (!deleted) {
+    console.warn(`deleteNode: Node with ID "${nodeId}" not found.`);
+    showFeedback(`Node "${nodeId}" not found for deletion.`, true);
+    return;
+  }
+
   if (selectedNodeId === nodeId) {
-    const currentlySelectedElement = mindmapContainer.querySelector('.selected-node');
-    if (currentlySelectedElement) {
-        currentlySelectedElement.classList.remove('selected-node');
+    selectedNodeId = null; // Clear selection if deleted node was selected
+    // Optionally, select parent or another root node here
+     if (parentNode) {
+        selectedNodeId = parentNode.id;
+        // Attempt to visually select the parent element if it exists in DOM
+        const parentElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${parentNode.id}']`);
+        if (parentElement) parentElement.classList.add('selected-node');
+    } else if (mindmapData.nodes.length > 0) {
+        selectedNodeId = mindmapData.nodes[0].id; // Select the first available root
+        const firstRootElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${selectedNodeId}']`);
+        if (firstRootElement) firstRootElement.classList.add('selected-node');
     }
-    selectedNodeId = null;
-    // console.log(`Selected node ${nodeId} was deleted. Selection cleared.`);
+  }
+
+  // Handle case of empty mindmap after deletion
+  if (mindmapData.nodes.length === 0) {
+    // Option 1: Initialize a new default root
+    initializeDefaultMindmapData();
+    showFeedback("All nodes deleted. New default map started.", false);
+    // Option 2: Allow an empty map (comment out initializeDefaultMindmapData above)
+    // console.log("All nodes deleted. Mindmap is now empty.");
+    // showFeedback("All nodes deleted. Mindmap is empty.", false);
   }
 
   renderMindmap(mindmapData, 'mindmap-container');
   saveMindmapToLocalStorage();
 }
+
 function editNodeText(nodeId, newText) {
-  const node = findNodeById(mindmapData.root, nodeId);
+  const node = findNodeById(nodeId); // Updated
   if (node) {
     node.text = newText;
     renderMindmap(mindmapData, 'mindmap-container');
@@ -1013,46 +1184,27 @@ function addOrEditChart(nodeId) {
 }
 
 // --- New Node Creation Functions ---
+// (promptAndAddChild, addChildNode, promptAndAddSibling, addSiblingNode can largely remain the same,
+// as they rely on findNodeById and findParentNode which are being updated)
+
 function promptAndAddChild(parentId) {
   const text = prompt('Enter text for new child node:');
   if (text !== null && text.trim() !== '') {
-    addChildNode(parentId, text.trim());
+    addChildNode(parentId, text.trim()); // addChildNode uses createNode internally now if parent exists
   }
 }
 
 function addChildNode(parentId, text) {
-  const parentNode = findNodeById(mindmapData.root, parentId);
+  // This function now primarily serves as a wrapper for createNode when a parent is specified.
+  // createNode itself handles adding to parent's children.
+  const parentNode = findNodeById(parentId); // Check if parent exists
   if (!parentNode) {
-    console.error(`Parent node with ID "${parentId}" not found.`);
+    console.error(`addChildNode: Parent node with ID "${parentId}" not found.`);
     showFeedback(`Error: Could not find parent to add child to.`, true);
-    return;
+    return null;
   }
-  if (!parentNode.children) {
-    parentNode.children = [];
-  }
-  const newNode = {
-    id: generateNodeId(),
-    text: text,
-    notes: '',
-    table: null,
-    image: null,
-    chart: null,
-    children: [],
-    isManuallyPositioned: false // New nodes are not manually positioned
-  };
-  delete newNode.x; // Ensure x/y are not set initially
-  delete newNode.y;
-
-  parentNode.children.push(newNode);
-
-  // Expand parent if it was collapsed and had no children before this new one
-  if (parentNode.isCollapsed && parentNode.children.length === 1) {
-    parentNode.isCollapsed = false;
-  }
-
-  renderMindmap(mindmapData, 'mindmap-container');
-  saveMindmapToLocalStorage();
-  showFeedback(`Child node added to "${parentNode.text}".`, false);
+  // Pass through nodeData object
+  return createNode(parentId, { text: text, notes: '', table: null, image: null, chart: null });
 }
 
 function promptAndAddSibling(siblingId) {
@@ -1063,32 +1215,267 @@ function promptAndAddSibling(siblingId) {
 }
 
 function addSiblingNode(siblingId, text) {
-  const parentNode = findParentNode(mindmapData.root, siblingId);
+  const parentNode = findParentNode(siblingId); // Updated findParentNode
   if (!parentNode) {
-    // This case should ideally not be reached if the UI prevents "Add Sibling" for root.
-    console.error(`Could not find parent for sibling ID "${siblingId}". Cannot add sibling.`);
-    showFeedback(`Error: Could not determine parent to add sibling to. (Is this the root node?)`, true);
-    return;
+    // If no parent, it means siblingId might be a root/floating node.
+    // In this case, adding a "sibling" means creating another root/floating node.
+    // console.log(`addSiblingNode: Node ID "${siblingId}" has no parent. Creating a new floating node.`);
+    return createNode(null, { text: text, notes: '', table: null, image: null, chart: null }); // Create a new floating node
   }
+  // If parent exists, create a new child under that same parent.
+  return createNode(parentNode.id, { text: text, notes: '', table: null, image: null, chart: null });
+}
 
+
+// Updated createNode: Handles creating floating nodes or child nodes.
+function createNode(parentNodeId, nodeData) {
   const newNode = {
     id: generateNodeId(),
-    text: text,
-    notes: '',
-    table: null,
-    image: null,
-    chart: null,
-    children: [],
-    isManuallyPositioned: false // New nodes are not manually positioned
+    text: nodeData.text || 'New Node',
+    notes: nodeData.notes || '',
+    table: nodeData.table || null,
+    image: nodeData.image || null,
+    chart: nodeData.chart || null,
+    children: Array.isArray(nodeData.children) ? nodeData.children : [],
+    isManuallyPositioned: nodeData.isManuallyPositioned || false,
+    isCollapsed: nodeData.isCollapsed || false,
+    // Spread other properties from nodeData first
+    ...nodeData,
+    // Then apply/override with defaults or theme-based styles for style and font
+    style: JSON.parse(JSON.stringify(mindmapThemes[currentThemeName].node)),
+    font: JSON.parse(JSON.stringify(mindmapThemes[currentThemeName].node.font)),
   };
-  delete newNode.x; // Ensure x/y are not set initially
-  delete newNode.y;
+  // Merge any specific style or font data passed in nodeData over the theme defaults
+  if(nodeData.style) {
+    Object.assign(newNode.style, nodeData.style);
+  }
+  if(nodeData.font) {
+    Object.assign(newNode.font, nodeData.font);
+  }
+  // Remove font from style object as it's a separate top-level property in nodeData for the node itself
+  if (newNode.style && newNode.style.font) {
+    delete newNode.style.font;
+  }
 
-  parentNode.children.push(newNode); // Add as a child of the same parent
+   // Re-apply specific defaults if they were overwritten by spread of a partial nodeData
+  newNode.id = newNode.id || generateNodeId(); // Ensure ID is always there
+  newNode.text = nodeData.text || 'New Node'; // Prioritize nodeData.text
+  newNode.notes = nodeData.notes || '';
+  newNode.children = Array.isArray(nodeData.children) ? nodeData.children : [];
+  newNode.isManuallyPositioned = typeof (nodeData.isManuallyPositioned) === 'boolean' ? nodeData.isManuallyPositioned : false;
+  newNode.isCollapsed = typeof (nodeData.isCollapsed) === 'boolean' ? nodeData.isCollapsed : false;
+
+
+  if (parentNodeId === null || parentNodeId === undefined) {
+    // Create a new floating/root node
+    newNode.x = newNode.x || Math.random() * 200 + 10; // Random initial position for new floating nodes
+    newNode.y = newNode.y || Math.random() * 100 + 10; // Add some randomness to avoid exact stacking
+    if (mindmapData.nodes.length === 0) { // If this is the VERY first node ever, position it like a root
+        newNode.x = 50;
+        newNode.y = 50;
+    }
+    mindmapData.nodes.push(newNode);
+    showFeedback(`Floating node "${newNode.text}" created.`, false);
+  } else {
+    const parentNode = findNodeById(parentNodeId); // Updated findNodeById
+    if (!parentNode) {
+      console.error(`createNode: Parent node with ID "${parentNodeId}" not found.`);
+      showFeedback(`Error: Parent node "${parentNodeId}" not found. Cannot create new node.`, true);
+      return null;
+    }
+    // New child nodes are laid out, so x/y are not taken from nodeData directly for child.
+    delete newNode.x;
+    delete newNode.y;
+
+    if (!parentNode.children) {
+      parentNode.children = [];
+    }
+    parentNode.children.push(newNode);
+
+    if (parentNode.isCollapsed && parentNode.children.length === 1) {
+      parentNode.isCollapsed = false;
+    }
+    showFeedback(`Node "${newNode.text}" added as child to "${parentNode.text}".`, false);
+  }
 
   renderMindmap(mindmapData, 'mindmap-container');
   saveMindmapToLocalStorage();
-  showFeedback(`Sibling node added near node ID "${siblingId}".`, false);
+  return newNode;
+}
+
+// Updated addCentralTopic: Works with the new mindmapData.nodes structure.
+function addCentralTopic(topicData) {
+  if (mindmapData.nodes && mindmapData.nodes.length > 0) {
+    // Update the first node in the array as the main root
+    let mainRootNode = mindmapData.nodes[0];
+    mainRootNode.text = topicData.text !== undefined ? topicData.text : mainRootNode.text;
+    mainRootNode.notes = topicData.notes !== undefined ? topicData.notes : mainRootNode.notes;
+    // Preserve other essential properties if not in topicData
+    mainRootNode.children = mainRootNode.children || []; // Should always exist, but good practice
+    mainRootNode.x = topicData.x !== undefined ? topicData.x : (mainRootNode.x || 50);
+    mainRootNode.y = topicData.y !== undefined ? topicData.y : (mainRootNode.y || 50);
+    mainRootNode.isManuallyPositioned = topicData.isManuallyPositioned !== undefined ? topicData.isManuallyPositioned : mainRootNode.isManuallyPositioned;
+    mainRootNode.isCollapsed = topicData.isCollapsed !== undefined ? topicData.isCollapsed : mainRootNode.isCollapsed;
+
+
+    // Update any other properties provided in topicData (except those handled above)
+    for (const key in topicData) {
+      if (topicData.hasOwnProperty(key) && !['id', 'children', 'x', 'y', 'isManuallyPositioned', 'text', 'notes', 'isCollapsed'].includes(key)) {
+        mainRootNode[key] = topicData[key];
+      }
+    }
+    showFeedback(`Central topic "${mainRootNode.text}" updated.`, false);
+  } else {
+    // Create the first node as the main root
+    const newRoot = {
+      id: 'root', // Default ID for the primary central topic
+      text: topicData.text || 'Central Topic',
+      notes: topicData.notes || '',
+      table: topicData.table || null,
+      image: topicData.image || null,
+      chart: topicData.chart || null,
+      children: topicData.children || [],
+      x: topicData.x || 50,
+      y: topicData.y || 50,
+      isManuallyPositioned: topicData.isManuallyPositioned !== undefined ? topicData.isManuallyPositioned : false,
+      isCollapsed: topicData.isCollapsed !== undefined ? topicData.isCollapsed : false,
+      // Apply theme defaults first, then merge topicData specifics
+      style: JSON.parse(JSON.stringify(mindmapThemes[currentThemeName].node)),
+      font: JSON.parse(JSON.stringify(mindmapThemes[currentThemeName].node.font)),
+      ...topicData, // Spread topicData to override any defaults including potentially style/font objects
+    };
+    // Explicitly merge style and font from topicData if they exist, over the theme defaults applied by spread
+    if(topicData.style) Object.assign(newRoot.style, topicData.style);
+    if(topicData.font) Object.assign(newRoot.font, topicData.font);
+
+    // Remove font from style as it's a top-level property on the node itself
+    if (newRoot.style && newRoot.style.font) {
+        delete newRoot.style.font;
+    }
+
+    // Ensure core properties are correctly typed and defaulted after spread
+    newRoot.id = newRoot.id || 'root';
+    newRoot.text = newRoot.text || 'Central Topic'; // Default if topicData.text was also missing
+    newRoot.notes = newRoot.notes || '';
+    newRoot.children = Array.isArray(newRoot.children) ? newRoot.children : [];
+    newRoot.x = typeof newRoot.x === 'number' ? newRoot.x : 50;
+    newRoot.y = typeof newRoot.y === 'number' ? newRoot.y : 50;
+
+    mindmapData.nodes = [newRoot]; // Initialize nodes array with the new root
+    showFeedback(`Central topic "${newRoot.text}" created.`, false);
+  }
+
+  renderMindmap(mindmapData, 'mindmap-container');
+  saveMindmapToLocalStorage();
+  return mindmapData.nodes[0]; // Return the main root node
+}
+
+function applyTheme(themeName) {
+  if (!mindmapThemes[themeName]) {
+    console.error(`Theme "${themeName}" not found.`);
+    showFeedback(`Error: Theme "${themeName}" not found.`, true);
+    return;
+  }
+  currentThemeName = themeName; // Update the global current theme name
+  const themeNodeStyle = mindmapThemes[themeName].node;
+
+  function applyStyleToNodeRecursive(node, currentThemeNodeStyle) {
+    // Deep copy theme style and font to avoid modifying the theme object itself
+    // and to ensure each node gets its own style objects.
+    node.style = JSON.parse(JSON.stringify(currentThemeNodeStyle));
+    node.font = JSON.parse(JSON.stringify(currentThemeNodeStyle.font));
+
+    // Remove font from style object as it's a separate top-level property in nodeData
+    if (node.style && node.style.font) {
+        delete node.style.font;
+    }
+
+    // Apply other direct properties from themeNodeStyle if they existed at top level of theme (not the case here)
+    // Example: if themeNodeStyle had { someOtherProp: 'value' } then node.someOtherProp = ...
+
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => applyStyleToNodeRecursive(child, currentThemeNodeStyle));
+    }
+  }
+
+  mindmapData.nodes.forEach(rootNode => {
+    applyStyleToNodeRecursive(rootNode, themeNodeStyle);
+  });
+
+  renderMindmap(mindmapData, 'mindmap-container');
+  saveMindmapToLocalStorage();
+  showFeedback(`Theme "${themeName}" applied.`, false);
+}
+
+
+function getSelectedNodes() {
+  if (!mindmapData || !mindmapData.nodes) return [];
+  return selectedNodeIds.map(id => findNodeById(id)).filter(node => node !== null);
+}
+
+function updateNode(nodeId, updatedData) {
+  const nodeToUpdate = findNodeById(nodeId);
+
+  if (!nodeToUpdate) {
+    console.warn(`updateNode: Node with ID "${nodeId}" not found.`);
+    showFeedback(`Error: Node "${nodeId}" not found. Cannot update.`, true);
+    return null; // Or false, to indicate failure
+  }
+
+  let changed = false;
+  for (const key in updatedData) {
+    if (updatedData.hasOwnProperty(key)) {
+      if (key === 'id' || key === 'children') {
+        console.warn(`updateNode: Attempted to update restricted property "${key}". Skipping.`);
+        continue;
+      }
+      // Handle nested style and font objects by merging
+      if (key === 'style' && typeof updatedData.style === 'object' && updatedData.style !== null) {
+        if (!nodeToUpdate.style) nodeToUpdate.style = {}; // Ensure style object exists
+        for (const styleKey in updatedData.style) {
+          if (updatedData.style.hasOwnProperty(styleKey) && nodeToUpdate.style[styleKey] !== updatedData.style[styleKey]) {
+            nodeToUpdate.style[styleKey] = updatedData.style[styleKey];
+            changed = true;
+          }
+        }
+      } else if (key === 'font' && typeof updatedData.font === 'object' && updatedData.font !== null) {
+        if (!nodeToUpdate.font) nodeToUpdate.font = {}; // Ensure font object exists
+        for (const fontKey in updatedData.font) {
+          if (updatedData.font.hasOwnProperty(fontKey) && nodeToUpdate.font[fontKey] !== updatedData.font[fontKey]) {
+            nodeToUpdate.font[fontKey] = updatedData.font[fontKey];
+            changed = true;
+          }
+        }
+      } else {
+        // For other properties, direct assignment if value changed
+        if (nodeToUpdate[key] !== updatedData[key]) {
+          nodeToUpdate[key] = updatedData[key];
+          changed = true;
+        }
+      }
+    }
+  }
+
+  if (changed) {
+    // Ensure default style and font objects exist if they were not present before update
+    // (though createNode and addCentralTopic should already initialize them)
+    nodeToUpdate.style = {
+        shape: 'rectangle', backgroundColor: '#ffffff', borderColor: '#000000', textColor: '#000000',
+        ...(nodeToUpdate.style || {})
+    };
+    nodeToUpdate.font = {
+        size: '16px', weight: 'normal', style: 'normal',
+        ...(nodeToUpdate.font || {})
+    };
+
+    renderMindmap(mindmapData, 'mindmap-container');
+    saveMindmapToLocalStorage();
+    showFeedback(`Node "${nodeToUpdate.text}" (ID: ${nodeId}) updated.`, false);
+  } else {
+    showFeedback(`No changes applied to node "${nodeToUpdate.text}" (ID: ${nodeId}).`, false, true);
+  }
+
+  return nodeToUpdate;
 }
 
 // --- Rendering ---
@@ -1097,9 +1484,41 @@ function createNodeElement(nodeData) {
   nodeElement.classList.add('mindmap-node');
   nodeElement.setAttribute('data-id', nodeData.id);
 
+  // Apply styles
+  if (nodeData.style) {
+    nodeElement.style.backgroundColor = nodeData.style.backgroundColor || '#ffffff';
+    nodeElement.style.borderColor = nodeData.style.borderColor || '#000000';
+    nodeElement.style.borderWidth = '1px'; // Default border width
+    nodeElement.style.borderStyle = 'solid'; // Default border style
+
+    // Remove previous shape classes before adding the new one
+    nodeElement.className = nodeElement.className.replace(/\bnode-shape-\w+/g, '').trim();
+    if (nodeData.style.shape) {
+      nodeElement.classList.add(`node-shape-${nodeData.style.shape}`);
+    } else {
+      nodeElement.classList.add('node-shape-rectangle'); // Default shape
+    }
+    // Example for ellipse using border-radius, actual shapes might need more complex CSS or SVG
+    if (nodeData.style.shape === 'ellipse') {
+        nodeElement.style.borderRadius = '50%';
+    } else {
+        nodeElement.style.borderRadius = '0px'; // Default for rectangle
+    }
+  }
+
   const textElement = document.createElement('span');
   textElement.classList.add('node-text');
   textElement.textContent = nodeData.text;
+
+  // Apply font and text color
+  if (nodeData.font) {
+    textElement.style.fontSize = nodeData.font.size || '16px';
+    textElement.style.fontWeight = nodeData.font.weight || 'normal';
+    textElement.style.fontStyle = nodeData.font.style || 'normal';
+  }
+  if (nodeData.style && nodeData.style.textColor) {
+    textElement.style.color = nodeData.style.textColor || '#000000';
+  }
   nodeElement.appendChild(textElement);
 
   if (nodeData.children && nodeData.children.length > 0) {
@@ -1210,40 +1629,33 @@ function createNodeElement(nodeData) {
   const addChildBtn = document.createElement('button');
   addChildBtn.textContent = '+ Child';
   addChildBtn.title = 'Add a child node';
-  addChildBtn.onclick = (e) => {
-    e.stopPropagation();
-    promptAndAddChild(nodeData.id);
-  };
+  addChildBtn.onclick = (e) => { e.stopPropagation(); promptAndAddChild(nodeData.id); };
   controlsContainer.appendChild(addChildBtn);
 
-  // "Add Sibling" button (not for root)
-  if (nodeData.id !== 'root') {
-    const addSiblingBtn = document.createElement('button');
-    addSiblingBtn.textContent = '+ Sibling';
-    addSiblingBtn.title = 'Add a sibling node';
-    addSiblingBtn.onclick = (e) => {
-      e.stopPropagation();
-      promptAndAddSibling(nodeData.id);
-    };
-    controlsContainer.appendChild(addSiblingBtn);
+  // "Add Sibling" button: Now it can also mean "add new floating node" if current is a root.
+  // The logic in promptAndAddSibling / addSiblingNode handles this.
+  const addSiblingBtn = document.createElement('button');
+  addSiblingBtn.textContent = '+ Sibling/Topic';
+  addSiblingBtn.title = 'Add a sibling node or a new floating topic';
+  addSiblingBtn.onclick = (e) => { e.stopPropagation(); promptAndAddSibling(nodeData.id); };
+  controlsContainer.appendChild(addSiblingBtn);
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.classList.add('delete-node-btn'); deleteBtn.textContent = 'X'; deleteBtn.title = 'Delete node';
-    deleteBtn.onclick = (e) => {
-      e.stopPropagation();
-      const nodeName = nodeData.text || "this node";
-      const childrenCount = nodeData.children ? nodeData.children.length : 0;
-      let confirmMessage = `Are you sure you want to delete "${nodeName}"?`;
-      if (childrenCount > 0) {
-        confirmMessage += `\n\nThis node has ${childrenCount} direct child/children, which will also be deleted.`;
-      }
-      if (confirm(confirmMessage)) {
-        deleteNode(nodeData.id);
-      }
-    };
-    // controlsContainer.appendChild(deleteBtn); // OLD LINE
-    nodeElement.appendChild(deleteBtn);      // NEW LINE - Append to nodeElement directly
-  }
+  // Delete button: deleteNode function handles logic for not deleting last root etc.
+  const deleteBtn = document.createElement('button');
+  deleteBtn.classList.add('delete-node-btn'); deleteBtn.textContent = 'X'; deleteBtn.title = 'Delete node';
+  deleteBtn.onclick = (e) => {
+    e.stopPropagation();
+    const nodeName = nodeData.text || "this node";
+    const childrenCount = nodeData.children ? nodeData.children.length : 0;
+    let confirmMessage = `Are you sure you want to delete "${nodeName}"?`;
+    if (childrenCount > 0) {
+      confirmMessage += `\n\nThis node has ${childrenCount} direct child/children, which will also be deleted.`;
+    }
+    if (confirm(confirmMessage)) {
+      deleteNode(nodeData.id); // Uses updated deleteNode
+    }
+  };
+  nodeElement.appendChild(deleteBtn); // Append to nodeElement directly
   nodeElement.appendChild(controlsContainer);
 
   nodeElement.addEventListener('mousedown', (event) => {
@@ -1264,27 +1676,42 @@ function createNodeElement(nodeData) {
     }
     // If a drag didn't happen (isDragging is false or check some threshold)
     if (isDragging && draggedNodeId === nodeData.id) {
-        // If a drag just finished on this node, don't re-select it here as onDragEnd might handle state.
-        // Or, ensure selection is desired even after a drag. For now, let's assume drag might imply selection.
         // This logic might need refinement based on desired UX for click-vs-drag.
+        // For now, if a drag happened, selection is handled by onDragEnd or this click.
     }
 
-    // Deselect previously selected node
-    if (selectedNodeId && selectedNodeId !== nodeData.id) {
-      const prevSelectedElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${selectedNodeId}']`);
-      if (prevSelectedElement) {
-        prevSelectedElement.classList.remove('selected-node');
-      }
-    }
+    const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+    const alreadySelected = selectedNodeIds.includes(nodeData.id);
 
-    // Select the current node
-    if (selectedNodeId !== nodeData.id) {
-        nodeElement.classList.add('selected-node');
-        selectedNodeId = nodeData.id;
-        // console.log(`Node ${selectedNodeId} selected.`);
+    if (isCtrlOrCmd) {
+        if (alreadySelected) {
+            selectedNodeIds = selectedNodeIds.filter(id => id !== nodeData.id);
+            nodeElement.classList.remove('selected-node');
+        } else {
+            selectedNodeIds.push(nodeData.id);
+            nodeElement.classList.add('selected-node');
+        }
     } else {
-        // console.log(`Node ${nodeData.id} deselected by clicking again.`);
+        // Normal click: deselect all others, select this one.
+        mindmapContainer.querySelectorAll('.mindmap-node.selected-node').forEach(el => {
+            el.classList.remove('selected-node');
+        });
+        selectedNodeIds = [nodeData.id];
+        nodeElement.classList.add('selected-node');
     }
+
+    // Visually update all selections (could be optimized by only updating changes)
+    // For now, simpler to clear and re-apply, or ensure above logic correctly handles individual changes.
+    // The above logic should handle individual changes, but a full sync might be safer:
+    mindmapContainer.querySelectorAll('.mindmap-node').forEach(el => {
+        if (selectedNodeIds.includes(el.dataset.id)) {
+            el.classList.add('selected-node');
+        } else {
+            el.classList.remove('selected-node');
+        }
+    });
+
+    // console.log('Selected node IDs:', selectedNodeIds);
     event.stopPropagation(); // Stop click from bubbling to mindmapContainer to prevent immediate deselection
   });
 
@@ -1319,11 +1746,23 @@ function onDragMove(event) {
   let newTop = event.clientY - initialMouseOffsetY - mindmapContainerRect.top + mindmapContainer.scrollTop;
   draggedNodeElement.style.left = newLeft + 'px';
   draggedNodeElement.style.top = newTop + 'px';
+
+  // Redraw lines for the tree whose root is being dragged, or for all trees.
+  // For simplicity during drag, we can focus on the dragged node's tree if it's a root,
+  // or just the main root's tree.
   requestAnimationFrame(() => {
     clearSvgLayer();
-    const rootNodeForLines = mindmapContainer.querySelector(`.mindmap-node[data-id='${mindmapData.root.id}']`);
-    if (rootNodeForLines && svgLayer) {
-        traverseAndDrawLines(rootNodeForLines);
+    // Option 1: Redraw lines for the specific tree being dragged if it's a root node.
+    // This requires identifying if draggedNodeId is one of mindmapData.nodes.
+    // Option 2: Simpler - redraw lines for the main root (nodes[0]) or all roots.
+    // Let's go with redrawing for all roots for now, as it's more generally correct.
+    if (mindmapData.nodes && svgLayer) {
+        mindmapData.nodes.forEach(rootNodeData => {
+            const rootElement = mindmapContainer.querySelector(`.mindmap-node[data-id='${rootNodeData.id}']`);
+            if (rootElement) { // Check if the root element is in the DOM
+                 traverseAndDrawLines(rootElement);
+            }
+        });
     }
   });
 }
@@ -1385,60 +1824,40 @@ function onDragEnd(event) {
     }
   }
 
-  const nodeData = findNodeById(mindmapData.root, draggedNodeId);
+  const nodeData = findNodeById(draggedNodeId); // Updated
   if (nodeData) {
     nodeData.x = currentPosition.x;
     nodeData.y = currentPosition.y;
     nodeData.isManuallyPositioned = true; // Mark as manually positioned
   }
   saveMindmapToLocalStorage();
-  renderMindmap(mindmapData, 'mindmap-container');
+  renderMindmap(mindmapData, 'mindmap-container'); // Re-render with new position
   isDragging = false;
   draggedNodeElement = null;
   draggedNodeId = null;
 }
 
-function renderMindmap(data, containerId) {
+// Updated renderMindmap: Handles the new data structure with multiple roots/floating nodes.
+function renderMindmap(currentMindmapData, containerId) { // Parameter renamed for clarity
   const container = document.getElementById(containerId);
   if (!container) { console.error("Mindmap container not found!"); return; }
 
   let contentWrapper = document.getElementById('mindmap-content-wrapper');
   if (!contentWrapper) {
-    console.error("'mindmap-content-wrapper' not found! Creating it.");
     contentWrapper = document.createElement('div');
     contentWrapper.id = 'mindmap-content-wrapper';
-    contentWrapper.style.position = 'absolute';
-    contentWrapper.style.top = '0';
-    contentWrapper.style.left = '0';
-    contentWrapper.style.width = '100%';
-    contentWrapper.style.height = '100%';
-    container.insertBefore(contentWrapper, container.firstChild); // Insert before SVG layer if it's first
+    // Basic styling for the wrapper, adjust as needed
+    contentWrapper.style.position = 'relative'; // Or 'absolute' if container has fixed size
+    contentWrapper.style.width = '100%';    // Or a large fixed size for scrollable area
+    contentWrapper.style.height = '100%';   // Or a large fixed size
+    container.insertBefore(contentWrapper, container.firstChild);
   }
-  // Clear previous nodes from the wrapper
-  contentWrapper.innerHTML = '';
+  contentWrapper.innerHTML = ''; // Clear previous render
 
-
-  // 1. Ensure all node dimensions are calculated and stored in nodeData
-  const tempContainer = getOrCreateTempMeasurementContainer();
-  calculateAndStoreNodeDimensions(data.root, tempContainer); // This calculates individual nodeData.width/height
-
-  // 1b. Calculate subtree dimensions for all nodes based on individual dimensions
-  calculateSubtreeDimensionsRecursive(data.root);
-
-  // 2. Calculate tree layout (populates nodeData.x and nodeData.y for all nodes)
-  if (mindmapContainer) {
-        calculateTreeLayout(data.root, mindmapContainer.offsetWidth);
-  } else {
-      console.error("mindmapContainer DOM element not found for layout calculation.");
-      calculateTreeLayout(data.root, 600); // Fallback width
-  }
-
-  // SVG layer remains a direct child of 'container'
   let svgLayerElement = container.querySelector('#mindmap-svg-layer');
   if (!svgLayerElement) {
     svgLayerElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgLayerElement.id = 'mindmap-svg-layer';
-    // Ensure SVG is after content wrapper if both are direct children of container
     if (contentWrapper.nextSibling) {
         container.insertBefore(svgLayerElement, contentWrapper.nextSibling);
     } else {
@@ -1448,46 +1867,67 @@ function renderMindmap(data, containerId) {
   svgLayer = svgLayerElement;
   clearSvgLayer();
 
-
-  const rootNodeElement = createNodeElement(data.root);
-  rootNodeElement.style.position = 'absolute';
-  rootNodeElement.style.left = (data.root.x || 50) + 'px';
-  rootNodeElement.style.top = (data.root.y || 50) + 'px';
-
-  contentWrapper.appendChild(rootNodeElement); // Append root to the wrapper
-
-  // Update global dimensions for root again AFTER it's in the main DOM and styled
-  // Note: getBoundingBox uses mindmapContainer (the overall container) for its calculations
-  const finalRootBox = getBoundingBox(rootNodeElement, mindmapContainer);
-  if (finalRootBox) {
-    data.root.width = finalRootBox.width;
-    data.root.height = finalRootBox.height;
+  if (!currentMindmapData || !currentMindmapData.nodes || currentMindmapData.nodes.length === 0) {
+    console.log("No nodes to render.");
+    // Optionally, display a message in the UI like "Mindmap is empty. Add a central topic or a new node."
+    return;
   }
 
+  const tempContainer = getOrCreateTempMeasurementContainer();
 
-  if (data.root.children && data.root.children.length > 0) {
-    let childrenContainer = rootNodeElement.querySelector('.mindmap-children-container');
-    if (!childrenContainer) {
-        childrenContainer = document.createElement('div');
-        childrenContainer.classList.add('mindmap-children-container');
-        rootNodeElement.appendChild(childrenContainer);
-    }
-    // Vertical stacking for root's children was already handled by calculateTreeLayout setting their global Y
-    if (!data.root.isCollapsed) {
-        renderChildren(data.root.children, rootNodeElement, mindmapContainer);
-    }
-  }
+  // Iterate over each root/floating node in mindmapData.nodes
+  currentMindmapData.nodes.forEach((rootNodeData, index) => {
+    // 1. Calculate dimensions for this tree
+    calculateAndStoreNodeDimensions(rootNodeData, tempContainer);
+    calculateSubtreeDimensionsRecursive(rootNodeData);
 
-  requestAnimationFrame(() => {
-    clearSvgLayer();
-    const rootElementForLines = container.querySelector(`.mindmap-node[data-id='${data.root.id}']`);
-    if (rootElementForLines && svgLayer) {
-      traverseAndDrawLines(rootElementForLines);
+    // 2. Calculate layout for this tree
+    // The first node (index 0) is treated as the main root and centered.
+    // Other nodes (floating topics) will use their stored x/y or a default.
+    if (index === 0) { // If it's the main root
+      if (mindmapContainer) {
+        calculateTreeLayout(rootNodeData, mindmapContainer.offsetWidth);
+      } else {
+        calculateTreeLayout(rootNodeData, 600); // Fallback width
+      }
+    } else {
+      // For other floating nodes, ensure they have x/y.
+      // If not manually positioned and no x/y, assign a default cascaded/random position.
+      if (!rootNodeData.isManuallyPositioned && (typeof rootNodeData.x !== 'number' || typeof rootNodeData.y !== 'number')) {
+        rootNodeData.x = 50 + (index * 20); // Simple cascade for now
+        rootNodeData.y = 50 + (index * 20); // Will need better placement strategy
+      }
     }
+
+    // 3. Create and append the DOM element for this root/floating node
+    const nodeElement = createNodeElement(rootNodeData);
+    nodeElement.style.position = 'absolute';
+    nodeElement.style.left = (rootNodeData.x || 0) + 'px';
+    nodeElement.style.top = (rootNodeData.y || 0) + 'px';
+    contentWrapper.appendChild(nodeElement);
+
+    // Recapture final dimensions after DOM insertion (optional, but good for accuracy)
+    const finalBox = getBoundingBox(nodeElement, mindmapContainer);
+    if (finalBox) {
+      rootNodeData.width = finalBox.width;
+      rootNodeData.height = finalBox.height;
+    }
+    // Children are rendered recursively by createNodeElement calling renderChildren.
   });
 
+  // Draw connection lines for all rendered trees
+  requestAnimationFrame(() => {
+    clearSvgLayer();
+    currentMindmapData.nodes.forEach(rootNodeData => {
+      const rootElementForLines = contentWrapper.querySelector(`.mindmap-node[data-id='${rootNodeData.id}']`);
+      if (rootElementForLines && svgLayer) {
+        traverseAndDrawLines(rootElementForLines); // traverseAndDrawLines works per tree
+      }
+    });
+  });
+
+
   if (needsReRenderAfterCharts) {
-    // console.log('[Mindmap Log] Charts were rendered, scheduling a delayed re-render for layout adjustment.');
     if (chartReRenderTimer) {
         clearTimeout(chartReRenderTimer); // Clear any existing timer
     }
@@ -1506,14 +1946,14 @@ function renderMindmap(data, containerId) {
 
 function clearSvgLayer() {
   if (svgLayer) {
-    while (svgLayer.firstChild) {
-      svgLayer.removeChild(svgLayer.firstChild);
-    }
+    while (svgLayer.firstChild) svgLayer.removeChild(svgLayer.firstChild);
   }
 }
 
-function drawConnectionLine(parentElement, childElement) {
-  if (!svgLayer || !parentElement || !childElement) return;
+// Updated drawConnectionLine: Takes parentElementData to access connector styles.
+function drawConnectionLine(parentElementData, childElement, parentElementDom) { // Renamed parentElement to parentElementDom for clarity
+  if (!svgLayer || !parentElementDom || !childElement || !parentElementData || !parentElementData.style) return;
+
   const mindmapContainerElem = document.getElementById('mindmap-container');
   if (!mindmapContainerElem) return;
 
@@ -1521,7 +1961,7 @@ function drawConnectionLine(parentElement, childElement) {
   const scrollLeft = mindmapContainerElem.scrollLeft;
   const scrollTop = mindmapContainerElem.scrollTop;
 
-  const parentRect = parentElement.getBoundingClientRect();
+  const parentRect = parentElementDom.getBoundingClientRect();
   const childRect = childElement.getBoundingClientRect();
 
   const startX = (parentRect.right - containerRect.left) + scrollLeft;
@@ -1543,157 +1983,86 @@ function drawConnectionLine(parentElement, childElement) {
   svgLayer.appendChild(path);
 }
 
-function traverseAndDrawLines(nodeElement) {
-  if (!nodeElement || !findNodeById) return;
+// Updated traverseAndDrawLines: Operates on a single tree starting from nodeElement.
+// findNodeById is now global, doesn't need mindmapData.root passed.
+function traverseAndDrawLines(nodeElement) { // nodeElement is a root of a tree (or subtree)
+  if (!nodeElement) return;
   const nodeId = nodeElement.getAttribute('data-id');
   if (!nodeId) return;
 
-  const nodeData = findNodeById(mindmapData.root, nodeId);
+  const nodeData = findNodeById(nodeId); // Uses updated findNodeById
 
   if (nodeData && nodeData.children && nodeData.children.length > 0 && !nodeData.isCollapsed) {
     const childrenContainer = nodeElement.querySelector('.mindmap-children-container');
     if (childrenContainer) {
       const childNodeElements = Array.from(childrenContainer.children).filter(el => el.matches('.mindmap-node'));
       childNodeElements.forEach(childElement => {
+        // Ensure childElement is actually a direct child node element
         if (childElement.classList.contains('mindmap-node')) {
             drawConnectionLine(nodeElement, childElement);
-            traverseAndDrawLines(childElement);
+            traverseAndDrawLines(childElement); // Recurse for children of this child
         }
       });
     }
   }
 }
 
+// Updated renderChildren: Renders children of a given parentNodeElement.
+// mainMindmapContainer is the top-level container for coordinate calculations.
 function renderChildren(childrenData, parentNodeElement, mainMindmapContainer) {
   const childrenContainer = parentNodeElement.querySelector('.mindmap-children-container');
   if (!childrenContainer) {
-    console.error("Critical: .mindmap-children-container missing in parent for renderChildren:", parentNodeElement);
+    console.error("Critical: .mindmap-children-container missing in parent for renderChildren:", parentNodeElement.dataset.id);
     return;
   }
-  childrenContainer.innerHTML = '';
+  childrenContainer.innerHTML = ''; // Clear previous children in this container
 
-  let placedSiblingBoxesLocal = [];
-  let currentXLocal = 10;
-  let currentYLocal = 10;
-  let maxChildHeightInRow = 0;
-  const horizontalSpacing = 25;
-  const nudgeAmount = 10;
-  const maxNudges = 50;
+  // Child node elements created by createNodeElement will be appended here.
+  // Their positions (childData.x, childData.y) are assumed to be global,
+  // so they need to be made relative to the parentNodeElement for correct placement
+  // within its childrenContainer.
+
+  const parentNodeData = findNodeById(parentNodeElement.dataset.id);
+  if (!parentNodeData || typeof parentNodeData.x !== 'number' || typeof parentNodeData.y !== 'number') {
+      console.error("renderChildren: Parent node data or its position is invalid for node ID:", parentNodeElement.dataset.id);
+      return;
+  }
+
 
   childrenData.forEach(childData => {
-    const childNodeElement = createNodeElement(childData);
-    childrenContainer.appendChild(childNodeElement);
+    const childNodeElement = createNodeElement(childData); // This will recursively call renderChildren if childData has children
 
-    childNodeElement.style.position = 'absolute';
-    let actualRelativeX, actualRelativeY;
-
-    if (childData.isManuallyPositioned && typeof childData.x === 'number' && typeof childData.y === 'number') {
-      const childrenContainerGlobalBox = getBoundingBox(childrenContainer, mainMindmapContainer);
-      if (childrenContainerGlobalBox) {
-        actualRelativeX = childData.x - childrenContainerGlobalBox.x;
-        actualRelativeY = childData.y - childrenContainerGlobalBox.y;
-
-        currentXLocal = Math.max(currentXLocal, actualRelativeX + (childData.width || childNodeElement.offsetWidth) + horizontalSpacing);
-        maxChildHeightInRow = Math.max(maxChildHeightInRow, (actualRelativeY - currentYLocal) + (childData.height || childNodeElement.offsetHeight) );
-
-      } else {
-        console.error("Could not get childrenContainer global box for positioning child:", childData.id);
-        actualRelativeX = currentXLocal;
-        actualRelativeY = currentYLocal;
-        maxChildHeightInRow = Math.max(maxChildHeightInRow, (childData.height || childNodeElement.offsetHeight));
-        currentXLocal += (childData.width || childNodeElement.offsetWidth) + horizontalSpacing;
-      }
-      placedSiblingBoxesLocal.push({
-            x: actualRelativeX, y: actualRelativeY,
-            width: (childData.width || childNodeElement.offsetWidth), height: (childData.height || childNodeElement.offsetHeight),
-            id: childData.id
-      });
+    // Position childNodeElement relative to its parentNodeElement.
+    // childData.x and childData.y are global coordinates from calculateTreeLayout.
+    // parentNodeData.x and parentNodeData.y are also global.
+    // The child's CSS left/top should be (childGlobalX - parentGlobalX) and (childGlobalY - parentGlobalY).
+    if (typeof childData.x === 'number' && typeof childData.y === 'number') {
+        childNodeElement.style.position = 'absolute';
+        childNodeElement.style.left = (childData.x - parentNodeData.x) + 'px';
+        childNodeElement.style.top = (childData.y - parentNodeData.y) + 'px';
     } else {
-      // Algorithmic placement: X is determined by this function, Y by calculateTreeLayout (converted to local)
-      const childrenContainerGlobalBox = getBoundingBox(childrenContainer, mainMindmapContainer);
-      if (childrenContainerGlobalBox && typeof childData.y === 'number') { // childData.y is global from layout
-          actualRelativeY = childData.y - childrenContainerGlobalBox.y;
-      } else {
-          actualRelativeY = currentYLocal; // Fallback if global Y somehow not set
-          if(typeof childData.y !== 'number') childData.y = actualRelativeY + (childrenContainerGlobalBox ? childrenContainerGlobalBox.y : 0); // Store an estimated global Y
-      }
-      childNodeElement.style.top = actualRelativeY + 'px';
-
-      let overlapResolved = false;
-      let tempCurrentX = currentXLocal;
-      let nudges = 0;
-
-      do {
-        const currentChildBoxLocal = {
-            x: tempCurrentX, y: actualRelativeY,
-            width: (childData.width || childNodeElement.offsetWidth), height: (childData.height || childNodeElement.offsetHeight),
-            id: childData.id
-        };
-        let isOverlapping = false;
-        for (const siblingBoxLocal of placedSiblingBoxesLocal) {
-            if (doNodesOverlap(currentChildBoxLocal, siblingBoxLocal)) {
-                isOverlapping = true;
-                break;
-            }
-        }
-        if (isOverlapping) {
-          tempCurrentX += nudgeAmount;
-          nudges++;
-        } else {
-          overlapResolved = true;
-        }
-      } while (!overlapResolved && nudges < maxNudges);
-
-      if (nudges >= maxNudges) { /* console.warn("Max nudges reached for node (algorithmic):", childData.text); */ }
-      actualRelativeX = tempCurrentX;
-
-      placedSiblingBoxesLocal.push({
-          x: actualRelativeX, y: actualRelativeY,
-          width: (childData.width || childNodeElement.offsetWidth), height: (childData.height || childNodeElement.offsetHeight),
-          id: childData.id
-      });
-      currentXLocal = actualRelativeX + (childData.width || childNodeElement.offsetWidth) + horizontalSpacing;
-      maxChildHeightInRow = Math.max(maxChildHeightInRow, (childData.height || childNodeElement.offsetHeight));
-
-      // Store the calculated global X for this algorithmically placed node
-      if (childrenContainerGlobalBox) {
-        childData.x = actualRelativeX + childrenContainerGlobalBox.x;
-      } else {
-        childData.x = actualRelativeX; // Fallback, less accurate
-      }
+        // Fallback if child positions are not set (should not happen after layout)
+        childNodeElement.style.position = 'absolute';
+        childNodeElement.style.left = '10px'; // Default relative position
+        childNodeElement.style.top = '10px';
+        console.warn("renderChildren: Child node", childData.id, "missing x/y coordinates.");
     }
-
-    childNodeElement.style.left = actualRelativeX + 'px';
-    childNodeElement.style.top = actualRelativeY + 'px';
-
-    // After child is positioned, update its global data fields (width/height might have changed slightly if content wrapped)
-    const globalChildBox = getBoundingBox(childNodeElement, mainMindmapContainer);
-    if (globalChildBox) {
-        childData.width = globalChildBox.width; // Re-capture final width/height
-        childData.height = globalChildBox.height;
-        // childData.x and childData.y should already be global from logic above or drag
-    }
-
-    if (childData.children && childData.children.length > 0) {
-      let grandChildrenContainer = childNodeElement.querySelector('.mindmap-children-container');
-      if (!grandChildrenContainer) {
-          grandChildrenContainer = document.createElement('div');
-          grandChildrenContainer.classList.add('mindmap-children-container');
-          childNodeElement.appendChild(grandChildrenContainer);
-      }
-      if (!childData.isCollapsed) {
-          renderChildren(childData.children, childNodeElement, mainMindmapContainer);
-      }
-    }
+    childrenContainer.appendChild(childNodeElement);
   });
 
+  // Adjust height of childrenContainer based on the relative positions of children
+  // This might not be strictly necessary if parent's height is determined by its own content + CSS.
+  // However, if explicit height is needed for line drawing or layout:
   if (childrenData.length > 0) {
-    // Adjust height based on the maximum extent of children, considering their individual Ys
-    let maxBottom = 0;
-    placedSiblingBoxesLocal.forEach(box => {
-        maxBottom = Math.max(maxBottom, box.y + box.height);
+    let maxRelativeY = 0;
+    childrenData.forEach(cd => {
+        const childNode = findNodeById(cd.id); // Re-fetch to ensure updated height
+        if (childNode && typeof childNode.y === 'number' && typeof childNode.height === 'number') {
+            const relativeY = childNode.y - parentNodeData.y;
+            maxRelativeY = Math.max(maxRelativeY, relativeY + childNode.height);
+        }
     });
-    childrenContainer.style.height = (maxBottom + 10) + 'px'; // 10 for bottom padding
+    childrenContainer.style.height = (maxRelativeY + 10) + 'px'; // 10 for some padding
   } else {
     childrenContainer.style.height = 'auto';
   }
