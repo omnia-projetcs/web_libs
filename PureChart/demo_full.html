@@ -10,13 +10,13 @@
 
     <div class="chart-container">
         <h2>Chart 1: Advanced Mixed Chart (Dark Theme)</h2>
-        <p>Demonstrates multiple bar and line datasets, dashed lines, legend interaction, and a basic annotation. Explicitly set to <code>theme: 'dark'</code>.</p>
+        <p>Demonstrates multiple bar and line datasets, dashed lines, legend interaction, a basic annotation, and <strong>explicitly displayed axes</strong>. Explicitly set to <code>theme: 'dark'</code>.</p>
         <canvas id="advancedMixedChartCanvas" width="700" height="400"></canvas>
     </div>
 
     <div class="chart-container">
         <h2>Chart 2: Multiple SMAs and Annotations (Light Theme)</h2>
-        <p>Demonstrates a primary line series with two Simple Moving Averages (SMAs) and multiple horizontal annotations with varied styling. Explicitly set to <code>theme: 'light'</code>.</p>
+        <p>Demonstrates a primary line series with two Simple Moving Averages (SMAs) and multiple horizontal annotations with varied styling. <strong>Axes are explicitly displayed</strong>. Explicitly set to <code>theme: 'light'</code>.</p>
         <canvas id="multipleSmaAnnotationCanvas" width="700" height="400"></canvas>
     </div>
     
@@ -71,8 +71,17 @@
     <hr style="margin-top: 40px; margin-bottom: 40px;">
 
     <div class="chart-container">
-        <h2>Pill Chart Example</h2>
-        <canvas id="pillChartCanvas" width="600" height="120"></canvas>
+        <h2>Pill Chart Example (with Zone Overflow)</h2>
+        <p>This pill chart demonstrates the <code>zoneOverflowAmount</code> option. Axes are hidden by default for pill charts, which is suitable here.</p>
+        <canvas id="pillChartCanvas" width="600" height="150"></canvas> <!-- Adjusted height for potential overflow visibility -->
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <div class="chart-container">
+        <h3>Pill Chart with Zone Labels</h3>
+        <p>Demonstrates the <code>showZoneMinMaxLabels</code>, <code>zoneLabelPosition</code> (set to 'on' here), and related styling options for displaying values directly on the min/max zones of the pill chart.</p>
+        <canvas id="pillZoneLabelsDemoCanvas" width="600" height="120"></canvas>
     </div>
 
     <hr style="margin-top: 40px; margin-bottom: 40px;">
@@ -186,7 +195,8 @@
                 options: {
                     title: { display: true, text: "Few-Items Legend Control Chart" },
                     legend: { display: true, position: 'top' },
-                    yAxis: { title: "Count" }
+                    xAxis: { display: true },
+                    yAxes: [{ display: true, title: "Count", displayTitle: true }]
                 }
             };
             new PureChart('multiLineChartCanvas', multiLineChartConfig);
@@ -208,7 +218,8 @@
                 options: {
                     title: { display: true, text: "Bar Chart (topCornerRadius: 8)" },
                     legend: { display: true, position: 'top' },
-                    yAxis: { title: "Value", beginAtZero: true }, // beginAtZero for this test is fine, negative bars will extend downwards
+                    xAxis: { display: true },
+                    yAxes: [{ display: true, title: "Value", beginAtZero: true, displayTitle: true }],
                     bar: {
                         topCornerRadius: 8
                     }
@@ -463,7 +474,8 @@
                     theme: 'dark', 
                     title: { text: "Quarterly Product Performance (Dark Theme)" },
                     legend: { display: true, position: 'top' },
-                    yAxis: { title: "Units Sold" },
+                    xAxis: { display: true, title: "Quarters", displayTitle: true },
+                    yAxes: [{ display: true, title: "Units Sold", displayTitle: true }],
                     annotations: [{
                         type: 'line',
                         mode: 'horizontal',
@@ -515,7 +527,8 @@
                     theme: 'light', 
                     title: { text: "Stock X Price with SMAs and Price Levels (Light Theme)" },
                     legend: { display: true },
-                    yAxis: { title: "Price ($)" },
+                    xAxis: { display: true, title: "Trading Day", displayTitle: true },
+                    yAxes: [{ display: true, title: "Price ($)", displayTitle: true }],
                     annotations: [
                         {
                             type: 'line',
@@ -876,6 +889,34 @@
             }
             // --- Appended Demos End ---
 
+            // New Pill Chart with Zone Labels instance
+            new PureChart('pillZoneLabelsDemoCanvas', {
+                type: 'pill',
+                data: {}, // Minimal data for pill, values set in options
+                options: {
+                    pill: {
+                        min: 0, max: 200, value: 100,
+                        zoneMin: 40, zoneMax: 160,
+                        zoneOverflowAmount: 6,
+                        showZoneMinMaxLabels: true,
+                        zoneLabelPosition: 'on',
+                        zoneLabelFont: '11px Arial',
+                        zoneLabelColor: '#111', // Darker color for 'on' position against light zone
+                        zoneLabelBackgroundColor: 'rgba(255,255,255,0.65)', // Semi-transparent white
+                        zoneLabelOffset: 6, // Nudge to fit 'on' position
+                        zoneLabelBackgroundPadding: 2,
+                        colors: { // Ensure pill colors are defined
+                            mainBackground: '#e9ecef',
+                            zoneBackground: '#badbcc', // A light green for the zone
+                            cursor: '#dc3545',
+                            text: '#212529',
+                            minMaxText: '#495057',
+                            valueText: '#000'
+                        }
+                    }
+                }
+            });
+
             // Percentage Chart (Direct Values) Demo
             const directPercentageChartConfig = {
                 type: "percentageDistribution",
@@ -945,10 +986,10 @@
                 },
                 options: {
                     title: { text: "Stock Prices with Highlighted Economic Periods" },
-                    xAxis: { title: 'Date' },
-                    yAxis: { title: 'Price', beginAtZero: false },
+                    xAxis: { display: true, title: 'Date', displayTitle: true },
+                    yAxes: [{ display: true, title: 'Price', beginAtZero: false, displayTitle: true }],
                     periodHighlights: {
-                        display: false,
+                        display: false, // User can toggle this via legend if legendLabel is present
                         legendLabel: "Economic Events",
                         periods: [
                             {

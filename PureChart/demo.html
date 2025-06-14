@@ -20,6 +20,20 @@
         <canvas id="smaAnnotationChartCanvas" width="700" height="350"></canvas>
     </div>
 
+    <!-- New Contour Color Demo -->
+    <div class="chart-container">
+        <h2>Example 3: Contour Color (Bar Chart)</h2>
+        <p>This bar chart demonstrates the <code>contourColor</code> option, rendering bars with a themed background fill and a specified contour.</p>
+        <canvas id="contourChartCanvas" width="700" height="350"></canvas>
+    </div>
+
+    <!-- New Pill Chart with Zone Overflow and Zone Labels Demo -->
+    <div class="chart-container">
+        <h2>Example 4: Pill Chart with Zone Overflow and Enhanced Zone Labels</h2>
+        <p>This pill chart demonstrates the <code>zoneOverflowAmount</code> option for vertical zone extension, and the <code>showZoneMinMaxLabels</code> feature. It also showcases custom styling for these zone labels, including <code>zoneLabelPosition</code>, <code>zoneLabelColor</code>, <code>zoneLabelFont</code>, <code>zoneLabelOffset</code>, <code>zoneLabelBackgroundColor</code>, and <code>zoneLabelBackgroundPadding</code>.</p>
+        <canvas id="pillOverflowChartCanvas" width="700" height="200"></canvas>
+    </div>
+
     <script src="PureChart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -332,6 +346,66 @@
                     }
                 });
             }
+
+            // Example 3: Contour Color Demo
+            const contourChartConfig = {
+                type: 'bar',
+                data: {
+                    labels: ['Apple', 'Banana', 'Cherry', 'Date'],
+                    datasets: [{
+                        label: 'Stock',
+                        values: [10, 15, 7, 12],
+                        // No backgroundColor or borderColor needed when contourColor is set globally for this effect
+                    }]
+                },
+                options: {
+                    theme: 'light', // Or 'dark' to see contour on different background
+                    title: {
+                        display: true,
+                        text: 'Bar Chart with Blue Contour'
+                    },
+                    contourColor: 'rgba(0,0,255,0.8)', // Blue contour
+                    legend: { display: true },
+                    xAxis: { display: true }, // Explicitly display axes
+                    yAxes: [{ display: true }]
+                }
+            };
+            new PureChart('contourChartCanvas', contourChartConfig);
+
+            // Example 4: Pill Chart with Zone Overflow
+            const pillOverflowConfig = {
+                type: 'pill',
+                data: {}, // Pill chart data is in options.pill
+                options: {
+                    title: {
+                        display: true,
+                        text: 'Pill Chart with Zone Overflow (10px)'
+                    },
+                    pill: {
+                        min: 0,
+                        max: 100,
+                        value: 65,
+                        zoneMin: 30,
+                        zoneMax: 70,
+                        pillHeight: 25,
+                        borderRadius: 8,
+                        zoneOverflowAmount: 10, // Makes the zone taller
+                        showZoneMinMaxLabels: true, // Show zone labels
+                        zoneLabelPosition: 'above', // Position them above the zone
+                        zoneLabelColor: '#0000CD', // MediumBlue color for zone labels
+                        zoneLabelFont: '12px Arial bold',
+                        zoneLabelOffset: 7,
+                        zoneLabelBackgroundColor: 'rgba(220, 220, 255, 0.75)', // Light blueish background
+                        zoneLabelBackgroundPadding: 3,
+                        colors: {
+                            mainBackground: '#f0f0f0',
+                            zoneBackground: 'rgba(75, 192, 192, 0.6)', // Teal zone
+                            cursor: '#555'
+                        }
+                    }
+                }
+            };
+            new PureChart('pillOverflowChartCanvas', pillOverflowConfig);
 
         });
     </script>
