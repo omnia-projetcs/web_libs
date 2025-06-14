@@ -3,94 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mindmap JS Library - Interactive Demo</title>
+    <title>Mindmap JS Library - Advanced Demo</title>
     <link rel="stylesheet" href="mindmap.css">
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f9f9f9; }
-        h1 { text-align: center; color: #333; }
-        #controls { margin-bottom: 20px; padding: 15px; background-color: #e9ecef; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px;}
-        #controls button, #controls input[type="text"] { padding: 10px 15px; border-radius: 5px; border: 1px solid #ced4da; font-size: 1em; }
-        #controls input[type="text"] { min-width: 150px; }
-        #controls button { background-color: #007bff; color: white; cursor: pointer; transition: background-color 0.2s ease; }
-        #controls button:hover { background-color: #0056b3; }
-        #controls button:disabled { background-color: #c0c0c0; cursor: not-allowed; }
-        #selectedNodeInfo { margin-top:10px; padding: 10px; background-color: #fff; border: 1px solid #ddd; border-radius: 5px; font-size: 0.9em; }
-        #selectedNodeIdDisplay { font-weight: bold; color: #007bff; }
+        body { font-family: Arial, sans-serif; margin: 15px; background-color: #f4f7f6; color: #333; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 20px;}
+        #controlsContainer { display: flex; justify-content: space-around; margin-bottom: 20px; padding: 15px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .control-group { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; }
+        .control-group h4 { margin-top: 0; margin-bottom: 10px; color: #3498db; }
+        #controls button, #controls input[type="text"], #controls input[type="color"], #controls input[type="number"] {
+            padding: 9px 14px; margin: 5px 2px; border-radius: 5px; border: 1px solid #ccc;
+            font-size: 0.95em; box-sizing: border-box;
+        }
+        #controls input[type="text"], #controls input[type="color"], #controls input[type="number"] { width: calc(100% - 10px); }
+        #controls button { background-color: #3498db; color: white; cursor: pointer; transition: background-color 0.2s; }
+        #controls button:hover { background-color: #2980b9; }
+        #controls button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #selectedNodeInfo { margin-top:10px; padding: 8px; background-color: #ecf0f1; border: 1px solid #ddd; border-radius: 5px; font-size: 0.9em; text-align: center; }
+        #selectedNodeIdDisplay { font-weight: bold; color: #2980b9; }
         #mindmapContainer {
-            width: 95%;
+            width: 100%;
             max-width: 1200px;
-            height: 700px;
-            border: 2px solid #007bff;
+            height: 650px;
+            border: 2px solid #3498db;
             border-radius: 8px;
             position: relative;
             overflow: auto;
             margin: 20px auto;
             background-color: #ffffff;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        /* General node styling (can be overridden by specific node styles from library) */
-        .mindmap-node {
-            padding: 12px 18px;
-            border: 2px solid #ced4da; /* Default border */
-            background-color: #f8f9fa;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            cursor: default;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        .mindmap-node { /* Base style, library overrides take precedence for specifics if defined in node.style */
+            padding: 10px 15px; border: 2px solid #ddd; background-color: #fff; border-radius: 5px;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1); cursor: default;
         }
-        .mindmap-node:hover {
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
+         .control-group input[type="color"] { height: 40px; padding: 5px; } /* Make color pickers a bit taller */
     </style>
 </head>
 <body>
-    <h1>Mindmap JS Library - Interactive Demo</h1>
+    <h1>Mindmap JS Library - Advanced Styling Demo</h1>
 
-    <div id="controls">
-        <input type="text" id="nodeText" placeholder="Node Text" value="New Idea">
-        <button id="addRootBtn">Add Central Topic</button>
-        <button id="addChildBtn" disabled>Add Child to Selected</button>
-        <button id="removeNodeBtn" disabled>Remove Selected Node</button>
-        <div id="selectedNodeInfo">Selected Node ID: <span id="selectedNodeIdDisplay">None</span></div>
+    <div id="controlsContainer">
+        <div class="control-group" id="nodeControls">
+            <h4>Node Properties</h4>
+            <input type="text" id="nodeText" placeholder="Node Text" value="New Idea">
+            <input type="color" id="nodeBgColor" title="Node Background Color" value="#FFFFFF">
+            <input type="color" id="nodeTextColor" title="Node Text Color" value="#000000">
+            <input type="text" id="nodeBorderColor" placeholder="Border Color (e.g., #CCCCCC)" value="#CCCCCC">
+            <input type="text" id="nodeBorderRadius" placeholder="Border Radius (e.g., 5px)" value="6px">
+            <button id="addRootBtn">Add Central Topic</button>
+            <button id="addChildBtn" disabled>Add Child</button>
+            <button id="updateStyleBtn" disabled>Update Selected Style</button>
+            <button id="removeNodeBtn" disabled>Remove Selected</button>
+        </div>
+        <div class="control-group" id="connectorControls">
+            <h4>Connector Style (Applied on Init/Re-init)</h4>
+            <input type="color" id="connectorColorInput" title="Connector Color" value="#333333">
+            <input type="number" id="connectorWidthInput" title="Connector Width (px)" value="1" min="1" max="10">
+            <button id="reinitMapBtn">Re-initialize Map with New Connector Styles</button>
+        </div>
     </div>
+    <div id="selectedNodeInfo">Selected Node ID: <span id="selectedNodeIdDisplay">None</span></div>
     <p style="text-align:center;">Click a node to select it. Double-click a node to edit its text.</p>
 
-
-    <div id="mindmapContainer">
-        <!-- The mind map will be rendered here -->
-    </div>
+    <div id="mindmapContainer"></div>
 
     <script src="mindmap.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const mindmap = new Mindmap('mindmapContainer');
+            let mindmap; // Declare mindmap here to allow re-initialization
             let selectedNodeId = null;
+
             const selectedNodeIdDisplay = document.getElementById('selectedNodeIdDisplay');
             const nodeTextInput = document.getElementById('nodeText');
+            const nodeBgColorInput = document.getElementById('nodeBgColor');
+            const nodeTextColorInput = document.getElementById('nodeTextColor');
+            const nodeBorderColorInput = document.getElementById('nodeBorderColor');
+            const nodeBorderRadiusInput = document.getElementById('nodeBorderRadius');
+
+            const connectorColorInput = document.getElementById('connectorColorInput');
+            const connectorWidthInput = document.getElementById('connectorWidthInput');
+
             const addRootBtn = document.getElementById('addRootBtn');
             const addChildBtn = document.getElementById('addChildBtn');
+            const updateStyleBtn = document.getElementById('updateStyleBtn');
             const removeNodeBtn = document.getElementById('removeNodeBtn');
+            const reinitMapBtn = document.getElementById('reinitMapBtn');
 
             const updateButtonStates = () => {
-                if (mindmap.nodes.size === 0) {
-                    addRootBtn.disabled = false;
-                    addChildBtn.disabled = true;
-                    removeNodeBtn.disabled = true;
-                } else {
-                    addRootBtn.disabled = true; // Only one root for now
-                    if (selectedNodeId && mindmap.nodes.has(selectedNodeId)) {
-                        addChildBtn.disabled = false;
-                        removeNodeBtn.disabled = false;
-                    } else {
-                        addChildBtn.disabled = true;
-                        removeNodeBtn.disabled = true;
-                    }
-                }
+                const hasNodes = mindmap && mindmap.nodes.size > 0;
+                addRootBtn.disabled = hasNodes;
+                addChildBtn.disabled = !selectedNodeId || !hasNodes;
+                updateStyleBtn.disabled = !selectedNodeId || !hasNodes;
+                removeNodeBtn.disabled = !selectedNodeId || !hasNodes;
             };
 
             const deselectCurrentNode = () => {
                 if (selectedNodeId && document.getElementById(selectedNodeId)) {
-                    document.getElementById(selectedNodeId).style.borderColor = '#ced4da'; // Default border
+                    const currentElem = document.getElementById(selectedNodeId);
+                    if (currentElem) currentElem.style.borderColor = mindmap.nodes.get(selectedNodeId)?.style?.borderColor || '#ced4da'; // Revert to its own border or default
                 }
                 selectedNodeId = null;
                 selectedNodeIdDisplay.textContent = "None";
@@ -98,39 +109,52 @@
             };
 
             const selectNode = (nodeId, nodeElement) => {
-                deselectCurrentNode(); // Deselect previous
-                selectedNodeId = nodeId;
-                nodeElement.style.borderColor = '#007bff'; // Highlight selected node (blue)
-                selectedNodeIdDisplay.textContent = nodeId;
-                updateButtonStates();
-                console.log("Node selected:", nodeId);
-            };
-
-            // Override _renderNode to add selection logic and attach it to the instance
-            const originalRenderNode = mindmap._renderNode.bind(mindmap);
-            mindmap._renderNode = function(node) { // Use function keyword for 'this' to be mindmap instance
-                originalRenderNode(node); // Call original rendering
-                const nodeElement = document.getElementById(node.id);
-                if (nodeElement) {
-                    nodeElement.addEventListener('click', (event) => {
-                        event.stopPropagation(); // Prevent container click from firing
-                        selectNode(node.id, nodeElement);
-                    });
-                    // Double-click is already handled by the library's _renderNode
-                }
-            };
-
-            mindmap.container.addEventListener('click', () => { // Click on container to deselect
                 deselectCurrentNode();
+                selectedNodeId = nodeId;
+                if (nodeElement) nodeElement.style.borderColor = '#007bff'; // Highlight with a standard selection color
+                selectedNodeIdDisplay.textContent = nodeId;
+
+                // Populate style inputs with selected node's current style
+                const nodeData = mindmap.getNodeById(nodeId);
+                if (nodeData && nodeData.style) {
+                    nodeBgColorInput.value = nodeData.style.backgroundColor || '#FFFFFF';
+                    nodeTextColorInput.value = nodeData.style.textColor || '#000000';
+                    nodeBorderColorInput.value = nodeData.style.borderColor || '#CCCCCC';
+                    nodeBorderRadiusInput.value = nodeData.style.borderRadius || '6px';
+                }
+                updateButtonStates();
+            };
+
+            function setupMindmapInstance(options) {
+                mindmap = new Mindmap('mindmapContainer', options);
+                const originalRenderNode = mindmap._renderNode.bind(mindmap);
+                mindmap._renderNode = function(node) {
+                    originalRenderNode(node);
+                    const nodeElement = document.getElementById(node.id);
+                    if (nodeElement) {
+                        nodeElement.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            selectNode(node.id, nodeElement);
+                        });
+                    }
+                };
+                mindmap.container.addEventListener('click', deselectCurrentNode);
+            }
+
+            // Initial setup
+            setupMindmapInstance({
+                connectorColor: connectorColorInput.value,
+                connectorWidth: parseInt(connectorWidthInput.value, 10)
             });
+            updateButtonStates();
 
             addRootBtn.addEventListener('click', () => {
                 if (mindmap.nodes.size === 0) {
-                    const text = nodeTextInput.value.trim() || 'Central Topic';
-                    const central = mindmap.addCentralTopic({ text: text, style: { backgroundColor: '#ffe0b2'} }); // Orange for central
-                    if (central) {
-                       // Selection is handled by the overridden _renderNode via its click listener
-                    }
+                    const style = {
+                        backgroundColor: nodeBgColorInput.value, textColor: nodeTextColorInput.value,
+                        borderColor: nodeBorderColorInput.value, borderRadius: nodeBorderRadiusInput.value
+                    };
+                    mindmap.addCentralTopic({ text: nodeTextInput.value.trim() || 'Central Topic', style: style });
                 } else {
                     alert("A central topic already exists.");
                 }
@@ -138,67 +162,56 @@
             });
 
             addChildBtn.addEventListener('click', () => {
-                if (!selectedNodeId) {
-                    alert("Please select a parent node first.");
-                    return;
-                }
-                if (!mindmap.nodes.has(selectedNodeId)) {
-                    alert("Selected parent node no longer exists. Please re-select.");
-                    deselectCurrentNode();
-                    return;
-                }
-                const text = nodeTextInput.value.trim() || 'New Child';
-                const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-                const child = mindmap.createNode(selectedNodeId, { text: text, style: { backgroundColor: randomColor } });
-                if (child) {
-                    // Selection will be handled by click if desired
-                }
+                if (!selectedNodeId) { alert("Please select a parent node first."); return; }
+                if (!mindmap.nodes.has(selectedNodeId)) { alert("Selected parent node no longer exists."); deselectCurrentNode(); return; }
+                const style = {
+                    backgroundColor: nodeBgColorInput.value, textColor: nodeTextColorInput.value,
+                    borderColor: nodeBorderColorInput.value, borderRadius: nodeBorderRadiusInput.value
+                };
+                mindmap.createNode(selectedNodeId, { text: nodeTextInput.value.trim() || 'New Child', style: style });
                 updateButtonStates();
+            });
+
+            updateStyleBtn.addEventListener('click', () => {
+                if (!selectedNodeId || !mindmap.nodes.has(selectedNodeId)) { alert('Please select a node to update.'); return; }
+                const styleToUpdate = {
+                    backgroundColor: nodeBgColorInput.value, textColor: nodeTextColorInput.value,
+                    borderColor: nodeBorderColorInput.value, borderRadius: nodeBorderRadiusInput.value
+                };
+                const filteredStyle = Object.fromEntries(Object.entries(styleToUpdate).filter(([_, v]) => v.trim() !== ''));
+                if (Object.keys(filteredStyle).length > 0) {
+                    mindmap.updateNode(selectedNodeId, { style: filteredStyle });
+                } else {
+                    alert('No new style values provided to update.');
+                }
             });
 
             removeNodeBtn.addEventListener('click', () => {
-                if (!selectedNodeId) {
-                    alert("Please select a node to remove.");
-                    return;
-                }
-                if (!mindmap.nodes.has(selectedNodeId)) {
-                    alert("Selected node no longer exists. Please re-select.");
-                    deselectCurrentNode();
-                    return;
-                }
+                if (!selectedNodeId) { alert("Please select a node to remove."); return; }
+                if (!mindmap.nodes.has(selectedNodeId)) { alert("Selected node no longer exists."); deselectCurrentNode(); return; }
                 const nodeText = mindmap.getNodeById(selectedNodeId).text;
-                // Corrected line below:
                 const confirmMessage = "Are you sure you want to remove node \"" + nodeText + "\" and all its children?";
-                const confirmRemove = confirm(confirmMessage);
-                if (confirmRemove) {
-                    const parentOfSelected = mindmap.getNodeById(selectedNodeId).parentId;
+                if (confirm(confirmMessage)) {
                     mindmap.removeNode(selectedNodeId);
-                    deselectCurrentNode(); // Deselects and updates buttons
-                    if (parentOfSelected && mindmap.nodes.has(parentOfSelected)) {
-                        // Optionally, re-select the parent after deleting a child
-                        // selectNode(parentOfSelected, document.getElementById(parentOfSelected));
-                    }
+                    deselectCurrentNode(); // Also updates button states
                 }
-                updateButtonStates();
             });
 
-            // Initial state for buttons
-            updateButtonStates();
+            reinitMapBtn.addEventListener('click', () => {
+                if (confirm('This will clear the current mind map and apply new connector styles. Are you sure?')) {
+                    Array.from(mindmap.nodes.keys()).forEach(nodeId => mindmap.removeNode(nodeId)); // Clear data
+                    mindmap.container.innerHTML = ''; // Clear DOM
 
-// --- Section de création de la carte d exemple commentée pour un démarrage à vide ---
-//             // Create a simple example map to start with
-//             const central = mindmap.addCentralTopic({ text: 'Interactive Mindmap (Click Me!)', style: { backgroundColor: '#ffe0b2'} });
-//             if (central) {
-//                 // Initial selection is done by clicking the node element after it's rendered
-//                 // We can simulate this or let the user click
-//                 // For now, let's not auto-select, to encourage first click.
-//                 const child1 = mindmap.createNode(central.id, { text: 'Idea A (Select Me)', style: { backgroundColor: '#cce5ff'} });
-//                 if (child1) {
-//                     mindmap.createNode(child1.id, { text: 'Sub-Idea A1', style: { backgroundColor: '#e0f7fa'} });
-//                 }
-//                 mindmap.createNode(central.id, { text: 'Idea B (Dbl-Click to Edit)', style: { backgroundColor: '#d1c4e9'} });
-//             }
-            console.log("Interactive demo initialized. Select nodes and use controls.");
+                    setupMindmapInstance({
+                        connectorColor: connectorColorInput.value,
+                        connectorWidth: parseInt(connectorWidthInput.value, 10)
+                    });
+                    deselectCurrentNode(); // Resets selection and button states
+                    alert('Map cleared. New connector styles will apply to subsequently added connectors.');
+                }
+            });
+
+            console.log("Interactive demo initialized. Add nodes and use controls to style them.");
         });
     </script>
 </body>
