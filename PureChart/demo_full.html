@@ -13,7 +13,7 @@
             flex-wrap: wrap;
         }
         .pill-chart-container {
-            width: 220px;
+            width: 300px;
             padding: 15px;
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -101,7 +101,7 @@
     <div class="chart-container">
         <h2>Pill Chart Example (with Zone Overflow)</h2>
         <p>This pill chart demonstrates the <code>zoneOverflowAmount</code> option. Axes are hidden by default for pill charts, which is suitable here.</p>
-        <canvas id="pillChartCanvas" width="600" height="150"></canvas> <!-- Adjusted height for potential overflow visibility -->
+        <canvas id="pillChartCanvas" width="400" height="150"></canvas> <!-- Adjusted height for potential overflow visibility -->
     </div>
 
     <hr style="margin-top: 40px; margin-bottom: 40px;">
@@ -120,11 +120,11 @@
       <div class="pill-chart-row">
         <div class="pill-chart-container">
           <h4>Pill Chart 1 (from JSON)</h4>
-          <canvas id="pillChartFullDemo1" width="200" height="120"></canvas>
+          <canvas id="pillChartFullDemo1" width="400" height="120"></canvas>
         </div>
         <div class="pill-chart-container">
           <h4>Pill Chart 2 (JS Config)</h4>
-          <canvas id="pillChartFullDemo2" width="200" height="120"></canvas>
+          <canvas id="pillChartFullDemo2" width="400" height="120"></canvas>
         </div>
       </div>
     </div>
@@ -996,27 +996,29 @@
                 data: {},
                 options: {
                     pill: {
-                        min: 10, max: 90, value: 50,
+                        min: 0, max: 100, value: 50,
                         zoneMin: 25, zoneMax: 75,
                         borderRadius: 5,
-                        pillHeight: 20,
+                        pillHeight: 50,
                         colors: {
-                            mainBackground: '#f8f9fa', // Lighter gray
-                            zoneBackground: '#e9ecef', // Slightly darker gray for zone
+                            mainBackground: '#e9', // Lighter gray
+                            zoneBackground: '#000000', // Slightly darker gray for zone
                             cursor: '#007bff', // Blue cursor
-                            text: '#212529',
+                            text: '#21',
                             minMaxText: '#495057',
                             valueText: '#000'
                         },
-                        zoneOverflowAmount: 5,
+                        pillBorderWidth: 0.5,
+                        fillLightenPercent: 200,
+                        zoneOverflowAmount: 0,
                         showMinMaxLabels: true, // Show min/max like 10 and 90
                         showValueLabel: true, // Show the current value (50)
                         valueLabelPosition: 'above', // Show 50 above
                         showZoneMinMaxLabels: true, // Show zone labels like 25 and 75
                         zoneLabelPosition: 'below', // Show 25 and 75 below the pill zone
-                        zoneLabelFont: '9px sans-serif',
+                        zoneLabelFont: '14px sans-serif',
                         zoneLabelColor: '#343a40',
-                        zoneLabelOffset: 3,
+                        zoneLabelOffset: 5,
                         zoneLabelBackgroundColor: 'rgba(255,255,255,0.5)'
                     }
                 }
