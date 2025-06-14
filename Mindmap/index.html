@@ -183,18 +183,19 @@
             // Initial state for buttons
             updateButtonStates();
 
-            // Create a simple example map to start with
-            const central = mindmap.addCentralTopic({ text: 'Interactive Mindmap (Click Me!)', style: { backgroundColor: '#ffe0b2'} });
-            if (central) {
-                // Initial selection is done by clicking the node element after it's rendered
-                // We can simulate this or let the user click
-                // For now, let's not auto-select, to encourage first click.
-                const child1 = mindmap.createNode(central.id, { text: 'Idea A (Select Me)', style: { backgroundColor: '#cce5ff'} });
-                if (child1) {
-                    mindmap.createNode(child1.id, { text: 'Sub-Idea A1', style: { backgroundColor: '#e0f7fa'} });
-                }
-                mindmap.createNode(central.id, { text: 'Idea B (Dbl-Click to Edit)', style: { backgroundColor: '#d1c4e9'} });
-            }
+// --- Section de création de la carte d exemple commentée pour un démarrage à vide ---
+//             // Create a simple example map to start with
+//             const central = mindmap.addCentralTopic({ text: 'Interactive Mindmap (Click Me!)', style: { backgroundColor: '#ffe0b2'} });
+//             if (central) {
+//                 // Initial selection is done by clicking the node element after it's rendered
+//                 // We can simulate this or let the user click
+//                 // For now, let's not auto-select, to encourage first click.
+//                 const child1 = mindmap.createNode(central.id, { text: 'Idea A (Select Me)', style: { backgroundColor: '#cce5ff'} });
+//                 if (child1) {
+//                     mindmap.createNode(child1.id, { text: 'Sub-Idea A1', style: { backgroundColor: '#e0f7fa'} });
+//                 }
+//                 mindmap.createNode(central.id, { text: 'Idea B (Dbl-Click to Edit)', style: { backgroundColor: '#d1c4e9'} });
+//             }
             console.log("Interactive demo initialized. Select nodes and use controls.");
         });
     </script>
