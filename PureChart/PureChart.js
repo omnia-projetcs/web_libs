@@ -752,6 +752,29 @@ class PureChart {
         const drawWidth = this.canvas.width - currentLeft - currentRight;
         const drawHeight = this.canvas.height - currentTop - currentBottom;
 
+        if (this.config.type === 'pill') {
+            console.log("--- Pill Chart _getDrawingArea Debug ---");
+            console.log("Canvas dimensions (W, H):", this.canvas.width, this.canvas.height);
+            console.log("Initial padding (T, R, B, L):", paddingTop, paddingRight, paddingBottom, paddingLeft);
+            if (options.title.display && options.title.text) {
+                // Ensure font is set for measurement if done here, though it's set earlier in the actual calculation
+                const originalFont = this.ctx.font;
+                this.ctx.font = options.title.font;
+                console.log("Title text:", options.title.text);
+                console.log("Title approx height contribution (M width * 1.5 + title padding):", (this.ctx.measureText('M').width * 1.5) + options.title.padding);
+                this.ctx.font = originalFont; // Restore original font
+            }
+            // Log currentTop *after* title height has been added
+            console.log("Calculated currentTop (after title, legend if applicable):", currentTop);
+            console.log("Calculated currentBottom (after xAxis if applicable):", currentBottom);
+            console.log("Calculated currentLeft (after yAxes if applicable):", currentLeft);
+            console.log("Calculated currentRight (after yAxes if applicable):", currentRight);
+            console.log("Final drawWidth:", drawWidth);
+            console.log("Final drawHeight:", drawHeight);
+            console.log("Pill specific options (pillHeight):", this.config.options.pill ? this.config.options.pill.pillHeight : "N/A");
+            console.log("--- End Pill Chart _getDrawingArea Debug ---");
+        }
+
         return { x: currentLeft, y: currentTop, width: drawWidth > 0 ? drawWidth : 0, height: drawHeight > 0 ? drawHeight : 0 };
     }
 
