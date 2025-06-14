@@ -191,7 +191,9 @@ class PureChart {
                     showMinMaxLabels: true,
                     showValueLabel: true,
                     valueLabelPosition: 'below', // 'above', 'below', 'inside'
-                    labelFont: '10px Arial'
+                    labelFont: '10px Arial',
+                    pillBorderWidth: 1,
+                    fillLightenPercent: 70
                 },
                 // font: '12px Arial', // Global default font - autosize will manage this if not set at component level
                 gridColor: '#e0e0e0',
@@ -751,29 +753,6 @@ class PureChart {
 
         const drawWidth = this.canvas.width - currentLeft - currentRight;
         const drawHeight = this.canvas.height - currentTop - currentBottom;
-
-        if (this.config.type === 'pill') {
-            console.log("--- Pill Chart _getDrawingArea Debug ---");
-            console.log("Canvas dimensions (W, H):", this.canvas.width, this.canvas.height);
-            console.log("Initial padding (T, R, B, L):", paddingTop, paddingRight, paddingBottom, paddingLeft);
-            if (options.title.display && options.title.text) {
-                // Ensure font is set for measurement if done here, though it's set earlier in the actual calculation
-                const originalFont = this.ctx.font;
-                this.ctx.font = options.title.font;
-                console.log("Title text:", options.title.text);
-                console.log("Title approx height contribution (M width * 1.5 + title padding):", (this.ctx.measureText('M').width * 1.5) + options.title.padding);
-                this.ctx.font = originalFont; // Restore original font
-            }
-            // Log currentTop *after* title height has been added
-            console.log("Calculated currentTop (after title, legend if applicable):", currentTop);
-            console.log("Calculated currentBottom (after xAxis if applicable):", currentBottom);
-            console.log("Calculated currentLeft (after yAxes if applicable):", currentLeft);
-            console.log("Calculated currentRight (after yAxes if applicable):", currentRight);
-            console.log("Final drawWidth:", drawWidth);
-            console.log("Final drawHeight:", drawHeight);
-            console.log("Pill specific options (pillHeight):", this.config.options.pill ? this.config.options.pill.pillHeight : "N/A");
-            console.log("--- End Pill Chart _getDrawingArea Debug ---");
-        }
 
         return { x: currentLeft, y: currentTop, width: drawWidth > 0 ? drawWidth : 0, height: drawHeight > 0 ? drawHeight : 0 };
     }
@@ -2856,9 +2835,20 @@ class PureChart {
 
         const pillY = drawArea.y + (drawArea.height / 2) - (pillOptions.pillHeight / 2);
 
+        // Get new border and lighten options
+        const pillBorderWidth = pillOptions.pillBorderWidth;
+        const fillLightenPercent = pillOptions.fillLightenPercent;
+
         // Draw Main Pill Background
-        this.ctx.fillStyle = pillOptions.colors.mainBackground;
+        const mainBaseColor = pillOptions.colors.mainBackground;
+        const mainFillColor = this._lightenColor(mainBaseColor, fillLightenPercent);
+        this.ctx.fillStyle = mainFillColor;
         this._fillRoundRect(this.ctx, drawArea.x, pillY, drawArea.width, pillOptions.pillHeight, pillOptions.borderRadius);
+        if (pillBorderWidth > 0) {
+            this.ctx.strokeStyle = mainBaseColor;
+            this.ctx.lineWidth = pillBorderWidth;
+            this._strokeRoundRect(this.ctx, drawArea.x, pillY, drawArea.width, pillOptions.pillHeight, pillOptions.borderRadius, pillBorderWidth);
+        }
 
         // Draw Zone Background
         const zoneMinVal = pillOptions.zoneMin;
@@ -2874,11 +2864,8 @@ class PureChart {
             const zoneWidth = zoneEndX - zoneStartX;
 
             if (zoneWidth > 0) {
-                this.ctx.fillStyle = pillOptions.colors.zoneBackground;
-                // We need to calculate clipping for the rounded ends of the zone if it's shorter than the main pill.
-                // For simplicity now, we draw it; however, a more advanced version would clip this.
-                // A simple approach for now is to use a smaller radius or no radius if it's not at the ends.
-                // This example will use pillOptions.borderRadius, which might look odd if zone is small.
+                const zoneBaseColor = pillOptions.colors.zoneBackground;
+                const zoneFillColor = this._lightenColor(zoneBaseColor, fillLightenPercent);
 
                 // Create a clipping region for the zone that respects the main pill's rounded corners
                 this.ctx.save();
@@ -2896,8 +2883,17 @@ class PureChart {
                 this.ctx.closePath();
                 this.ctx.clip();
 
-                // Now draw the zone, it will be clipped by the path above
+                // Now draw the zone fill, it will be clipped by the path above
+                this.ctx.fillStyle = zoneFillColor;
                 this.ctx.fillRect(zoneStartX, pillY, zoneWidth, pillOptions.pillHeight);
+
+                // Draw zone border (clipped)
+                if (pillBorderWidth > 0) {
+                    this.ctx.strokeStyle = zoneBaseColor;
+                    this.ctx.lineWidth = pillBorderWidth;
+                    this.ctx.strokeRect(zoneStartX, pillY, zoneWidth, pillOptions.pillHeight);
+                }
+
                 this.ctx.restore(); // Remove clipping path
             }
         }
