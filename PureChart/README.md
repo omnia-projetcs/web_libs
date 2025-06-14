@@ -14,6 +14,17 @@ PureChart.js is a lightweight charting library with no external dependencies, de
 *   **Dynamic Updates:** Supports data updates and chart redraws.
 *   **JSON Configuration:** Can be initialized from a JSON configuration object.
 
+### Key Features & Recent Updates
+
+*   **Default Hidden Axes:** For a cleaner default look, X and Y axes are now hidden by default. They can be easily enabled via `options.xAxis.display = true` and `options.yAxes[].display = true`.
+*   **Enhanced Pill Chart Styling:** The Pill Chart's `zoneMin` and `zoneMax` area can now visually overflow the main pill bar using the `options.pill.zoneOverflowAmount` setting.
+*   **Global Contour Mode:** A new `options.contourColor` can be set. If a color is provided, charts (bars, lines, points) will render with a fill matching the chart's background (from the active theme) and an outline in the specified contour color, offering a distinct visual style.
+*   **Responsive Autosizing:** Charts now automatically resize to fit their parent container by default (`options.autosize = true`).
+*   **Dark Theme & Custom Theming:** Added built-in 'dark' theme and improved support for custom theme objects.
+*   **Horizontal Annotations:** Draw labeled horizontal lines on your charts using `options.annotations`.
+*   **Per-Dataset Average Lines:** Bar and Line datasets can now automatically display their average value as a configurable line.
+*   **Period Highlighting:** Line charts support highlighting specific date ranges on the X-axis.
+
 ## Chart Types
 
 PureChart supports several chart types, each suited for different data visualization needs.
@@ -50,6 +61,30 @@ The Pill Chart is a horizontal chart designed to display a single value against 
 *   `showValueLabel` (boolean): Whether to display the current value label. Default: `true`.
 *   `valueLabelPosition` (string): Position of the value label ('above', 'below', 'inside'). Default: `'below'`.
 *   `labelFont` (string): Font style for the labels. Default: `'10px Arial'`.
+*   `zoneOverflowAmount` (number): The amount in pixels by which the highlighted zone (`zoneMin` to `zoneMax`) will extend vertically (both top and bottom) beyond the main `pillHeight`. This creates a visual effect where the zone appears taller than the pill bar. Default: `5`.
+
+    *Example of `zoneOverflowAmount` in action:*
+    If `pillHeight` is 30 and `zoneOverflowAmount` is 5, the colored zone rectangle will be drawn with a total height of 40px (30 + 2*5), vertically centered with the pill bar but overflowing by 5px on top and 5px at the bottom. The sides of the zone remain aligned with the pill's rounded edges.
+*   `showZoneMinMaxLabels` (boolean): Controls whether to display labels for `zoneMin` and `zoneMax` values. Default: `false`.
+*   `zoneLabelFont` (string): Font for the zone Min/Max labels. Default: `'10px Arial'`.
+*   `zoneLabelColor` (string): Text color for the zone Min/Max labels. Default: `'#333333'`.
+*   `zoneLabelOffset` (number): Pixel offset for the zone labels from their default calculated position. For 'above'/'below', this is the distance from the (potentially overflowed) zone bar. For 'on', this is the nudge inward from the zone boundary line. Default: `5`.
+*   `zoneLabelBackgroundPadding` (number): Padding around the zone label text if `zoneLabelBackgroundColor` is used. Default: `2`.
+*   `zoneLabelBackgroundColor` (string): Background color for the zone labels. Useful for readability if labels are 'on' the zone or close to other elements. Default: `'rgba(255, 255, 255, 0.7)'`.
+*   `zoneLabelPosition` (string): Position of the zone Min/Max labels relative to the zone boundaries. Valid values: `'above'`, `'below'`, or `'on'`. Default: `'above'`.
+
+    *Example: Displaying Zone Labels*
+    ```javascript
+    options: {
+        pill: {
+            // ... other pill options ...
+            showZoneMinMaxLabels: true,
+            zoneLabelPosition: 'below',
+            zoneLabelColor: 'blue',
+            zoneLabelOffset: 8
+        }
+    }
+    ```
 
 #### JSON Configuration Example for Pill Chart
 ```json
@@ -88,6 +123,31 @@ The Pill Chart is a horizontal chart designed to display a single value against 
 ### Configuration Options
 
 PureChart offers a wide range of options to customize its appearance and behavior. These are passed in the `options` object during chart instantiation.
+
+#### Axes Configuration (X and Y)
+
+By default, both X and Y axes are now hidden to provide a cleaner initial chart appearance. To display them, you need to explicitly enable them in your chart configuration:
+
+**Example: Displaying Axes**
+```javascript
+new PureChart('myChartCanvas', {
+    type: 'bar',
+    data: { /* ... */ },
+    options: {
+        xAxis: {
+            display: true, // Shows the X-axis
+            title: 'Categories'
+            // ... other xAxis options
+        },
+        yAxes: [{
+            display: true, // Shows this Y-axis
+            title: 'Values'
+            // ... other yAxis options for the first (or only) Y-axis
+        }]
+        // ... other options
+    }
+});
+```
 
 #### X-Axis Label Display
 
@@ -399,6 +459,27 @@ Customizes chart appearance and behavior.
 
 **Axis Options (`options.xAxis`, `options.yAxis`):**
 * (Refer to existing documentation for common axis options like `display`, `title`, `gridLines`, `labelFont`, `color`, etc.)
+*   `contourColor` (String | null): Default: `null`.
+    If set to a valid color string (e.g., `'#FF0000'`, `'rgba(0,0,0,0.7)'`), this global option activates a "contour mode" for chart elements:
+    *   **Bars and Percentage Bars:** Will be filled with the chart's background color (defined by the active theme, typically white or a dark shade) and stroked with the specified `contourColor`. The existing `borderWidth` options are respected.
+    *   **Line Chart Fills:** Filled areas under lines will use the chart's background color as their fill, with the `contourColor` used for their border.
+    *   **Line Chart Lines & Points:** The main lines and the borders of points will be drawn using the `contourColor`. Points will be filled with the chart's background color.
+    This creates a distinct "outlined" or "hollow" appearance. If `null` or an invalid color string, standard color options apply.
+
+    **Example: Using Contour Color**
+    ```javascript
+    new PureChart('myChartCanvas', {
+        type: 'bar',
+        data: { /* ... */ },
+        options: {
+            contourColor: 'blue', // All bars will have a blue outline and white/theme background fill
+            title: {
+                text: 'Chart with Blue Contour'
+            }
+            // ... other options
+        }
+    });
+    ```
 
 **Type-Specific Options (`options.bar`, `options.line`, `options.percentageDistribution`):**
 * (Refer to existing documentation for these.)

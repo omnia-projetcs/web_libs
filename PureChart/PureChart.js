@@ -87,11 +87,12 @@ class PureChart {
             data: {},
             options: {
                 autosize: true,
+                contourColor: null, // Added for contour mode
                 padding: { top: 20, right: 20, bottom: 40, left: 20 },
                 yAxes: [{ 
                     id: 'left', // Default ID for the first axis
                     position: 'left', // Default position
-                    display: true, 
+                    display: false,
                     beginAtZero: true, // If true, the Y-axis scale will include 0. Handles negative values by scaling from the data's minimum to 0 if all data is negative, or data min to data max if data is mixed (when data crosses zero) or all positive.
                     title: '', 
                     displayTitle: true, 
@@ -102,7 +103,7 @@ class PureChart {
                     color: '#666', // This will be themed later
                     sampleLabelForWidthEstimation: "-9,999.9" 
                 }],
-                xAxis: { display: true, title: '', displayTitle: true, gridLines: false, labelFont: '10px Arial', titleFont: '12px Arial bold', color: '#666' },
+                xAxis: { display: false, title: '', displayTitle: true, gridLines: false, labelFont: '10px Arial', titleFont: '12px Arial bold', color: '#666' },
                 title: { display: true, text: '', font: '18px Arial bold', color: '#333', padding: 15 },
                 legend: { display: true, position: 'top', font: '12px Arial', color: '#333', padding: 10, markerSize: 12, markerStyle: 'square' },
                 bar: { 
@@ -193,7 +194,15 @@ class PureChart {
                     valueLabelPosition: 'below', // 'above', 'below', 'inside'
                     labelFont: '10px Arial',
                     pillBorderWidth: 1,
-                    fillLightenPercent: 70
+                    fillLightenPercent: 70,
+                    zoneOverflowAmount: 5, // Default overflow amount in pixels
+                    showZoneMinMaxLabels: false,
+                    zoneLabelFont: '10px Arial',
+                    zoneLabelColor: '#333333',
+                    zoneLabelOffset: 5,
+                    zoneLabelBackgroundPadding: 2,
+                    zoneLabelBackgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    zoneLabelPosition: 'above' // Valid values: 'above', 'below', 'on'
                 },
                 // font: '12px Arial', // Global default font - autosize will manage this if not set at component level
                 gridColor: '#e0e0e0',
@@ -1843,9 +1852,18 @@ class PureChart {
             const barTextY = currentY + options.barHeight / 2; // Y for text centering
 
             const fillLightenPercent = options.fillLightenPercent;
-            const effectiveBorderWidth = options.borderWidth !== undefined ? options.borderWidth : 1;
+            let effectiveBorderWidth = options.borderWidth !== undefined ? options.borderWidth : 1;
+            const globalContourColor = typeof this.config.options.contourColor === 'string' && this.config.options.contourColor ? this.config.options.contourColor : null;
 
-            if (fillLightenPercent !== undefined && fillLightenPercent > 0 && typeof fillLightenPercent === 'number') {
+            if (globalContourColor) {
+                this.ctx.fillStyle = this.activePalette.backgroundColor;
+                this.ctx.strokeStyle = globalContourColor;
+                this.ctx.lineWidth = effectiveBorderWidth; // Use existing border width or default
+                if (filledBarLength > 0) {
+                    this._fillRoundRect(this.ctx, plotAreaX, currentY, filledBarLength, options.barHeight, options.barBorderRadius);
+                    this._strokeRoundRect(this.ctx, plotAreaX, currentY, filledBarLength, options.barHeight, options.barBorderRadius, this.ctx.lineWidth);
+                }
+            } else if (fillLightenPercent !== undefined && fillLightenPercent > 0 && typeof fillLightenPercent === 'number') {
                 // NEW STYLE: Base color for border, lightened fill, over the percentage length
                 const borderColorStr = baseColorStr;
                 const fillColorStr = this._lightenColor(baseColorStr, fillLightenPercent);
@@ -2004,26 +2022,32 @@ class PureChart {
                 if (rectInGroup.w <= 0) return; // Skip if bar has no width
                 const finalBarX = groupCanvasXStart + rectInGroup.x;
                 const barRect = { x: finalBarX, y: rectInGroup.y, w: rectInGroup.w, h: rectInGroup.h };
-                
-                // Use themed default dataset color if dataset.backgroundColor is not provided
-                const defaultBgColor = this.activePalette.defaultDatasetColors[originalDatasetIndex % this.activePalette.defaultDatasetColors.length];
-                const backgroundColorOption = dataset.backgroundColor || defaultBgColor;
-                const backgroundColor = this._resolveColor(backgroundColorOption, barRect);
-                this.ctx.fillStyle = backgroundColor;
+                const globalContourColor = typeof chartOptions.contourColor === 'string' && chartOptions.contourColor ? chartOptions.contourColor : null;
 
                 let borderWidth = dataset.borderWidth;
                 if (borderWidth === undefined) borderWidth = chartOptions.bar.defaultBorderWidth !== undefined ? chartOptions.bar.defaultBorderWidth : 1;
-                
-                let borderColor = dataset.borderColor;
-                if (!borderColor && borderWidth > 0) { 
-                    if (typeof backgroundColor === 'string') { // Can only darken if it's a solid color string
-                        borderColor = this._darkenColor(backgroundColor, chartOptions.bar.borderDarkenPercent !== undefined ? chartOptions.bar.borderDarkenPercent : 20);
-                    } else { // Fallback for gradients or complex fill functions
-                        borderColor = this.activePalette.axisColor; // Use a theme color as fallback for gradient borders
-                    }
-                }
-                this.ctx.strokeStyle = borderColor || 'transparent'; 
                 this.ctx.lineWidth = borderWidth;
+
+                if (globalContourColor) {
+                    this.ctx.fillStyle = this.activePalette.backgroundColor;
+                    this.ctx.strokeStyle = globalContourColor;
+                } else {
+                    // Use themed default dataset color if dataset.backgroundColor is not provided
+                    const defaultBgColor = this.activePalette.defaultDatasetColors[originalDatasetIndex % this.activePalette.defaultDatasetColors.length];
+                    const backgroundColorOption = dataset.backgroundColor || defaultBgColor;
+                    const backgroundColor = this._resolveColor(backgroundColorOption, barRect);
+                    this.ctx.fillStyle = backgroundColor;
+
+                    let borderColor = dataset.borderColor;
+                    if (!borderColor && borderWidth > 0) {
+                        if (typeof backgroundColor === 'string') { // Can only darken if it's a solid color string
+                            borderColor = this._darkenColor(backgroundColor, chartOptions.bar.borderDarkenPercent !== undefined ? chartOptions.bar.borderDarkenPercent : 20);
+                        } else { // Fallback for gradients or complex fill functions
+                            borderColor = this.activePalette.axisColor; // Use a theme color as fallback for gradient borders
+                        }
+                    }
+                    this.ctx.strokeStyle = borderColor || 'transparent';
+                }
 
                 const cornerRadius = chartOptions.bar.topCornerRadius || 0; // Reuse topCornerRadius for symmetry
 
@@ -2100,6 +2124,7 @@ class PureChart {
             const userTension = ds.tension !== undefined ? ds.tension : lO.tension; // Line tension
             const effectiveLineWidth = ds.lineWidth !== undefined ? ds.lineWidth : lO.lineWidth;
             const bezierTensionFactor = 0.2; // Factor for Catmull-Rom to Bezier conversion
+            const globalContourColor = typeof o.contourColor === 'string' && o.contourColor ? o.contourColor : null;
             
             // Draw filled area under line if enabled
             if (ds.fill && pts.length > 1) {
@@ -2112,10 +2137,15 @@ class PureChart {
                 this.ctx.lineTo(pts[pts.length - 1].x, clampedBaselineY); this.ctx.closePath();
                 const fillRectPtsY = pts.map(p => p.y).concat([clampedBaselineY]);
                 const fillRect = { x: this.drawArea.x, y: Math.min(...fillRectPtsY), w: this.drawArea.width, h: Math.abs(Math.max(...fillRectPtsY) - Math.min(...fillRectPtsY)) };
-                // Use themed default dataset color if ds.backgroundColor is not provided for fill
-                const defaultFillColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
-                const fillBgColorOption = ds.backgroundColor || defaultFillColor;
-                this.ctx.fillStyle = this._resolveColor(fillBgColorOption, fillRect); 
+
+                if (globalContourColor) {
+                    this.ctx.fillStyle = this.activePalette.backgroundColor;
+                    // Stroke for the fill area will be drawn by the main line part if contour is active
+                } else {
+                    const defaultFillColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                    const fillBgColorOption = ds.backgroundColor || defaultFillColor;
+                    this.ctx.fillStyle = this._resolveColor(fillBgColorOption, fillRect);
+                }
                 this.ctx.fill();
             }
             // Draw the line itself
@@ -2124,10 +2154,13 @@ class PureChart {
                 if (userTension > 0 && pts.length > 1) { for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[i === 0 ? 0 : i - 1]; const p1 = pts[i]; const p2 = pts[i + 1]; const p3 = pts[(i + 2 < pts.length) ? i + 2 : i + 1]; const { cp1, cp2 } = this._getControlPointsForSegment(p0, p1, p2, p3, bezierTensionFactor * userTension); this.ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p2.x, p2.y); } }
                 else if (pts.length > 1) { for (let i = 1; i < pts.length; i++) { this.ctx.lineTo(pts[i].x, pts[i].y); } } // Straight lines
                 
-                // Use themed default dataset color if ds.borderColor is not provided
-                const defaultBorderColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
-                const borderColorOption = ds.borderColor || defaultBorderColor;
-                this.ctx.strokeStyle = this._resolveColor(borderColorOption, this.drawArea); 
+                if (globalContourColor) {
+                    this.ctx.strokeStyle = globalContourColor;
+                } else {
+                    const defaultBorderColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                    const borderColorOption = ds.borderColor || defaultBorderColor;
+                    this.ctx.strokeStyle = this._resolveColor(borderColorOption, this.drawArea);
+                }
                 this.ctx.lineWidth = effectiveLineWidth;
 
                 let lineDashSet = false;
@@ -2144,31 +2177,42 @@ class PureChart {
             }
             // Draw points on the line
             const pointRadiusToDraw = ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3);
+            const pointBorderWidthToDraw = ds.pointBorderWidth !== undefined ? ds.pointBorderWidth : 1;
+
             if (pointRadiusToDraw > 0 && pts.length > 0) {
                 pts.forEach((p) => {
                     const pointRect = { x: p.x - pointRadiusToDraw, y: p.y - pointRadiusToDraw, w: pointRadiusToDraw * 2, h: pointRadiusToDraw * 2 };
                     
-                    // Determine point fill color, using theme default if necessary
-                    let pointFillColorOption = ds.pointColor;
-                    if (pointFillColorOption === undefined) {
-                        if (ds.fill && ds.backgroundColor) { // If area is filled, point usually matches border
-                            pointFillColorOption = ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
-                        } else { // Otherwise, point matches line/dataset color
-                            pointFillColorOption = ds.backgroundColor || ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                    if (globalContourColor) {
+                        this.ctx.fillStyle = this.activePalette.backgroundColor;
+                        this.ctx.strokeStyle = globalContourColor;
+                        this.ctx.lineWidth = pointBorderWidthToDraw > 0 ? pointBorderWidthToDraw : 1; // Ensure lineWidth is at least 1 for stroke
+                    } else {
+                        let pointFillColorOption = ds.pointColor;
+                        if (pointFillColorOption === undefined) {
+                            if (ds.fill && ds.backgroundColor) {
+                                pointFillColorOption = ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                            } else {
+                                pointFillColorOption = ds.backgroundColor || ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                            }
+                        }
+                        this.ctx.fillStyle = this._resolveColor(pointFillColorOption, pointRect);
+
+                        if (ds.pointBorderColor && pointBorderWidthToDraw > 0) {
+                            this.ctx.strokeStyle = this._resolveColor(ds.pointBorderColor, pointRect);
+                            this.ctx.lineWidth = pointBorderWidthToDraw;
+                        } else {
+                            this.ctx.strokeStyle = 'transparent'; // No explicit border, no stroke
                         }
                     }
-                    this.ctx.fillStyle = this._resolveColor(pointFillColorOption, pointRect); 
                     
                     this.ctx.beginPath();
                     const currentPointStyle = ds.pointStyle || lO.pointStyle || 'circle';
                     if (currentPointStyle === 'square') { this.ctx.rect(pointRect.x, pointRect.y, pointRect.w, pointRect.h); }
-                    else { this.ctx.arc(p.x, p.y, pointRadiusToDraw, 0, Math.PI * 2); } // Default to circle
+                    else { this.ctx.arc(p.x, p.y, pointRadiusToDraw, 0, Math.PI * 2); }
                     this.ctx.fill();
 
-                    const pointBorderWidthToDraw = ds.pointBorderWidth !== undefined ? ds.pointBorderWidth : 1; 
-                    if (ds.pointBorderColor && pointBorderWidthToDraw > 0) { 
-                        this.ctx.strokeStyle = this._resolveColor(ds.pointBorderColor, pointRect); 
-                        this.ctx.lineWidth = pointBorderWidthToDraw; 
+                    if (this.ctx.strokeStyle !== 'transparent' && pointBorderWidthToDraw > 0) { // Check globalContourColor or explicit pointBorderColor
                         this.ctx.stroke(); 
                     }
                 });
@@ -2834,6 +2878,7 @@ class PureChart {
         };
 
         const pillY = drawArea.y + (drawArea.height / 2) - (pillOptions.pillHeight / 2);
+        const zoneOverflow = pillOptions.zoneOverflowAmount || 0; // Use 0 if not defined
 
         // Get new border and lighten options
         const pillBorderWidth = pillOptions.pillBorderWidth;
@@ -2884,14 +2929,16 @@ class PureChart {
                 this.ctx.clip();
 
                 // Now draw the zone fill, it will be clipped by the path above
+                const zoneRectY = pillY - zoneOverflow;
+                const zoneRectHeight = pillOptions.pillHeight + (2 * zoneOverflow);
                 this.ctx.fillStyle = zoneFillColor;
-                this.ctx.fillRect(zoneStartX, pillY, zoneWidth, pillOptions.pillHeight);
+                this.ctx.fillRect(zoneStartX, zoneRectY, zoneWidth, zoneRectHeight);
 
                 // Draw zone border (clipped)
                 if (pillBorderWidth > 0) {
                     this.ctx.strokeStyle = zoneBaseColor;
                     this.ctx.lineWidth = pillBorderWidth;
-                    this.ctx.strokeRect(zoneStartX, pillY, zoneWidth, pillOptions.pillHeight);
+                    this.ctx.strokeRect(zoneStartX, zoneRectY, zoneWidth, zoneRectHeight);
                 }
 
                 this.ctx.restore(); // Remove clipping path
@@ -2956,6 +3003,98 @@ class PureChart {
                     break;
             }
             this.ctx.fillText(valueText, cursorX, valueLabelY);
+        }
+
+        // Draw Zone Min/Max Labels
+        if (pillOptions.showZoneMinMaxLabels) {
+            const zoneMinX = valueToX(pillOptions.zoneMin);
+            const zoneMaxX = valueToX(pillOptions.zoneMax);
+            const labelsToShow = [
+                { value: pillOptions.zoneMin, x: zoneMinX, defaultAlign: 'left' },
+                { value: pillOptions.zoneMax, x: zoneMaxX, defaultAlign: 'right' }
+            ];
+
+            labelsToShow.forEach(labelInfo => {
+                const labelText = String(labelInfo.value);
+                this.ctx.font = pillOptions.zoneLabelFont;
+                // Use themed label color if specific zoneLabelColor is not contrasting enough or default
+                let currentZoneLabelColor = pillOptions.zoneLabelColor;
+                if (currentZoneLabelColor === '#333333' && this.activePalette.name === 'dark') { // Example: if default light theme color on dark bg
+                    currentZoneLabelColor = this.activePalette.labelColor; // Use theme's general label color
+                } else if (!currentZoneLabelColor) { // If null or undefined
+                    currentZoneLabelColor = this.activePalette.labelColor || '#333333'; // Fallback
+                }
+                this.ctx.fillStyle = currentZoneLabelColor;
+
+                let labelX = labelInfo.x;
+                let labelY;
+                let textAlign;
+
+                const overflowAmount = pillOptions.zoneOverflowAmount || 0;
+                const offset = pillOptions.zoneLabelOffset;
+
+                switch (pillOptions.zoneLabelPosition) {
+                    case 'below':
+                        labelY = pillY + pillOptions.pillHeight + overflowAmount + offset;
+                        this.ctx.textBaseline = 'top';
+                        textAlign = 'center';
+                        break;
+                    case 'on':
+                        labelY = pillY + pillOptions.pillHeight / 2;
+                        this.ctx.textBaseline = 'middle';
+                        if (labelInfo.x === zoneMinX) {
+                            textAlign = 'left';
+                            labelX = zoneMinX + offset;
+                        } else { // zoneMaxX
+                            textAlign = 'right';
+                            labelX = zoneMaxX - offset;
+                        }
+                        break;
+                    case 'above':
+                    default:
+                        labelY = pillY - overflowAmount - offset;
+                        this.ctx.textBaseline = 'bottom';
+                        textAlign = 'center';
+                        break;
+                }
+                this.ctx.textAlign = textAlign;
+
+                const textMetrics = this.ctx.measureText(labelText);
+                const fontHeightMatch = this.ctx.font.match(/(\d+)px/);
+                const fontHeight = fontHeightMatch ? parseInt(fontHeightMatch[1], 10) : 10;
+                const bgPadding = pillOptions.zoneLabelBackgroundPadding;
+
+                const bgWidth = textMetrics.width + 2 * bgPadding;
+                const bgHeight = fontHeight + 2 * bgPadding;
+                let bgX;
+                let bgY;
+
+                if (textAlign === 'center') {
+                    bgX = labelX - bgWidth / 2;
+                } else if (textAlign === 'left') {
+                    bgX = labelX - bgPadding;
+                } else { // right
+                    bgX = labelX - textMetrics.width - bgPadding;
+                }
+
+                if (this.ctx.textBaseline === 'top') {
+                    bgY = labelY - bgPadding;
+                } else if (this.ctx.textBaseline === 'bottom') {
+                    bgY = labelY - fontHeight - bgPadding;
+                } else { // middle
+                    bgY = labelY - bgHeight / 2;
+                }
+
+                // Ensure background color is not null/undefined before drawing
+                const zoneLabelBgColor = pillOptions.zoneLabelBackgroundColor;
+                if (zoneLabelBgColor && zoneLabelBgColor !== 'transparent') {
+                    this.ctx.fillStyle = zoneLabelBgColor;
+                    this.ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+                }
+
+                this.ctx.fillStyle = currentZoneLabelColor; // Reset to text color
+                this.ctx.fillText(labelText, labelX, labelY);
+            });
         }
     }
 }
