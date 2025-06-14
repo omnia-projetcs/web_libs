@@ -5,7 +5,7 @@ A fast and light chart library.
 PureChart.js is a lightweight charting library with no external dependencies, designed for speed and ease of use. It supports various chart types and customization options.
 
 ### Features
-*   **Chart Types:** Bar, Line, Percentage Bar.
+*   **Chart Types:** Bar, Line, Percentage Bar, Pill.
 *   **Theming:** Supports light and dark themes, and custom theme objects.
 *   **Interactivity:** Tooltips, clickable legend items to toggle dataset visibility.
 *   **Data Handling:** Supports multiple datasets, different Y-axes per dataset, and data processing for Simple Moving Averages (SMA).
@@ -13,6 +13,77 @@ PureChart.js is a lightweight charting library with no external dependencies, de
 *   **Responsive Sizing:** Automatically resizes to fit its parent container (see details below).
 *   **Dynamic Updates:** Supports data updates and chart redraws.
 *   **JSON Configuration:** Can be initialized from a JSON configuration object.
+
+## Chart Types
+
+PureChart supports several chart types, each suited for different data visualization needs.
+
+### Bar Chart
+Displays data as vertical bars. Suitable for comparing distinct categories. Datasets can be grouped.
+
+### Line Chart
+Displays data as points connected by lines. Ideal for showing trends over time or continuous data. Supports area fill, curve tension, and dashed lines.
+
+### Percentage Distribution Chart
+Displays data as horizontal bars representing parts of a whole. Each bar shows its percentage contribution.
+
+### Pill Chart
+The Pill Chart is a horizontal chart designed to display a single value against a defined range, with an optional highlighted zone. It's useful for visualizing metrics like progress, scores, or levels within a minimum and maximum boundary.
+
+#### Configuration Options (`options.pill`)
+*   `min` (number): The minimum value of the chart. Default: `0`.
+*   `max` (number): The maximum value of the chart. Default: `100`.
+*   `zoneMin` (number): The minimum value for the highlighted zone. Default: `20`.
+*   `zoneMax` (number): The maximum value for the highlighted zone. Default: `80`.
+*   `value` (number): The current value to be indicated by the cursor. Default: `50`.
+*   `borderRadius` (number): The border radius for the corners of the pill and zone. Default: `10`.
+*   `pillHeight` (number): The height of the pill in pixels. Default: `30`.
+*   `colors` (object): An object containing color configurations:
+    *   `mainBackground` (string): Background color of the main pill area. Default: `'#e0e0e0'`.
+    *   `zoneBackground` (string): Background color of the highlighted zone. Default: `'#a0a0a0'`.
+    *   `cursor` (string): Color of the cursor line. Default: `'#ff0000'`.
+    *   `minMaxText` (string): Color of the text labels for min and max values. Default: `'#333333'`.
+    *   `valueText` (string): Color of the text label for the current value. Default: `'#111111'`.
+*   `cursorThickness` (number): Thickness of the cursor line in pixels. Default: `2`.
+*   `cursorLengthExtension` (number): How many pixels the cursor line extends above and below the pill. Default: `5`.
+*   `showMinMaxLabels` (boolean): Whether to display the min and max value labels. Default: `true`.
+*   `showValueLabel` (boolean): Whether to display the current value label. Default: `true`.
+*   `valueLabelPosition` (string): Position of the value label ('above', 'below', 'inside'). Default: `'below'`.
+*   `labelFont` (string): Font style for the labels. Default: `'10px Arial'`.
+
+#### JSON Configuration Example for Pill Chart
+```json
+{
+  "type": "pill",
+  "data": {}, // Pill chart typically gets its data from options.pill
+  "options": {
+    "title": {
+      "text": "Project Progress"
+    },
+    "pill": {
+      "min": 0,
+      "max": 200,
+      "zoneMin": 70,
+      "zoneMax": 150,
+      "value": 120,
+      "borderRadius": 15,
+      "pillHeight": 40,
+      "colors": {
+        "mainBackground": "#d3d3d3",
+        "zoneBackground": "#77dd77",
+        "cursor": "#0000ff",
+        "minMaxText": "#000000",
+        "valueText": "#000000"
+      },
+      "cursorThickness": 3,
+      "cursorLengthExtension": 6,
+      "showMinMaxLabels": true,
+      "showValueLabel": true,
+      "valueLabelPosition": "above"
+    }
+  }
+}
+```
 
 ### Configuration Options
 
@@ -202,6 +273,7 @@ PureChart.js is a lightweight, dependency-free JavaScript library for creating s
     * Bar charts (vertical, grouped)
     * Line charts (with optional area fill, curve tension, dashed lines)
     * Percentage Distribution bars (horizontal)
+    * Pill charts (horizontal gauge-like display for a single value in a range)
     * **Mixed Bar and Line charts** on a single canvas.
     * **Calculated Simple Moving Average (SMA) lines.**
 * **Interactivity:**
@@ -266,6 +338,7 @@ Default chart type if not specified per dataset.
 * `'bar'`
 * `'line'`
 * `'percentageDistribution'`
+* `'pill'`
 
 ### `data` (Object)
 

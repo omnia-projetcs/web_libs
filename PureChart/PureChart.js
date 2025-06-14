@@ -82,7 +82,7 @@ class PureChart {
         const defaults = {
             width: this.initialCanvasWidth || 300, // Use captured canvas attribute or fallback
             height: this.initialCanvasHeight || 150, // Use captured canvas attribute or fallback
-            type: 'bar',
+            type: 'bar', // Default type, 'pill' can be chosen by user
             theme: 'light',
             data: {},
             options: {
@@ -169,6 +169,29 @@ class PureChart {
                     borderDarkenPercent: 20,
                     fillLightenPercent: undefined, // If > 0, activates the new "gauge" style
                     valuesArePercentages: false // <-- New property added here
+                },
+                pill: {
+                    min: 0,
+                    max: 100,
+                    zoneMin: 20,
+                    zoneMax: 80,
+                    value: 50,
+                    borderRadius: 10,
+                    pillHeight: 30,
+                    colors: {
+                        mainBackground: '#e0e0e0',
+                        zoneBackground: '#a0a0a0',
+                        cursor: '#ff0000',
+                        text: '#000000',
+                        minMaxText: '#333333',
+                        valueText: '#111111'
+                    },
+                    cursorThickness: 2,
+                    cursorLengthExtension: 5,
+                    showMinMaxLabels: true,
+                    showValueLabel: true,
+                    valueLabelPosition: 'below', // 'above', 'below', 'inside'
+                    labelFont: '10px Arial'
                 },
                 // font: '12px Arial', // Global default font - autosize will manage this if not set at component level
                 gridColor: '#e0e0e0',
@@ -575,6 +598,18 @@ class PureChart {
                 });
             }
             if (!this.isValid) return;
+        } else if (this.config.type === 'pill') {
+            // Basic validation for pill chart: ensure data object exists (even if empty for now)
+            if (!this.config.data) {
+                console.error("PureChart Error (pill): data object is required.");
+                this.isValid = false; return;
+            }
+            // For pill charts, axes and legend are off by default
+            this.config.options.xAxis.display = this.config.options.xAxis.display ?? false;
+            if (this.config.options.yAxes && this.config.options.yAxes.length > 0) {
+                this.config.options.yAxes[0].display = this.config.options.yAxes[0].display ?? false;
+            }
+            this.config.options.legend.display = this.config.options.legend.display ?? false;
         }
     }
 
@@ -809,6 +844,10 @@ class PureChart {
             this._drawBarChart(); 
             this._drawLineChart();
             this._drawAverageLines();
+        }
+
+        if (this.config.type === 'pill') {
+            this._drawPillChart();
         }
     }
 
@@ -2646,6 +2685,11 @@ class PureChart {
 
     _preprocessDatasetValues() {
         if (!this.config.data || !this.config.data.datasets) return;
+        // For 'pill' type, datasets might not be the primary way to provide data.
+        // Ensure this function doesn't break if datasets is empty for pill charts.
+        if (this.config.type === 'pill' && (!this.config.data.datasets || this.config.data.datasets.length === 0)) {
+            return;
+        }
         const datasets = this.config.data.datasets;
         const numLabels = this.config.data.labels ? this.config.data.labels.length : 0;
 
@@ -2755,5 +2799,142 @@ class PureChart {
 
         this.isValid = false; // Mark as no longer valid
         //
+    }
+
+    // Placeholder for the new pill chart drawing function
+    _drawPillChart() {
+        const pillOptions = this.config.options.pill;
+        const drawArea = this.drawArea;
+
+        if (!drawArea || drawArea.width <= 0 || pillOptions.pillHeight <= 0) {
+            console.warn("PureChart (Pill): Invalid drawing area or pill dimensions.");
+            this.ctx.font = '12px Arial';
+            this.ctx.fillStyle = 'orange';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText("Pill Chart: Invalid dimensions.", this.canvas.width / 2, this.canvas.height / 2);
+            return;
+        }
+
+        if (pillOptions.max <= pillOptions.min) {
+            this.ctx.font = '12px Arial';
+            this.ctx.fillStyle = 'red';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText("Error: Max must be greater than Min for Pill Chart.", drawArea.x + drawArea.width / 2, drawArea.y + drawArea.height / 2);
+            return;
+        }
+
+        const scale = drawArea.width / (pillOptions.max - pillOptions.min);
+        const valueToX = (v) => {
+            const clampedV = Math.max(pillOptions.min, Math.min(pillOptions.max, v));
+            return drawArea.x + (clampedV - pillOptions.min) * scale;
+        };
+
+        const pillY = drawArea.y + (drawArea.height / 2) - (pillOptions.pillHeight / 2);
+
+        // Draw Main Pill Background
+        this.ctx.fillStyle = pillOptions.colors.mainBackground;
+        this._fillRoundRect(this.ctx, drawArea.x, pillY, drawArea.width, pillOptions.pillHeight, pillOptions.borderRadius);
+
+        // Draw Zone Background
+        const zoneMinVal = pillOptions.zoneMin;
+        const zoneMaxVal = pillOptions.zoneMax;
+
+        // Ensure zone values are within the main min/max for sensible drawing
+        const effectiveZoneMin = Math.max(pillOptions.min, Math.min(pillOptions.max, zoneMinVal));
+        const effectiveZoneMax = Math.max(pillOptions.min, Math.min(pillOptions.max, zoneMaxVal));
+
+        if (effectiveZoneMax > effectiveZoneMin) { // Only draw if zone has a positive width
+            const zoneStartX = valueToX(effectiveZoneMin); // Use valueToX for clamping and scaling
+            const zoneEndX = valueToX(effectiveZoneMax);
+            const zoneWidth = zoneEndX - zoneStartX;
+
+            if (zoneWidth > 0) {
+                this.ctx.fillStyle = pillOptions.colors.zoneBackground;
+                // We need to calculate clipping for the rounded ends of the zone if it's shorter than the main pill.
+                // For simplicity now, we draw it; however, a more advanced version would clip this.
+                // A simple approach for now is to use a smaller radius or no radius if it's not at the ends.
+                // This example will use pillOptions.borderRadius, which might look odd if zone is small.
+
+                // Create a clipping region for the zone that respects the main pill's rounded corners
+                this.ctx.save();
+                this.ctx.beginPath();
+                // Path for the main pill outline (used for clipping)
+                this.ctx.moveTo(drawArea.x + pillOptions.borderRadius, pillY);
+                this.ctx.lineTo(drawArea.x + drawArea.width - pillOptions.borderRadius, pillY);
+                if (pillOptions.borderRadius > 0) this.ctx.arcTo(drawArea.x + drawArea.width, pillY, drawArea.x + drawArea.width, pillY + pillOptions.borderRadius, pillOptions.borderRadius);
+                this.ctx.lineTo(drawArea.x + drawArea.width, pillY + pillOptions.pillHeight - pillOptions.borderRadius);
+                if (pillOptions.borderRadius > 0) this.ctx.arcTo(drawArea.x + drawArea.width, pillY + pillOptions.pillHeight, drawArea.x + drawArea.width - pillOptions.borderRadius, pillY + pillOptions.pillHeight, pillOptions.borderRadius);
+                this.ctx.lineTo(drawArea.x + pillOptions.borderRadius, pillY + pillOptions.pillHeight);
+                if (pillOptions.borderRadius > 0) this.ctx.arcTo(drawArea.x, pillY + pillOptions.pillHeight, drawArea.x, pillY + pillOptions.pillHeight - pillOptions.borderRadius, pillOptions.borderRadius);
+                this.ctx.lineTo(drawArea.x, pillY + pillOptions.borderRadius);
+                if (pillOptions.borderRadius > 0) this.ctx.arcTo(drawArea.x, pillY, drawArea.x + pillOptions.borderRadius, pillY, pillOptions.borderRadius);
+                this.ctx.closePath();
+                this.ctx.clip();
+
+                // Now draw the zone, it will be clipped by the path above
+                this.ctx.fillRect(zoneStartX, pillY, zoneWidth, pillOptions.pillHeight);
+                this.ctx.restore(); // Remove clipping path
+            }
+        }
+
+
+        // Draw Cursor
+        const cursorX = valueToX(pillOptions.value);
+        this.ctx.strokeStyle = pillOptions.colors.cursor;
+        this.ctx.lineWidth = pillOptions.cursorThickness;
+        this.ctx.lineCap = 'round';
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(cursorX, pillY - pillOptions.cursorLengthExtension);
+        this.ctx.lineTo(cursorX, pillY + pillOptions.pillHeight + pillOptions.cursorLengthExtension);
+        this.ctx.stroke();
+
+        // Draw Min/Max Labels
+        if (pillOptions.showMinMaxLabels) {
+            this.ctx.font = pillOptions.labelFont;
+            this.ctx.fillStyle = pillOptions.colors.minMaxText;
+            const labelY = pillY + pillOptions.pillHeight / 2;
+
+            // Min Label
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'middle';
+            // Small padding from the edge, ensure it's within the component bounds
+            const minLabelX = Math.max(drawArea.x + 2, drawArea.x + pillOptions.borderRadius / 2 + 2) ;
+            this.ctx.fillText(String(pillOptions.min), minLabelX, labelY);
+
+            // Max Label
+            this.ctx.textAlign = 'right';
+            this.ctx.textBaseline = 'middle';
+            const maxLabelX = Math.min(drawArea.x + drawArea.width - 2, drawArea.x + drawArea.width - pillOptions.borderRadius / 2 - 2);
+            this.ctx.fillText(String(pillOptions.max), maxLabelX, labelY);
+        }
+
+        // Draw Value Label
+        if (pillOptions.showValueLabel) {
+            this.ctx.font = pillOptions.labelFont; // Could be a different font, e.g., pillOptions.valueLabelFont
+            this.ctx.fillStyle = pillOptions.colors.valueText;
+            this.ctx.textAlign = 'center';
+
+            let valueLabelY;
+            const valueText = String(pillOptions.value);
+
+            switch (pillOptions.valueLabelPosition) {
+                case 'above':
+                    valueLabelY = pillY - pillOptions.cursorLengthExtension - 5; // Adjust 5 for padding
+                    this.ctx.textBaseline = 'bottom';
+                    break;
+                case 'inside':
+                    valueLabelY = pillY + pillOptions.pillHeight / 2;
+                    this.ctx.textBaseline = 'middle';
+                    // Future: Add contrast check for 'inside' text if needed
+                    break;
+                case 'below':
+                default:
+                    valueLabelY = pillY + pillOptions.pillHeight + pillOptions.cursorLengthExtension + 10; // Adjust 10 for padding
+                    this.ctx.textBaseline = 'top';
+                    break;
+            }
+            this.ctx.fillText(valueText, cursorX, valueLabelY);
+        }
     }
 }

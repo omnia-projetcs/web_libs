@@ -70,6 +70,13 @@
 
     <hr style="margin-top: 40px; margin-bottom: 40px;">
 
+    <div class="chart-container">
+        <h2>Pill Chart Example</h2>
+        <canvas id="pillChartCanvas" width="600" height="120"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
     <h2>Autosize Demo (Responsive)</h2>
     <p>Resize the container (e.g., by resizing the browser window if the container has percentage width, or drag its corner if it's made resizable with CSS) to see the chart adapt.</p>
     <div id="autosizeContainer_full" style="width: 70%; height: 350px; border: 1px solid #ccc; padding: 10px; resize: both; overflow: auto; margin-bottom: 20px;">
@@ -896,6 +903,26 @@
                 }
             };
             new PureChart('directPercentageChartCanvas', directPercentageChartConfig);
+
+            // --- Pill Chart Example from JSON ---
+            PureChart.fromJSON('pillChartCanvas', 'pill_chart_example.json')
+                .then(chart => {
+                    if (chart) {
+                        console.log("Pill chart loaded successfully from pill_chart_example.json");
+                    } else {
+                        console.error("Failed to load pill chart from pill_chart_example.json");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error loading pill chart from pill_chart_example.json:", error);
+                    const pillCanvas = document.getElementById('pillChartCanvas');
+                    if (pillCanvas && pillCanvas.getContext) {
+                        const ctx = pillCanvas.getContext('2d');
+                        ctx.clearRect(0, 0, pillCanvas.width, pillCanvas.height);
+                        ctx.font = '12px Arial'; ctx.fillStyle = 'red'; ctx.textAlign = 'center';
+                        ctx.fillText('Error loading pill chart data.', pillCanvas.width / 2, pillCanvas.height / 2);
+                    }
+                });
 
             // Line Chart with Period Highlighting Demo
             const periodHighlightChartConfig = {
