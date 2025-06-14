@@ -19,12 +19,14 @@
       "value": 75,
       "borderRadius": 20,
       "pillHeight": 40,
+      "pillBorderWidth": 2,
+      "fillLightenPercent": 70,
       "colors": {
-        "mainBackground": "#E0E0E0",
-        "zoneBackground": "#AED581",
-        "cursor": "#F44336",
-        "minMaxText": "#424242",
-        "valueText": "#212121"
+        "mainBackground": "#4A90E2",
+        "zoneBackground": "#50E3C2",
+        "cursor": "#D0021B",
+        "minMaxText": "#4A4A4A",
+        "valueText": "#2F2F2F"
       },
       "cursorThickness": 4,
       "cursorLengthExtension": 8,
