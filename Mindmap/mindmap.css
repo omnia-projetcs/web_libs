@@ -35,11 +35,12 @@ body {
 
 
 .mindmap-node {
-    position: absolute; /* All nodes are absolutely positioned */
+    position: absolute; /* All nodes are absolutely positioned - this is fine for children positioned absolutely too */
     background-color: #fff;
     border: 1px solid #ddd;
     border-radius: 5px;
-    padding: 10px 15px;
+    /* padding: 10px 15px; OLD PADDING */
+    padding: 30px 15px 10px 15px; /* Adjusted: 30px top, 15px R, 10px B, 15px L */
     min-width: 100px;
     min-height: 30px;
     box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
@@ -115,20 +116,44 @@ body {
 
 /* Styling for the collapse toggle button */
 .collapse-toggle {
+    position: absolute;
+    top: 5px;       /* Adjust as needed */
+    right: 25px;    /* Adjust to position left of delete button */
+    border: none;
+    background-color: transparent;
+    padding: 2px;   /* Minimal padding */
+    font-size: 1em; /* Adjust as needed, make it subtle */
+    font-weight: bold; /* Keep bold for clarity of +/- */
+    color: #555; /* Or a suitable subtle color */
     cursor: pointer;
-    margin-right: 8px;
-    font-weight: bold;
-    user-select: none; /* Prevent text selection on click */
-    padding: 2px 5px;
-    border-radius: 3px;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
-    display: inline-block; /* Ensure it behaves like a button */
-    line-height: 1; /* Adjust for better vertical alignment */
+    user-select: none; /* Already present, good to keep */
+    line-height: 1;    /* Already present, good to keep */
+    /* Removed previous background-color, border, margin-right, border-radius, display */
 }
 
 .collapse-toggle:hover {
-    background-color: #e0e0e0;
+    background-color: #f0f0f0; /* Subtle hover feedback, optional */
+    color: #000;
+}
+
+/* Styling for the delete node button */
+.delete-node-btn {
+    position: absolute;
+    top: 5px;        /* Align with collapse toggle's top */
+    right: 5px;       /* Furthest to the right */
+    border: none;
+    background-color: transparent;
+    padding: 2px;    /* Minimal padding */
+    font-size: 1.1em;  /* Slightly larger for 'X' or adjust as needed */
+    font-weight: bold;
+    color: #cc0000;   /* Reddish color for delete */
+    cursor: pointer;
+    line-height: 1;   /* For better vertical alignment of 'X' */
+    outline: none;
+}
+.delete-node-btn:hover {
+    background-color: #f0f0f0; /* Subtle hover feedback, optional */
+    color: #ff0000; /* Brighter red on hover */
 }
 
 
@@ -206,45 +231,3 @@ body {
   border: 2px solid #007bff !important; /* A distinct blue border, !important to override existing border */
   box-shadow: 0 0 10px rgba(0,123,255,0.5);
 }
-
-/* --- Start of Diagnostic CSS --- */
-
-#toolbar { /* Ensure toolbar itself is visible and identifiable */
-    display: flex !important;
-    position: fixed !important; /* Re-affirm fixed position */
-    top: 110px !important; /* Position below the on-page JS diagnostic log */
-    left: 0 !important;
-    width: 100% !important;
-    min-height: 40px !important; /* Ensure it has some height */
-    background-color: #fffacd !important; /* LemonChiffon - distinct background */
-    border: 3px dashed #ff4500 !important; /* OrangeRed border */
-    z-index: 99990 !important; /* High z-index, but below diag-log-container */
-    padding: 5px !important;
-    box-sizing: border-box !important;
-}
-
-#clear-mindmap-btn {
-    display: inline-block !important;
-    visibility: visible !important;
-    width: auto !important; /* Let content determine width */
-    height: auto !important; /* Let content determine height */
-    padding: 10px 15px !important; /* Make it chunky */
-    font-size: 16px !important; /* Make text large */
-    font-weight: bold !important;
-    background-color: #32cd32 !important; /* LimeGreen */
-    color: #000000 !important; /* Black text */
-    border: 3px solid #ff0000 !important; /* Bright red border */
-    z-index: 99999 !important; /* Ensure it's on top of other toolbar items if needed */
-    opacity: 1 !important;
-    margin: 5px !important; /* Add some margin to separate it */
-    cursor: pointer !important;
-}
-
-/* Optional: Make other toolbar buttons also stand out slightly less aggressively */
-/* to ensure they are not an issue, but clear-mindmap-btn is the focus */
-#toolbar button {
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-/* --- End of Diagnostic CSS --- */
