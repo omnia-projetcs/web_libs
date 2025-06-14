@@ -10,7 +10,7 @@
     },
     "width": 600,
     "height": 120,
-    "padding": { "top": 40, "right": 50, "bottom": 40, "left": 50 },
+    "padding": { "top": 20, "right": 50, "bottom": 20, "left": 50 },
     "pill": {
       "min": 0,
       "max": 100,
