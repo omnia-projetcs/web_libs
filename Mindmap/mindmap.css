@@ -3,9 +3,7 @@
 
 .mindmap-connector {
     position: absolute;
-    background-color: black;
-    height: 1px; /* Pour les lignes horizontales simples */
-    width: 1px; /* Pour les lignes verticales simples */
-    /* Le positionnement et la taille exacts seront gérés par JS */
+    background-color: black; /* Fallback, devrait être surchargé par JS */
+    /* width et height sont maintenant entièrement gérés par JavaScript */
     z-index: -1; /* Pour que les lignes soient derrière les nœuds */
 }
