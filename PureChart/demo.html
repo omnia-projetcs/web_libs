@@ -4,6 +4,35 @@
     <meta charset="UTF-8">
     <title>PureChart Demo - New Features</title>
     <link rel="stylesheet" href="PureChart.css">
+    <style>
+        .pill-chart-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start; /* Align items at the top */
+            margin-bottom: 20px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+        .pill-chart-container {
+            width: 220px; /* Slightly wider to accommodate padding and border */
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 10px;
+            text-align: center; /* Center the h4 title */
+            background-color: #f9f9f9;
+        }
+        .pill-chart-container h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1em;
+            color: #333;
+        }
+        /* Ensure canvases within flex items can shrink if needed, but also respect their attributes */
+        .pill-chart-container canvas {
+            max-width: 100%;
+            height: auto; /* Maintain aspect ratio based on width attribute */
+        }
+    </style>
 </head>
 <body>
     <h1>PureChart Demonstration - New Features</h1>
@@ -28,10 +57,19 @@
     </div>
 
     <!-- New Pill Chart with Zone Overflow and Zone Labels Demo -->
-    <div class="chart-container">
-        <h2>Example 4: Pill Chart with Zone Overflow and Enhanced Zone Labels</h2>
-        <p>This pill chart demonstrates the <code>zoneOverflowAmount</code> option for vertical zone extension, and the <code>showZoneMinMaxLabels</code> feature. It also showcases custom styling for these zone labels, including <code>zoneLabelPosition</code>, <code>zoneLabelColor</code>, <code>zoneLabelFont</code>, <code>zoneLabelOffset</code>, <code>zoneLabelBackgroundColor</code>, and <code>zoneLabelBackgroundPadding</code>.</p>
-        <canvas id="pillOverflowChartCanvas" width="700" height="200"></canvas>
+    <div class="chart-container"> <!-- Keep original h2 and p for the section -->
+        <h2>Example 4: Side-by-Side Pill Charts with Zone Labels</h2>
+        <p>These pill charts demonstrate different <code>zoneLabelPosition</code> options ('above' vs 'on') and custom styling for zone labels. They are displayed side-by-side using flexbox.</p>
+        <div class="pill-chart-row">
+            <div class="pill-chart-container">
+                <h4>Pill Chart 1 (Labels Above)</h4>
+                <canvas id="pillChartDemo1" width="200" height="120"></canvas>
+            </div>
+            <div class="pill-chart-container">
+                <h4>Pill Chart 2 (Labels On Zone)</h4>
+                <canvas id="pillChartDemo2" width="200" height="120"></canvas>
+            </div>
+        </div>
     </div>
 
     <script src="PureChart.js"></script>
@@ -372,40 +410,70 @@
             };
             new PureChart('contourChartCanvas', contourChartConfig);
 
-            // Example 4: Pill Chart with Zone Overflow
-            const pillOverflowConfig = {
+            // Pill Chart Demo 1: Labels Above
+            const pillConfig1 = {
                 type: 'pill',
-                data: {}, // Pill chart data is in options.pill
+                data: {},
                 options: {
-                    title: {
-                        display: true,
-                        text: 'Pill Chart with Zone Overflow (10px)'
-                    },
+                    // No main title for individual small charts, title is in H4
                     pill: {
                         min: 0,
                         max: 100,
-                        value: 65,
-                        zoneMin: 30,
-                        zoneMax: 70,
-                        pillHeight: 25,
-                        borderRadius: 8,
-                        zoneOverflowAmount: 10, // Makes the zone taller
-                        showZoneMinMaxLabels: true, // Show zone labels
-                        zoneLabelPosition: 'above', // Position them above the zone
-                        zoneLabelColor: '#0000CD', // MediumBlue color for zone labels
-                        zoneLabelFont: '12px Arial bold',
-                        zoneLabelOffset: 7,
-                        zoneLabelBackgroundColor: 'rgba(220, 220, 255, 0.75)', // Light blueish background
-                        zoneLabelBackgroundPadding: 3,
+                        value: 75,
+                        zoneMin: 25,
+                        zoneMax: 80,
+                        pillHeight: 20,
+                        borderRadius: 6,
+                        zoneOverflowAmount: 8,
+                        showZoneMinMaxLabels: true,
+                        zoneLabelPosition: 'above',
+                        zoneLabelFont: '10px Arial',
+                        zoneLabelColor: '#333',
+                        zoneLabelOffset: 5,
+                        zoneLabelBackgroundColor: 'rgba(230,230,230,0.7)',
+                        zoneLabelBackgroundPadding: 2,
                         colors: {
-                            mainBackground: '#f0f0f0',
-                            zoneBackground: 'rgba(75, 192, 192, 0.6)', // Teal zone
-                            cursor: '#555'
+                            mainBackground: '#e9ecef',
+                            zoneBackground: '#cfe2ff', // Light blue
+                            cursor: '#0d6efd',
+                            valueText: '#000'
                         }
                     }
                 }
             };
-            new PureChart('pillOverflowChartCanvas', pillOverflowConfig);
+            new PureChart('pillChartDemo1', pillConfig1);
+
+            // Pill Chart Demo 2: Labels On Zone
+            const pillConfig2 = {
+                type: 'pill',
+                data: {},
+                options: {
+                    pill: {
+                        min: 0,
+                        max: 200,
+                        value: 120,
+                        zoneMin: 50,
+                        zoneMax: 150,
+                        pillHeight: 20,
+                        borderRadius: 6,
+                        zoneOverflowAmount: 5,
+                        showZoneMinMaxLabels: true,
+                        zoneLabelPosition: 'on',
+                        zoneLabelFont: '9px Arial bold',
+                        zoneLabelColor: '#ffffff', // White text for on-zone
+                        zoneLabelOffset: 4, // Small offset for 'on'
+                        zoneLabelBackgroundColor: 'rgba(0,0,0,0.3)', // Slightly transparent black bg for contrast
+                        zoneLabelBackgroundPadding: 1,
+                        colors: {
+                            mainBackground: '#e9ecef',
+                            zoneBackground: '#20c997', // Teal/Green
+                            cursor: '#6f42c1', // Purple
+                            valueText: '#000'
+                        }
+                    }
+                }
+            };
+            new PureChart('pillChartDemo2', pillConfig2);
 
         });
     </script>

@@ -4,6 +4,34 @@
     <meta charset="UTF-8">
     <title>PureChart Demo - Full Showcase</title>
     <link rel="stylesheet" href="PureChart.css">
+    <style>
+        .pill-chart-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .pill-chart-container {
+            width: 220px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 10px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+        .pill-chart-container h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1em;
+            color: #333;
+        }
+        .pill-chart-container canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
 </head>
 <body>
     <h1>PureChart Demonstration - Full Showcase</h1>
@@ -82,6 +110,23 @@
         <h3>Pill Chart with Zone Labels</h3>
         <p>Demonstrates the <code>showZoneMinMaxLabels</code>, <code>zoneLabelPosition</code> (set to 'on' here), and related styling options for displaying values directly on the min/max zones of the pill chart.</p>
         <canvas id="pillZoneLabelsDemoCanvas" width="600" height="120"></canvas>
+    </div>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <div class="chart-container">
+      <h3>Side-by-Side Pill Charts (Full Demo)</h3>
+      <p>Demonstrating pill charts with different configurations, one loaded from JSON.</p>
+      <div class="pill-chart-row">
+        <div class="pill-chart-container">
+          <h4>Pill Chart 1 (from JSON)</h4>
+          <canvas id="pillChartFullDemo1" width="200" height="120"></canvas>
+        </div>
+        <div class="pill-chart-container">
+          <h4>Pill Chart 2 (JS Config)</h4>
+          <canvas id="pillChartFullDemo2" width="200" height="120"></canvas>
+        </div>
+      </div>
     </div>
 
     <hr style="margin-top: 40px; margin-bottom: 40px;">
@@ -918,6 +963,65 @@
             });
 
             // Percentage Chart (Direct Values) Demo
+
+            // Side-by-side Pill Charts for Full Demo
+            PureChart.fromJSON('pillChartFullDemo1', 'pill_chart_example.json')
+                .then(chart => {
+                    if (chart && chart.isValid) { // Check isValid
+                        console.log('Pill Chart 1 (Full Demo) loaded successfully from JSON.');
+                    } else {
+                        console.error('Failed to load or invalid Pill Chart 1 (Full Demo) from JSON.');
+                        const canvas = document.getElementById('pillChartFullDemo1');
+                        if (canvas && canvas.getContext) {
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0,0,canvas.width,canvas.height);
+                            ctx.font = '10px Arial'; ctx.fillStyle = 'red'; ctx.textAlign = 'center';
+                            ctx.fillText('Error loading from JSON or invalid.', canvas.width/2, canvas.height/2);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading Pill Chart 1 (Full Demo) from JSON:', error);
+                     const canvas = document.getElementById('pillChartFullDemo1');
+                        if (canvas && canvas.getContext) {
+                            const ctx = canvas.getContext('2d');
+                            ctx.clearRect(0,0,canvas.width,canvas.height);
+                            ctx.font = '10px Arial'; ctx.fillStyle = 'red'; ctx.textAlign = 'center';
+                            ctx.fillText('Catch: Error loading from JSON.', canvas.width/2, canvas.height/2);
+                        }
+                });
+
+            new PureChart('pillChartFullDemo2', {
+                type: 'pill',
+                data: {},
+                options: {
+                    pill: {
+                        min: 10, max: 90, value: 50,
+                        zoneMin: 25, zoneMax: 75,
+                        borderRadius: 5,
+                        pillHeight: 20,
+                        colors: {
+                            mainBackground: '#f8f9fa', // Lighter gray
+                            zoneBackground: '#e9ecef', // Slightly darker gray for zone
+                            cursor: '#007bff', // Blue cursor
+                            text: '#212529',
+                            minMaxText: '#495057',
+                            valueText: '#000'
+                        },
+                        zoneOverflowAmount: 5,
+                        showMinMaxLabels: true, // Show min/max like 10 and 90
+                        showValueLabel: true, // Show the current value (50)
+                        valueLabelPosition: 'above', // Show 50 above
+                        showZoneMinMaxLabels: true, // Show zone labels like 25 and 75
+                        zoneLabelPosition: 'below', // Show 25 and 75 below the pill zone
+                        zoneLabelFont: '9px sans-serif',
+                        zoneLabelColor: '#343a40',
+                        zoneLabelOffset: 3,
+                        zoneLabelBackgroundColor: 'rgba(255,255,255,0.5)'
+                    }
+                }
+            });
+
             const directPercentageChartConfig = {
                 type: "percentageDistribution",
                 data: {
