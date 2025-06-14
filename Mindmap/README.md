@@ -2,16 +2,30 @@
 
 A JavaScript library for creating and managing interactive mind maps.
 
-## Current Features (v0.1.0 - Initial Release)
+## Current Features (v0.2.0 - Styling Update)
 
 *   **Node Management:**
-    *   Create a central topic: `mindmap.addCentralTopic({ text: 'My Topic' })`
-    *   Create child nodes: `mindmap.createNode(parentNodeId, { text: 'Child Idea' })`
+    *   Create a central topic: `mindmap.addCentralTopic({ text: 'My Topic', style: {...} })`
+    *   Create child nodes: `mindmap.createNode(parentNodeId, { text: 'Child Idea', style: {...} })\`
     *   Get node data: `mindmap.getNodeById(nodeId)`
-    *   Update node text: `mindmap.updateNode(nodeId, { text: 'New Text' })` (also via double-click on a node)
+    *   Update node text and style: `mindmap.updateNode(nodeId, { text: 'New Text', style: {...} })` (text also via double-click)
     *   Remove nodes (and their children recursively): `mindmap.removeNode(nodeId)`
+*   **Node Styling (via `style` object on nodes):**
+    *   `backgroundColor`: Background color (e.g., `'#RRGGBB'`, `'white'`). Default: `'#f8f9fa'`.
+    *   `textColor`: Text color. Default: `'#212529'`.
+    *   `borderColor`: Border color. Default: `'#ced4da'`.
+    *   `borderWidth`: Border width (e.g., `'2px'`, `2`). Default: `'2px'`.
+    *   `borderStyle`: Border style (e.g., `'solid'`, `'dashed'`). Default: `'solid'`.
+    *   `fontSize`: Font size (e.g., `'1.2em'`, `'16px'`). Default: `'1em'`.
+    *   `fontWeight`: Font weight (e.g., `'bold'`, `'normal'`). Default: `'normal'`.
+    *   `fontFamily`: Font family (e.g., `'Arial, sans-serif'`). Default: `'sans-serif'`.
+    *   `borderRadius`: Border radius for rounded corners (e.g., `'10px'`, `10`). Default: `'6px'`.
+    *   `padding`: Padding inside the node (e.g., `'10px 15px'`). Default: `'12px 18px'`.
+*   **Connector Styling (via `options` in `Mindmap` constructor):**
+    *   `connectorColor`: Color of the connector lines. Default: `'black'`.
+    *   `connectorWidth`: Width/thickness of connector lines in pixels. Default: `1`.
 *   **Basic Rendering:**
-    *   Nodes are rendered as simple divs.
+    *   Nodes are rendered as styled divs.
     *   Connectors (straight lines) are drawn between parent and child nodes.
 
 ## Setup
@@ -31,53 +45,86 @@ A JavaScript library for creating and managing interactive mind maps.
 4.  Initialize the library in a script:
     ```javascript
     document.addEventListener('DOMContentLoaded', () => {
-        const mindmap = new Mindmap('myMindmapContainer'); // Use the ID of your container
+        // Example: Initialize with custom connector styles
+        const mindmap = new Mindmap('myMindmapContainer', {
+            connectorColor: 'gray',
+            connectorWidth: 2
+        });
 
-        // Add a central topic
-        const central = mindmap.addCentralTopic({ text: 'Main Idea' });
+        // Add a central topic with custom style
+        const central = mindmap.addCentralTopic({
+            text: 'Main Idea (Styled)',
+            style: {
+                backgroundColor: '#007bff',
+                textColor: 'white',
+                borderColor: '#0056b3',
+                borderWidth: '3px', // or just 3
+                borderRadius: '10px', // or just 10
+                fontSize: '1.2em',
+                padding: '15px 20px',
+                fontWeight: 'bold'
+            }
+        });
 
-        // Add child nodes
+        // Add child nodes with different styles
         if (central) {
-            const child1 = mindmap.createNode(central.id, { text: 'Concept 1' });
-            const child2 = mindmap.createNode(central.id, { text: 'Concept 2 (Dbl-Click Me!)' });
+            const child1Style = {
+                backgroundColor: '#28a745',
+                textColor: 'white',
+                borderRadius: '50px',
+                borderColor: 'darkgreen',
+                fontFamily: 'Courier New, monospace'
+            };
+            const child1 = mindmap.createNode(central.id, { text: 'Concept 1 (Green & Rounded)', style: child1Style });
+
+            const child2Style = {
+                backgroundColor: '#ffc107',
+                textColor: '#333',
+                borderColor: '#e0a800',
+                borderStyle: 'dashed',
+                borderWidth: '2px'
+            };
+            const child2 = mindmap.createNode(central.id, { text: 'Concept 2 (Yellow & Dashed)', style: child2Style });
 
             if (child1) {
-                mindmap.createNode(child1.id, { text: 'Sub-Concept 1.1' });
+                mindmap.createNode(child1.id, { text: 'Sub-Concept 1.1 (Default Style)' });
             }
-            if (child2) {
-                const child2_1 = mindmap.createNode(child2.id, { text: 'Sub-Concept 2.1' });
-                if (child2_1) {
-                     mindmap.createNode(child2_1.id, { text: 'Sub-Sub-Concept 2.1.1 (Dbl-Click Me!)' });
-                }
-            }
-            mindmap.createNode(central.id, { text: 'Concept 3' });
         }
 
-        // Example of using other functions:
-        // To remove a node (e.g., child2 and its children):
+        // Example of updating a node's style programmatically:
         // setTimeout(() => {
-        // if (child2) mindmap.removeNode(child2.id);
+        //   if (child1) {
+        //     mindmap.updateNode(child1.id, {
+        //       style: { backgroundColor: '#dc3545', textColor: 'white', borderColor: 'darkred' }
+        //     });
+        //   }
         // }, 5000);
 
-        // To update a node programmatically:
+        // Example of removing a node:
         // setTimeout(() => {
-        // if (child1) mindmap.updateNode(child1.id, { text: 'Updated Concept 1' });
-        // }, 3000);
+        //   if (child2) mindmap.removeNode(child2.id);
+        // }, 7000);
     });
     ```
 
 ## How to Use `index.html` Demo
 
 *   Open `Mindmap/index.html` in your browser.
-*   A sample mind map will be created.
-*   **Double-click** on any node to edit its text.
-*   The demo script in `mindmap.js` currently removes some nodes automatically after a few seconds to demonstrate the `removeNode` functionality. You can comment this out in `mindmap.js` if you want to interact with the map longer.
+*   The demo page starts with an empty mind map.
+*   Use the controls provided to:
+    *   Set node text and various style properties (background color, text color, border color, border radius) before adding a new node.
+    *   Add a central topic or child nodes.
+    *   Select a node to see its current style properties reflected in the input fields.
+    *   Update the style of the selected node.
+    *   Set connector color and width, then click "Re-initialize Map with New Connector Styles" to clear the map and apply these styles to new connectors (for existing connectors to change, the map would need a full redraw or re-add nodes).
+*   **Double-click** on any node to edit its text directly.
 
 ## Future Development
 
-This is a very basic version. Future enhancements will include:
-*   Advanced styling for nodes and connectors.
+This is a basic version. Future enhancements will include:
+*   More advanced connector styling (e.g., dashed, dotted lines directly via options).
+*   More shapes for nodes.
 *   Drag-and-drop node manipulation.
-*   Zoom and pan.
-*   Import/Export features.
+*   Zoom and pan functionality.
+*   Import/Export features (e.g., JSON).
 *   And much more from the initial specification!

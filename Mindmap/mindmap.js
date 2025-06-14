@@ -8,12 +8,14 @@ class MindmapNode {
         this.parentId = parentId;
         this.children = children; // Array of child node IDs
         this.position = position; // { x, y }
-        this.style = style; // { shape: 'rectangle', backgroundColor: '#fff', ... }
+        // style can include: backgroundColor, borderColor, borderWidth, borderStyle, textColor,
+        // fontSize, fontWeight, fontFamily, borderRadius, padding, shape (for future use), etc.
+        this.style = style;
     }
 }
 
 class Mindmap {
-    constructor(containerId) {
+    constructor(containerId, options = {}) { // Added options parameter
         this.container = document.getElementById(containerId);
         if (!this.container) {
             console.error('Mindmap container not found:', containerId);
@@ -21,7 +23,16 @@ class Mindmap {
         }
         this.nodes = new Map(); // Stores MindmapNode objects, keyed by nodeId
         this.nodeCounter = 0; // Simple ID generator
-        console.log('Mindmap initialized for container:', containerId);
+
+        // Default connector style options
+        this.options = {
+            connectorColor: (options && options.connectorColor) || 'black',
+            connectorWidth: (options && options.connectorWidth !== undefined) ? options.connectorWidth : 1, // in pixels
+            // Future options: connectorStyle: (options && options.connectorStyle) || 'solid',
+            ...options // Allow overriding other options if needed
+        };
+
+        console.log('Mindmap initialized for container:', containerId, 'with options:', this.options);
     }
 
     _generateId() {
@@ -75,6 +86,12 @@ class Mindmap {
         const connectorElement = document.createElement('div');
         connectorElement.id = connectorId;
         connectorElement.classList.add('mindmap-connector');
+
+        // Apply styles from options
+        connectorElement.style.backgroundColor = this.options.connectorColor;
+        // The height of the div is used for the thickness of the line before rotation
+        connectorElement.style.height = this.options.connectorWidth + 'px';
+
         const pRect = document.getElementById(parentNode.id).getBoundingClientRect();
         const cRect = document.getElementById(childNode.id).getBoundingClientRect();
         const containerRect = this.container.getBoundingClientRect();
@@ -84,8 +101,9 @@ class Mindmap {
         const cCenterY = cRect.top - containerRect.top;
         const angle = Math.atan2(cCenterY - pCenterY, cCenterX - pCenterX) * 180 / Math.PI;
         const length = Math.sqrt(Math.pow(cCenterX - pCenterX, 2) + Math.pow(cCenterY - pCenterY, 2));
+
         connectorElement.style.width = length + 'px';
-        connectorElement.style.height = '1px';
+        // Height (thickness) is already set from this.options.connectorWidth
         connectorElement.style.left = pCenterX + 'px';
         connectorElement.style.top = pCenterY + 'px';
         connectorElement.style.transformOrigin = '0 0';
@@ -102,15 +120,20 @@ class Mindmap {
         nodeElement.style.top = node.position.y + 'px';
         nodeElement.style.zIndex = 1;
 
-        if(node.style && node.style.backgroundColor) {
-            nodeElement.style.backgroundColor = node.style.backgroundColor;
-        }
-        if(node.style && node.style.color) {
-            nodeElement.style.color = node.style.color;
-        }
+        const style = node.style || {};
+        nodeElement.style.backgroundColor = style.backgroundColor || '#f8f9fa';
+        nodeElement.style.color = style.textColor || '#212529';
+        nodeElement.style.borderColor = style.borderColor || '#ced4da';
+        nodeElement.style.borderWidth = style.borderWidth ? (typeof style.borderWidth === 'number' ? style.borderWidth + 'px' : style.borderWidth) : '2px';
+        nodeElement.style.borderStyle = style.borderStyle || 'solid';
+        nodeElement.style.fontSize = style.fontSize || '1em';
+        nodeElement.style.fontWeight = style.fontWeight || 'normal';
+        nodeElement.style.fontFamily = style.fontFamily || 'sans-serif';
+        nodeElement.style.borderRadius = style.borderRadius ? (typeof style.borderRadius === 'number' ? style.borderRadius + 'px' : style.borderRadius) : '6px';
+        nodeElement.style.padding = style.padding || '12px 18px';
+
         this.container.appendChild(nodeElement);
 
-        // Add event listener for double-click to edit text
         nodeElement.addEventListener('dblclick', () => {
             const newText = prompt('Enter new text for node:', node.text);
             if (newText !== null && newText.trim() !== '') {
@@ -171,14 +194,32 @@ class Mindmap {
         if (updatedData.text !== undefined) {
             nodeToUpdate.text = updatedData.text;
         }
-        // Could be extended for other properties (style, position, etc.)
+        if (updatedData.style) {
+            nodeToUpdate.style = { ...nodeToUpdate.style, ...updatedData.style };
+            console.log("Node style data updated:", nodeId, nodeToUpdate.style);
+        }
 
         const nodeElement = document.getElementById(nodeId);
         if (nodeElement) {
-            nodeElement.textContent = nodeToUpdate.text; // Update display
-            console.log("Node text updated in DOM:", nodeId);
+            if (updatedData.text !== undefined) {
+                 nodeElement.textContent = nodeToUpdate.text;
+                 console.log("Node text updated in DOM:", nodeId);
+            }
+            if (updatedData.style || nodeToUpdate.style) {
+                const styleToApply = nodeToUpdate.style || {};
+                nodeElement.style.backgroundColor = styleToApply.backgroundColor || '';
+                nodeElement.style.color = styleToApply.textColor || '';
+                nodeElement.style.borderColor = styleToApply.borderColor || '';
+                nodeElement.style.borderWidth = styleToApply.borderWidth ? (typeof styleToApply.borderWidth === 'number' ? styleToApply.borderWidth + 'px' : styleToApply.borderWidth) : '';
+                nodeElement.style.borderStyle = styleToApply.borderStyle || '';
+                nodeElement.style.fontSize = styleToApply.fontSize || '';
+                nodeElement.style.fontWeight = styleToApply.fontWeight || '';
+                nodeElement.style.fontFamily = styleToApply.fontFamily || '';
+                nodeElement.style.borderRadius = styleToApply.borderRadius ? (typeof styleToApply.borderRadius === 'number' ? styleToApply.borderRadius + 'px' : styleToApply.borderRadius) : '';
+                nodeElement.style.padding = styleToApply.padding || '';
+                console.log("Node style updated in DOM:", nodeId);
+            }
         } else {
-            // If the node isn't currently rendered (e.g., if rendering is partial or virtualized)
             console.log("Node data updated (not rendered):", nodeId);
         }
         return nodeToUpdate;
