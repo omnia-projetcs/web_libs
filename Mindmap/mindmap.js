@@ -23,6 +23,7 @@ class Mindmap {
         }
         this.nodes = new Map(); // Stores MindmapNode objects, keyed by nodeId
         this.nodeCounter = 0; // Simple ID generator
+        this.currentNodeStyle = {}; // Style for the currently selected node
 
         // Default connector style options
         this.options = {
@@ -65,7 +66,13 @@ class Mindmap {
             x: parentPosition.x,
             y: parentPosition.y + 70 + (childrenCount * 60)
         };
-        const newNode = new MindmapNode(nodeId, nodeData.text, parentNodeId, [], newNodePosition, nodeData.style);
+
+        let styleForNewNode = nodeData.style;
+        if (!styleForNewNode || Object.keys(styleForNewNode).length === 0) {
+            styleForNewNode = { ...this.currentNodeStyle };
+        }
+
+        const newNode = new MindmapNode(nodeId, nodeData.text, parentNodeId, [], newNodePosition, styleForNewNode);
         this.nodes.set(nodeId, newNode);
         parentNode.children.push(nodeId);
         console.log('Node created:', newNode, 'as child of', parentNodeId);
@@ -215,6 +222,7 @@ class Mindmap {
         }
         if (updatedData.style) {
             nodeToUpdate.style = { ...nodeToUpdate.style, ...updatedData.style };
+            this.currentNodeStyle = { ...nodeToUpdate.style }; // Update currentNodeStyle
             console.log("Node style data updated:", nodeId, nodeToUpdate.style);
         }
 
