@@ -625,6 +625,18 @@ class PureChart {
             }
             if (!this.isValid) return;
             // Note: Default axis/legend display for bar/line is true, so no specific overrides here unless intended.
+            // START OF MODIFICATION: Default axis display for bar/line charts
+            if (this.config.options.xAxis.display === undefined) {
+                this.config.options.xAxis.display = true;
+            }
+            if (this.config.options.yAxes && Array.isArray(this.config.options.yAxes)) {
+                this.config.options.yAxes.forEach(axis => {
+                    if (axis.display === undefined) {
+                        axis.display = true;
+                    }
+                });
+            }
+            // END OF MODIFICATION
         }
     }
 
