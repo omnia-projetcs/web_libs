@@ -519,8 +519,10 @@
                     theme: 'dark', 
                     title: { text: "Quarterly Product Performance (Dark Theme)" },
                     legend: { display: true, position: 'top' },
-                    xAxis: { display: true, title: "Quarters", displayTitle: true },
-                    yAxes: [{ display: true, title: "Units Sold", displayTitle: true }],
+                    // For bar/line charts, axes display by default if not specified.
+                    // xAxis.display and yAxes[0].display are not set here, so they will be visible.
+                    xAxis: { title: "Quarters", displayTitle: true },
+                    yAxes: [{ title: "Units Sold", displayTitle: true }],
                     annotations: [{
                         type: 'line',
                         mode: 'horizontal',
@@ -1140,6 +1142,58 @@
                 }
             };
             new PureChart('periodHighlightChartCanvas', periodHighlightChartConfig);
+
+            // --- Zero Trimming Demo ---
+            const zeroTrimDemoContainer = document.createElement('div');
+            zeroTrimDemoContainer.className = 'chart-container';
+            zeroTrimDemoContainer.innerHTML = `
+                <hr style="margin-top: 40px; margin-bottom: 40px;">
+                <h2>Data Trimming with <code>showLeadingTrailingZeroes</code></h2>
+                <p>The first chart uses the default behavior (<code>showLeadingTrailingZeroes: false</code>), trimming leading/trailing zeroes. The second chart explicitly sets <code>showLeadingTrailingZeroes: true</code>.</p>
+                <h3>Default Trimming (<code>showLeadingTrailingZeroes: false</code>)</h3>
+                <canvas id="zeroTrimDefaultCanvas" width="700" height="350"></canvas>
+                <h3 style="margin-top: 30px;">No Trimming (<code>showLeadingTrailingZeroes: true</code>)</h3>
+                <canvas id="zeroTrimExplicitShowCanvas" width="700" height="350"></canvas>
+            `;
+            document.body.insertBefore(zeroTrimDemoContainer, document.querySelector('script[src="PureChart.js"]').nextSibling); // Insert before the main script
+
+            const zeroTrimData = {
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
+                datasets: [
+                    {
+                        label: "Product Alpha",
+                        values: [0, 0, 10, 15, 20, 0, 0],
+                        borderColor: "rgba(255, 99, 132, 1)",
+                        tension: 0.1,
+                        fill: false
+                    },
+                    {
+                        label: "Product Beta",
+                        type: 'bar',
+                        values: [0, 5, 12, 18, 0, 0, 0],
+                        backgroundColor: "rgba(54, 162, 235, 0.6)"
+                    }
+                ]
+            };
+
+            new PureChart('zeroTrimDefaultCanvas', {
+                type: 'line',
+                data: JSON.parse(JSON.stringify(zeroTrimData)), // Use a copy
+                options: {
+                    title: { text: "Zeroes Trimmed (Default)" },
+                    // showLeadingTrailingZeroes: false is default
+                }
+            });
+
+            new PureChart('zeroTrimExplicitShowCanvas', {
+                type: 'line',
+                data: JSON.parse(JSON.stringify(zeroTrimData)), // Use a copy
+                options: {
+                    title: { text: "Zeroes Shown (showLeadingTrailingZeroes: true)" },
+                    showLeadingTrailingZeroes: true
+                }
+            });
+
         });
     </script>
 </body>
