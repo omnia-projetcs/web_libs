@@ -415,11 +415,21 @@ class PureChart {
         const originalDatasets = this.config.data.datasets;
         const options = this.config.options;
 
-        // If option is true (show zeroes), or not bar/line type, or no data, return original
-        if (options.showLeadingTrailingZeroes ||
-            (this.config.type !== 'bar' && this.config.type !== 'line' && !originalDatasets.some(ds => ds.type === 'bar' || ds.type === 'line')) ||
-            !originalLabels || originalLabels.length === 0 ||
-            !originalDatasets || originalDatasets.length === 0) {
+        // If option is true (show zeroes), return original
+        if (options.showLeadingTrailingZeroes) {
+            return { labels: originalLabels, datasets: originalDatasets };
+        }
+
+        // Check if trimming applies to this chart type
+        const isBarOrLineType = this.config.type === 'bar' || this.config.type === 'line' ||
+                                (Array.isArray(originalDatasets) && originalDatasets.some(ds => ds.type === 'bar' || ds.type === 'line'));
+
+        if (!isBarOrLineType) {
+            return { labels: originalLabels, datasets: originalDatasets };
+        }
+
+        // If no labels or no datasets (after confirming it's a type that should have them for trimming), return original
+        if (!originalLabels || originalLabels.length === 0 || !Array.isArray(originalDatasets) || originalDatasets.length === 0) {
             return {
                 labels: originalLabels,
                 datasets: originalDatasets
