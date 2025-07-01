@@ -135,6 +135,9 @@
                         display: true,
                         position: 'top'
                     },
+                    // For bar/line charts, xAxis and yAxes will display by default
+                    // if their 'display' property is not specified.
+                    // Here, neither xAxis nor yAxis have 'display' set, so they will be visible.
                     yAxis: {
                         displayTitle: true,
                         title: 'Count / Percentage'
@@ -493,7 +496,7 @@
 
             // --- Test Cases for showLeadingTrailingZeroes ---
             const trimmingTestContainer = document.createElement('div');
-            trimmingTestContainer.innerHTML = '<h2>Zero Trimming Tests (showLeadingTrailingZeroes: default false)</h2>';
+            trimmingTestContainer.innerHTML = '<h2>Data Trimming: `showLeadingTrailingZeroes` (default: false)</h2>';
             document.body.appendChild(trimmingTestContainer);
 
             function addChartDiv(id, title) {

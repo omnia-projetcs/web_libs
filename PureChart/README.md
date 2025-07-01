@@ -16,7 +16,8 @@ PureChart.js is a lightweight charting library with no external dependencies, de
 
 ### Key Features & Recent Updates
 
-*   **Default Hidden Axes:** For a cleaner default look, X and Y axes are now hidden by default. They can be easily enabled via `options.xAxis.display = true` and `options.yAxes[].display = true`.
+*   **Default Axis Display for Bar/Line Charts:** For `bar` and `line` chart types, X and Y axes are now displayed by default if their `display` property is not specified. To hide them, explicitly set `options.xAxis.display = false` or `options.yAxes[].display = false`. For other chart types like `percentageDistribution` or `pill`, axes generally remain hidden by default unless configured otherwise.
+*   **Trim Leading/Trailing Zeroes:** New option `options.showLeadingTrailingZeroes` (default: `false`) for bar and line charts. When `false`, continuous zero values at the beginning or end of datasets (and their corresponding X-axis labels) are automatically hidden, adjusting the chart to the relevant data range.
 *   **Enhanced Pill Chart Styling:** The Pill Chart's `zoneMin` and `zoneMax` area can now visually overflow the main pill bar using the `options.pill.zoneOverflowAmount` setting.
 *   **Global Contour Mode:** A new `options.contourColor` can be set. If a color is provided, charts (bars, lines, points) will render with a fill matching the chart's background (from the active theme) and an outline in the specified contour color, offering a distinct visual style.
 *   **Responsive Autosizing:** Charts now automatically resize to fit their parent container by default (`options.autosize = true`).
@@ -145,30 +146,50 @@ The Pill Chart is a horizontal chart designed to display a single value against 
 
 PureChart offers a wide range of options to customize its appearance and behavior. These are passed in the `options` object during chart instantiation.
 
+*   **`showLeadingTrailingZeroes`**: (Boolean, default: `false`)
+    *   Applies to `bar` and `line` chart types.
+    *   If `false` (default), continuous zero values at the beginning and/or end of all datasets (and their corresponding X-axis labels) are automatically hidden. The chart effectively zooms into the range where non-zero data exists.
+    *   If `true`, all data points and labels are shown, regardless of leading/trailing zero values.
+    *   If all data points for all datasets are zero and this option is `false`, the chart will display a "No data to display" message.
+
+    Example:
+    ```javascript
+    options: {
+        showLeadingTrailingZeroes: false, // Default behavior, can be omitted
+        // ... other options
+    }
+    ```
+    To show all data including leading/trailing zeroes:
+    ```javascript
+    options: {
+        showLeadingTrailingZeroes: true,
+        // ... other options
+    }
+    ```
+
 #### Axes Configuration (X and Y)
 
-By default, both X and Y axes are now hidden to provide a cleaner initial chart appearance. To display them, you need to explicitly enable them in your chart configuration:
+For `bar` and `line` chart types, X and Y axes are now displayed by default. If you wish to hide them, you must explicitly set their `display` property to `false`.
 
-**Example: Displaying Axes**
+**Example: Hiding an Axis for a Bar Chart**
 ```javascript
 new PureChart('myChartCanvas', {
     type: 'bar',
     data: { /* ... */ },
     options: {
         xAxis: {
-            display: true, // Shows the X-axis
+            display: false, // Hides the X-axis
             title: 'Categories'
-            // ... other xAxis options
         },
         yAxes: [{
-            display: true, // Shows this Y-axis
+            // display: true, // This Y-axis would be shown by default
             title: 'Values'
-            // ... other yAxis options for the first (or only) Y-axis
         }]
         // ... other options
     }
 });
 ```
+For other chart types like `percentageDistribution` or `pill`, axes are generally not displayed by default and would require `display: true` to be shown if applicable to that chart type.
 
 #### X-Axis Label Display
 
