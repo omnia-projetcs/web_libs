@@ -2435,9 +2435,9 @@ class PureChart {
                         let pointFillColorOption = ds.pointColor;
                         if (pointFillColorOption === undefined) {
                             if (ds.fill && ds.backgroundColor) {
-                                pointFillColorOption = ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                                pointFillColorOption = ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndexToUse % this.activePalette.defaultDatasetColors.length];
                             } else {
-                                pointFillColorOption = ds.backgroundColor || ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                                pointFillColorOption = ds.backgroundColor || ds.borderColor || this.activePalette.defaultDatasetColors[originalDsIndexToUse % this.activePalette.defaultDatasetColors.length];
                             }
                         }
                         this.ctx.fillStyle = this._resolveColor(pointFillColorOption, pointRect);
