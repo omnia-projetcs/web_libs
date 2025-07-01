@@ -491,6 +491,124 @@
             };
             new PureChart('pillChartDemo2', pillConfig2);
 
+            // --- Test Cases for showLeadingTrailingZeroes ---
+            const trimmingTestContainer = document.createElement('div');
+            trimmingTestContainer.innerHTML = '<h2>Zero Trimming Tests (showLeadingTrailingZeroes: default false)</h2>';
+            document.body.appendChild(trimmingTestContainer);
+
+            function addChartDiv(id, title) {
+                const chartDiv = document.createElement('div');
+                chartDiv.className = 'chart-container';
+                chartDiv.innerHTML = `<h3>${title}</h3><canvas id="${id}" width="600" height="300"></canvas>`;
+                trimmingTestContainer.appendChild(chartDiv);
+            }
+
+            // Test Case 1: Leading Zeroes (Default Trim)
+            addChartDiv('trimTestLeading', '1. Leading Zeroes (Trimmed)');
+            new PureChart('trimTestLeading', {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+                    datasets: [{ label: 'Sales', values: [0, 0, 10, 15, 20] }]
+                },
+                options: { title: { text: 'Leading Zeroes (Default Trim)' } } // showLeadingTrailingZeroes is false by default
+            });
+
+            // Test Case 2: Trailing Zeroes (Default Trim)
+            addChartDiv('trimTestTrailing', '2. Trailing Zeroes (Trimmed)');
+            new PureChart('trimTestTrailing', {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+                    datasets: [{ label: 'Stock', values: [10, 15, 20, 0, 0], tension: 0 }]
+                },
+                options: { title: { text: 'Trailing Zeroes (Default Trim)' } }
+            });
+
+            // Test Case 3: Leading & Trailing Zeroes (Default Trim)
+            addChartDiv('trimTestBoth', '3. Leading & Trailing Zeroes (Trimmed)');
+            new PureChart('trimTestBoth', {
+                type: 'bar',
+                data: {
+                    labels: ['A', 'B', 'C', 'D', 'E', 'F'],
+                    datasets: [{ label: 'Activity', values: [0, 0, 5, 10, 0, 0] }]
+                },
+                options: { title: { text: 'Lead/Trail Zeroes (Default Trim)' } }
+            });
+
+            // Test Case 4: Internal Zeroes (No Trim)
+            addChartDiv('trimTestInternal', '4. Internal Zeroes (Not Trimmed)');
+            new PureChart('trimTestInternal', {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+                    datasets: [{ label: 'Events', values: [5, 0, 0, 10, 12], tension: 0.1 }]
+                },
+                options: { title: { text: 'Internal Zeroes (No Trim)' } }
+            });
+
+            // Test Case 5: All Zeroes (No Data Message)
+            addChartDiv('trimTestAllZero', '5. All Zeroes (Should show "No data")');
+            new PureChart('trimTestAllZero', {
+                type: 'bar',
+                data: {
+                    labels: ['A', 'B', 'C', 'D'],
+                    datasets: [{ label: 'Empty', values: [0, 0, 0, 0] }]
+                },
+                options: { title: { text: 'All Zeroes' } }
+            });
+
+            // Test Case 6: Multiple Datasets (Conservative Trim)
+            addChartDiv('trimTestMulti', '6. Multi-Dataset Conservative Trim');
+            new PureChart('trimTestMulti', {
+                type: 'line',
+                data: {
+                    labels: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'],
+                    datasets: [
+                        { label: 'Product A', values: [0, 0, 50, 60, 0, 0], tension: 0 },
+                        { label: 'Product B', values: [0, 20, 70, 0, 0, 0], tension: 0, borderColor: 'green' }
+                    ]
+                },
+                options: { title: { text: 'Multi-Dataset Trim' } } // Expected: Q1, Q5, Q6 trimmed
+            });
+
+            // Test Case 7: Explicitly Show Zeroes
+            addChartDiv('trimTestShowZeroes', '7. Leading Zeroes (showLeadingTrailingZeroes: true)');
+            new PureChart('trimTestShowZeroes', {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+                    datasets: [{ label: 'Sales', values: [0, 0, 10, 15, 20] }]
+                },
+                options: {
+                    title: { text: 'Leading Zeroes (showLeadingTrailingZeroes: true)' },
+                    showLeadingTrailingZeroes: true
+                }
+            });
+
+             // Test Case 8: Single data point, non-zero
+             addChartDiv('trimTestSingleNonZero', '8. Single Non-Zero Point (Not Trimmed)');
+             new PureChart('trimTestSingleNonZero', {
+                 type: 'bar',
+                 data: {
+                     labels: ['A'],
+                     datasets: [{ label: 'Single', values: [10] }]
+                 },
+                 options: { title: { text: 'Single Non-Zero' } }
+             });
+
+             // Test Case 9: Single data point, zero
+             addChartDiv('trimTestSingleZero', '9. Single Zero Point (Trimmed, No Data)');
+             new PureChart('trimTestSingleZero', {
+                 type: 'bar',
+                 data: {
+                     labels: ['A'],
+                     datasets: [{ label: 'Single Zero', values: [0] }]
+                 },
+                 options: { title: { text: 'Single Zero' } }
+             });
+
+
         });
     </script>
 </body>
