@@ -257,6 +257,7 @@ class PureChart {
                         return html;
                     }
                 },
+                showLeadingTrailingZeroes: false, // ADDED: Option to control trimming of leading/trailing zeroes
                 periodHighlights: {
                     display: false, // Global toggle for showing/hiding all period highlights
                     legendLabel: "Periods", // Text for the legend item that will toggle display
@@ -407,6 +408,173 @@ class PureChart {
         this.canvas.addEventListener('click', this._boundOnCanvasClick);
 
         this._draw();
+    }
+
+    _preprocessDataForTrimming() {
+        const originalLabels = this.config.data.labels;
+        const originalDatasets = this.config.data.datasets;
+        const options = this.config.options;
+
+        // If option is true (show zeroes), or not bar/line type, or no data, return original
+        if (options.showLeadingTrailingZeroes ||
+            (this.config.type !== 'bar' && this.config.type !== 'line' && !originalDatasets.some(ds => ds.type === 'bar' || ds.type === 'line')) ||
+            !originalLabels || originalLabels.length === 0 ||
+            !originalDatasets || originalDatasets.length === 0) {
+            return {
+                labels: originalLabels,
+                datasets: originalDatasets
+            };
+        }
+
+        let commonLeadingZeros = Infinity;
+        let commonTrailingZeros = Infinity;
+        const numOriginalLabels = originalLabels.length;
+
+        const relevantDatasets = originalDatasets.filter(ds => {
+            const dsType = ds.type || this.config.type;
+            return !ds._hidden && (dsType === 'bar' || dsType === 'line');
+        });
+
+        if (relevantDatasets.length === 0) {
+            return { labels: originalLabels, datasets: originalDatasets };
+        }
+
+        let allDatasetsAreAllZeros = true;
+
+        relevantDatasets.forEach(dataset => {
+            const values = dataset.values || [];
+            if (values.length !== numOriginalLabels) {
+                // Data length mismatch, skip this dataset for trimming calculations or handle error
+                // For now, we'll be conservative and not trim if lengths are inconsistent.
+                commonLeadingZeros = 0;
+                commonTrailingZeros = 0;
+                allDatasetsAreAllZeros = false; // Cannot confirm all zeros if lengths differ
+                return; // from forEach callback
+            }
+
+            let currentLeadingZeros = 0;
+            for (let i = 0; i < values.length; i++) {
+                if (values[i] === 0 || values[i] === null || values[i] === undefined) { // Treat null/undefined as zero for trimming
+                    currentLeadingZeros++;
+                } else {
+                    allDatasetsAreAllZeros = false;
+                    break;
+                }
+            }
+             // If all values in this dataset are zero
+            if (currentLeadingZeros === values.length) {
+                // commonLeadingZeros will be updated below, don't set allDatasetsAreAllZeros to true yet,
+                // as other datasets might not be all zeros.
+            } else {
+                 allDatasetsAreAllZeros = false; // At least one dataset is not all zeros
+            }
+
+
+            let currentTrailingZeros = 0;
+            for (let i = values.length - 1; i >= 0; i--) {
+                if (values[i] === 0 || values[i] === null || values[i] === undefined) {
+                    currentTrailingZeros++;
+                } else {
+                    break;
+                }
+            }
+            commonLeadingZeros = Math.min(commonLeadingZeros, currentLeadingZeros);
+            commonTrailingZeros = Math.min(commonTrailingZeros, currentTrailingZeros);
+        });
+
+        // If all relevant datasets consist entirely of zeros
+        if (allDatasetsAreAllZeros && relevantDatasets.every(ds => (ds.values || []).every(v => v === 0 || v === null || v === undefined))) {
+             commonLeadingZeros = numOriginalLabels; // Mark all labels/data for trimming
+             commonTrailingZeros = 0; // Not needed if all are leading
+        }
+
+
+        // Ensure we don't trim everything if there's some non-zero data
+        if (commonLeadingZeros + commonTrailingZeros >= numOriginalLabels) {
+            // This condition means all data points across all datasets are zero or would be trimmed.
+            // Check if there was any non-zero data at all. If all datasets were indeed all zeros,
+            // then commonLeadingZeros would be numOriginalLabels.
+            const anyNonZeroData = relevantDatasets.some(ds => (ds.values || []).some(v => v !== 0 && v !== null && v !== undefined));
+            if (anyNonZeroData) {
+                 // This implies an issue with logic, e.g. a single data point that's non-zero would be trimmed.
+                 // Reset trimming to be safe if we are about to remove all data but there was some non-zero data.
+                 // Or, more specifically, if commonLeadingZeros is numOriginalLabels but not all data was zero.
+                 if(commonLeadingZeros === numOriginalLabels && commonTrailingZeros === 0 && !allDatasetsAreAllZeros){
+                    // This means one dataset was all zeros, making commonLeadingZeros potentially very high.
+                    // We need to re-evaluate commonLeadingZeros based on datasets that are NOT all zeros.
+                    // This complex scenario is better handled by ensuring commonLeadingZeros is not numOriginalLabels
+                    // unless *all* datasets are *all* zeros.
+                    // The current logic for allDatasetsAreAllZeros should mostly handle this.
+                    // If after trimming, no labels would remain, but there was non-zero data, don't trim.
+                    commonLeadingZeros = 0;
+                    commonTrailingZeros = 0;
+                 } else if (commonLeadingZeros + commonTrailingZeros >= numOriginalLabels && anyNonZeroData) {
+                    // Avoid trimming everything if there's at least one non-zero value somewhere
+                    commonLeadingZeros = 0;
+                    commonTrailingZeros = 0;
+                 }
+
+            } else { // All data is indeed zero
+                // Proceed to trim all, resulting in empty labels/datasets
+            }
+        }
+
+
+        if (commonLeadingZeros === Infinity) commonLeadingZeros = 0; // No datasets or error
+        if (commonTrailingZeros === Infinity) commonTrailingZeros = 0;
+
+        // Prevent trimming everything if the result would be empty but there was data
+        if (numOriginalLabels > 0 && commonLeadingZeros + commonTrailingZeros >= numOriginalLabels && numOriginalLabels > 0) {
+            // If we are about to trim all labels, but there was data.
+            // Check if it was because all data was actually zero.
+             if (!relevantDatasets.every(ds => (ds.values || []).every(v => v === 0 || v === null || v === undefined))) {
+                // Not all data was zero, so don't trim everything.
+                // This case should ideally be caught by the 'anyNonZeroData' check above.
+                // For safety, if trimming would lead to zero labels from a non-empty original set
+                // and not all data was zero, then don't trim.
+                commonLeadingZeros = 0;
+                commonTrailingZeros = 0;
+            }
+        }
+
+
+        if (commonLeadingZeros === 0 && commonTrailingZeros === 0) {
+            return { labels: originalLabels, datasets: originalDatasets };
+        }
+
+        const newLabels = originalLabels.slice(commonLeadingZeros, numOriginalLabels - commonTrailingZeros);
+
+        // Create newDatasets by deep copying and then processing
+        const newDatasets = originalDatasets.map((originalDs, index) => {
+            const newDs = JSON.parse(JSON.stringify(originalDs)); // Deep copy individual dataset
+            newDs.originalIndex = index; // Add originalIndex
+
+            // Only trim values for relevant datasets (bar/line) that were part of `relevantDatasets`
+            const isRelevant = relevantDatasets.some(rd => rd.label === newDs.label); // Check if this dataset was considered for trimming
+                                                                                    // This check needs to be more robust if labels aren't unique.
+                                                                                    // A better way is to filter originalDatasets first, then map.
+
+            if (isRelevant && newDs.values) { // Check if newDs.values exists
+                const dsType = newDs.type || this.config.type;
+                if ((dsType === 'bar' || dsType === 'line')) {
+                    if (newDs.values.length === numOriginalLabels) { // Ensure length matches before slicing
+                        newDs.values = newDs.values.slice(commonLeadingZeros, numOriginalLabels - commonTrailingZeros);
+                    } else {
+                        // Length mismatch, values remain untrimmed for this dataset
+                    }
+                }
+            }
+            return newDs;
+        });
+
+        // SMA datasets: SMAs are calculated by _preprocessDatasetValues on the original data.
+        // If their source data is trimmed visually, the SMA line might extend over blank areas.
+        // This is a known limitation of the current sequential processing.
+
+        return {
+            labels: newLabels,
+            datasets: newDatasets
+        };
     }
 
     static _debounce(func, delay) {
@@ -625,6 +793,18 @@ class PureChart {
             }
             if (!this.isValid) return;
             // Note: Default axis/legend display for bar/line is true, so no specific overrides here unless intended.
+            // START OF MODIFICATION: Default axis display for bar/line charts
+            if (this.config.options.xAxis.display === undefined) {
+                this.config.options.xAxis.display = true;
+            }
+            if (this.config.options.yAxes && Array.isArray(this.config.options.yAxes)) {
+                this.config.options.yAxes.forEach(axis => {
+                    if (axis.display === undefined) {
+                        axis.display = true;
+                    }
+                });
+            }
+            // END OF MODIFICATION
         }
     }
 
@@ -681,9 +861,13 @@ class PureChart {
         return `hsl(${hue}, 70%, 55%)`; 
     }
 
-    _getDrawingArea() {
+    _getDrawingArea(currentLabels) { // Modified to accept currentLabels
         let { top: paddingTop, right: paddingRight, bottom: paddingBottom, left: paddingLeft } = { ...this.config.options.padding };
         const options = this.config.options;
+        // currentLabels is available here if needed for padding calculations based on label count/rotation in future
+        // For example, options.xAxis.labelFont and currentLabels.length could be used to estimate space.
+        // For now, the existing logic for padding is maintained. If X-axis label density becomes an issue
+        // due to trimming, this is where adjustments based on currentLabels would be made.
         let currentTop = paddingTop;
         let currentRight = paddingRight;
         let currentBottom = paddingBottom;
@@ -825,9 +1009,41 @@ class PureChart {
         this.ctx.textBaseline = 'middle'; // Consistent baseline
         this.interactiveElements = []; // Reset for new draw
         
-        this._preprocessDatasetValues(); // Calculate SMA values etc.
+        // Process data for trimming leading/trailing zeros
+        // This returns copies, so original this.config.data is not mutated
+        const processedData = this._preprocessDataForTrimming();
+        // Store them in a way that subsequent functions in this draw cycle will use them.
+        // We'll pass `processedData.labels` and `processedData.datasets` to functions
+        // or temporarily assign them to a draw-cycle-specific context if needed.
+        // Store the processed data on the instance for access by event handlers like _onMouseMove
+        this._currentDrawingData = processedData;
 
-        this.drawArea = this._getDrawingArea();
+        if (processedData.labels && processedData.labels.length === 0 &&
+            (this.config.type === 'bar' || this.config.type === 'line' || this.config.data.datasets.some(ds => ds.type === 'bar' || ds.type === 'line')) &&
+            (this.config.options.showLeadingTrailingZeroes !== true)) { // If not explicitly true, then trimming is active (default is false)
+
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            if (this.config.options.title.display && this.config.options.title.text) this._drawTitle();
+
+            this.ctx.font = this.config.options.font || '12px Arial';
+            this.ctx.fillStyle = (this.activePalette && this.activePalette.labelColor) || '#333';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            // Consider making this message configurable or translatable if needed in a real app
+            this.ctx.fillText("No data to display", this.canvas.width / 2, this.canvas.height / 2);
+            return; // Stop further drawing
+        }
+
+
+        // SMA calculation should ideally happen *after* trimming if SMAs are to be based on trimmed data,
+        // or be aware of trimming. Given the current plan, _preprocessDatasetValues (for SMA)
+        // still uses this.config.data.datasets. This might lead to SMAs being calculated on original data.
+        // For this iteration, we'll keep SMA calculation before visual trimming effects.
+        // A more advanced solution might re-calculate SMAs on trimmed data if required.
+        this._preprocessDatasetValues(); // Calculate SMA values etc. (uses original this.config.data)
+
+        // Pass processedData.labels to _getDrawingArea if it needs to adjust padding based on label count
+        this.drawArea = this._getDrawingArea(processedData.labels);
         if (this.drawArea.width <= 0 || this.drawArea.height <= 0) { // Check for drawable area
             console.warn("PureChart Warning: Drawing area too small.");
             this.ctx.font = '12px Arial'; this.ctx.fillStyle = '#333'; this.ctx.textAlign = 'center';
@@ -835,7 +1051,8 @@ class PureChart {
             return;
         }
         if (this.config.type !== 'percentageDistribution') { // Scale needed for bar/line
-            this._calculateScale();
+            // Pass processedData.datasets to _calculateScale
+            this._calculateScale(processedData.datasets);
             if (!this.isValid) { // If scale calculation fails
                 console.error("PureChart: Scale calculation failed.");
                 this.ctx.font = '12px Arial'; this.ctx.fillStyle = 'red'; this.ctx.textAlign = 'center';
@@ -846,8 +1063,8 @@ class PureChart {
         if (this.config.options.title.display && this.config.options.title.text) this._drawTitle();
         if (this.config.type === 'percentageDistribution') this._drawPercentageBarChart();
         else { // Bar, Line, or Mixed
-            if (this.config.options.legend.display) this._drawLegend();
-            this._drawAxesAndGrid();
+            if (this.config.options.legend.display) this._drawLegend(); // _drawLegend uses this.config.data
+            this._drawAxesAndGrid(processedData.labels, processedData.datasets); // Pass processed data
             this._drawPeriodHighlights(); // Draw period highlights after grid, before data/annotations
             
             // Draw annotations if there are any yAxes and scales available
@@ -856,9 +1073,9 @@ class PureChart {
             }
             
             // Call both drawing functions. They will internally filter by type.
-            this._drawBarChart(); 
-            this._drawLineChart();
-            this._drawAverageLines();
+            this._drawBarChart(processedData.labels, processedData.datasets);
+            this._drawLineChart(processedData.labels, processedData.datasets);
+            this._drawAverageLines(processedData.datasets); // Average lines primarily need dataset values and yAxisScales
         }
 
         if (this.config.type === 'pill') {
@@ -866,17 +1083,20 @@ class PureChart {
         }
     }
 
-    _drawAverageLines() {
+    _drawAverageLines(currentDatasets) { // Modified to accept currentDatasets
         // Check if essential configurations are present.
-        // Note: this.config.options.yAxis.display is no longer directly relevant for multi-axis.
-        // We'll check for valid yAxisScales later per dataset.
-        if (!this.config.data || !this.config.data.datasets || this.config.type === 'percentageDistribution' || !this.yAxisScales) {
+        const data = { datasets: currentDatasets }; // Use passed data
+
+        if (!data || !data.datasets || this.config.type === 'percentageDistribution' || !this.yAxisScales) {
             return;
         }
         
         this.ctx.save();
 
-        this.config.data.datasets.forEach(dataset => {
+        data.datasets.forEach(dataset => { // Iterate currentDatasets
+            // dataset should have originalIndex if needed for specific styling, but avg line usually generic or per-dataset config
+            const originalDsIndexToUse = typeof dataset.originalIndex === 'number' ? dataset.originalIndex : 0; // Fallback
+
             const datasetType = dataset.type || this.config.type;
             if (dataset._hidden || datasetType === 'percentageDistribution' || datasetType === 'sma') {
                 return;
@@ -1130,8 +1350,9 @@ class PureChart {
         }
     }
 
-    _calculateScale() {
-        const { data, options } = this.config;
+    _calculateScale(currentDatasets) { // Modified to accept currentDatasets
+        const { options } = this.config; // data is now from currentDatasets
+        const data = { datasets: currentDatasets }; // Use passed datasets
         this.yAxisScales = {}; // Initialize a store for scales of each Y-axis
 
         if (!options.yAxes || !Array.isArray(options.yAxes) || options.yAxes.length === 0) {
@@ -1250,8 +1471,9 @@ class PureChart {
         }
     }
 
-    _drawAxesAndGrid() {
-        const { options, data } = this.config;
+    _drawAxesAndGrid(currentLabels, currentDatasets) { // Modified to accept currentLabels, currentDatasets
+        const { options } = this.config; // Original options
+        const data = { labels: currentLabels, datasets: currentDatasets }; // Use passed data
         this.ctx.save();
         this.ctx.lineWidth = 1;
         this.ctx.font = options.font; // Global font for context (might be overridden by axis specific)
@@ -1973,10 +2195,12 @@ class PureChart {
         return { x: xInGroup, y, w: barActualWidth > 0 ? barActualWidth : 0, h: barHeight };
     }
 
-    _drawBarChart() {
-        const { data, options: chartOptions, type: globalType } = this.config;
+    _drawBarChart(currentLabels, currentDatasets) { // Modified to accept currentLabels, currentDatasets
+        const { options: chartOptions, type: globalType } = this.config;
+        const data = { labels: currentLabels, datasets: currentDatasets }; // Use passed data
+
         if (!data.labels || data.labels.length === 0 || !data.datasets || data.datasets.length === 0) {
-            //
+            // No data to draw after potential trimming
             return;
         }
 
@@ -2016,8 +2240,9 @@ class PureChart {
                     return; // Skip drawing this bar if its Y-axis scale is invalid
                 }
 
-                // 'j' is the index within barDatasets, used for positioning bars within the group.
-                const originalDatasetIndex = data.datasets.indexOf(dataset); // Get original index for tooltips etc.
+                // 'j' is the index within barDatasets (which are filtered from currentDatasets).
+                // `dataset` here is from the filtered barDatasets, it should have `originalIndex`.
+                const originalDatasetIndexToUse = typeof dataset.originalIndex === 'number' ? dataset.originalIndex : 0; // Fallback
 
                 const value = (dataset.values && dataset.values.length > i && typeof dataset.values[i] === 'number' && !isNaN(dataset.values[i])) ? dataset.values[i] : 0;
                 const rectInGroup = this._getBarRect(value, j, i, numBarDatasets, groupDrawableWidth, yAxisScaleInfo);
@@ -2035,7 +2260,7 @@ class PureChart {
                     this.ctx.strokeStyle = globalContourColor;
                 } else {
                     // Use themed default dataset color if dataset.backgroundColor is not provided
-                    const defaultBgColor = this.activePalette.defaultDatasetColors[originalDatasetIndex % this.activePalette.defaultDatasetColors.length];
+                    const defaultBgColor = this.activePalette.defaultDatasetColors[originalDatasetIndexToUse % this.activePalette.defaultDatasetColors.length];
                     const backgroundColorOption = dataset.backgroundColor || defaultBgColor;
                     const backgroundColor = this._resolveColor(backgroundColorOption, barRect);
                     this.ctx.fillStyle = backgroundColor;
@@ -2072,7 +2297,7 @@ class PureChart {
                          }
                     }
                 }
-                this.interactiveElements.push({ type: 'bar', rect: barRect, xLabel: labelX, dataset: dataset, value: value, datasetIndex: originalDatasetIndex, pointIndex: i });
+                this.interactiveElements.push({ type: 'bar', rect: barRect, xLabel: labelX, dataset: dataset, value: value, datasetIndex: originalDatasetIndexToUse, pointIndex: i });
             });
         });
     }
@@ -2085,14 +2310,21 @@ class PureChart {
         return { cp1: { x: p1.x + t1x, y: p1.y + t1y }, cp2: { x: p2.x - t2x, y: p2.y - t2y } };
     }
 
-    _drawLineChart() {
-        const { data: d, options: o, type: globalType } = this.config; const lO = o.line;
+    _drawLineChart(currentLabels, currentDatasets) { // Modified to accept currentLabels, currentDatasets
+        const { options: o, type: globalType } = this.config; const lO = o.line;
+        // Use passed data. d.labels becomes currentLabels, d.datasets becomes currentDatasets
+        const d = { labels: currentLabels, datasets: currentDatasets };
+
         if (!d.datasets || d.datasets.length === 0) {
-            //
+            // No data to draw after potential trimming
             return;
         }
 
-        d.datasets.forEach((ds, originalDsIndex) => { // For each dataset, get original index
+        d.datasets.forEach((ds) => { // ds is from currentDatasets (processed)
+                                     // It should have an 'originalIndex' property from _preprocessDataForTrimming
+            const originalDsIndexToUse = typeof ds.originalIndex === 'number' ? ds.originalIndex : 0; // Fallback if originalIndex is missing
+
+            // ds here is from currentDatasets (processed)
             const datasetType = ds.type || globalType;
             // Draw if it's a line OR an SMA (SMAs are drawn as lines)
             if (ds._hidden || (datasetType !== 'line' && datasetType !== 'sma')) {
@@ -2117,8 +2349,8 @@ class PureChart {
             // Map values to X/Y points
             const pts = ds.values.map((v, i) => {
                 const p = this._getPointPosition(v, i, yAxisScaleInfo);
-                // Add point to interactive elements for tooltip, using originalDsIndex
-                this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: originalDsIndex, pointIndex: i }); // Translated "Index"
+            // Add point to interactive elements for tooltip, using originalDsIndexToUse
+            this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: originalDsIndexToUse, pointIndex: i }); // Translated "Index"
                 return p;
             });
 
@@ -2144,7 +2376,7 @@ class PureChart {
                     this.ctx.fillStyle = this.activePalette.backgroundColor;
                     // Stroke for the fill area will be drawn by the main line part if contour is active
                 } else {
-                    const defaultFillColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                const defaultFillColor = this.activePalette.defaultDatasetColors[originalDsIndexToUse % this.activePalette.defaultDatasetColors.length];
                     const fillBgColorOption = ds.backgroundColor || defaultFillColor;
                     this.ctx.fillStyle = this._resolveColor(fillBgColorOption, fillRect);
                 }
@@ -2159,7 +2391,7 @@ class PureChart {
                 if (globalContourColor) {
                     this.ctx.strokeStyle = globalContourColor;
                 } else {
-                    const defaultBorderColor = this.activePalette.defaultDatasetColors[originalDsIndex % this.activePalette.defaultDatasetColors.length];
+                const defaultBorderColor = this.activePalette.defaultDatasetColors[originalDsIndexToUse % this.activePalette.defaultDatasetColors.length];
                     const borderColorOption = ds.borderColor || defaultBorderColor;
                     this.ctx.strokeStyle = this._resolveColor(borderColorOption, this.drawArea);
                 }
@@ -2325,13 +2557,18 @@ class PureChart {
                     themePalette: this.activePalette
                 }; 
             } else if (bestMatch.type === 'bar' || bestMatch.type === 'point') {
-                const pointIndex = bestMatch.pointIndex;
-                const xLabel = this.config.data.labels && this.config.data.labels.length > pointIndex ?
-                               String(this.config.data.labels[pointIndex]) :
+                const pointIndex = bestMatch.pointIndex; // This is the index in the *processed* data
+
+                const activeData = this._currentDrawingData || this.config.data; // Use processed data for tooltip context
+
+                const xLabel = activeData.labels && activeData.labels.length > pointIndex ?
+                               String(activeData.labels[pointIndex]) :
                                (bestMatch.xLabel || `Index ${pointIndex}`);
 
                 let datasetsForTooltip = [];
-                (this.config.data.datasets || []).forEach((ds, dsIndex) => {
+                // Iterate over the datasets that were actually used for drawing (processed datasets)
+                (activeData.datasets || []).forEach((ds) => {
+                    // ds here is from activeData.datasets (processed), it should have originalIndex
                     if (ds._hidden) return;
 
                     const datasetType = ds.type || this.config.type;
@@ -2346,16 +2583,20 @@ class PureChart {
 
                     let resolvedColor = ds.borderColor || ds.backgroundColor;
                     if (Array.isArray(resolvedColor)) resolvedColor = resolvedColor[0];
+
+                    // ds.originalIndex should be populated by _preprocessDataForTrimming
+                    const originalIndexForPalette = typeof ds.originalIndex === 'number' ? ds.originalIndex : 0; // Fallback
+
                     if (!resolvedColor) {
                         const palette = this.activePalette || PC_LIGHT_THEME_PALETTE;
-                        resolvedColor = palette.defaultDatasetColors[dsIndex % palette.defaultDatasetColors.length];
+                        resolvedColor = palette.defaultDatasetColors[originalIndexForPalette % palette.defaultDatasetColors.length];
                     }
 
                     datasetsForTooltip.push({
                         dataset: {
-                            label: ds.label || `Dataset ${dsIndex + 1}`,
+                            label: ds.label || `Dataset ${originalIndexForPalette + 1}`,
                             color: resolvedColor, // Provide pre-resolved color
-                            originalIndex: dsIndex // For potential fallback in formatter if color is missing
+                            originalIndex: originalIndexForPalette
                             // Pass other original ds properties if formatter might need them, e.g., ds.borderColor, ds.backgroundColor
                         },
                         value: value
