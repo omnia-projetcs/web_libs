@@ -92,7 +92,7 @@ class PureChart {
                 yAxes: [{ 
                     id: 'left', // Default ID for the first axis
                     position: 'left', // Default position
-                    display: false,
+                    display: undefined, // Changed from false to undefined
                     beginAtZero: true, // If true, the Y-axis scale will include 0. Handles negative values by scaling from the data's minimum to 0 if all data is negative, or data min to data max if data is mixed (when data crosses zero) or all positive.
                     title: '', 
                     displayTitle: true, 
@@ -103,7 +103,7 @@ class PureChart {
                     color: '#666', // This will be themed later
                     sampleLabelForWidthEstimation: "-9,999.9" 
                 }],
-                xAxis: { display: false, title: '', displayTitle: true, gridLines: false, labelFont: '10px Arial', titleFont: '12px Arial bold', color: '#666' },
+                xAxis: { display: undefined, title: '', displayTitle: true, gridLines: false, labelFont: '10px Arial', titleFont: '12px Arial bold', color: '#666' }, // Changed from false to undefined
                 title: { display: true, text: '', font: '18px Arial bold', color: '#333', padding: 15 },
                 legend: { display: true, position: 'top', font: '12px Arial', color: '#333', padding: 10, markerSize: 12, markerStyle: 'square' },
                 bar: { 
@@ -420,6 +420,11 @@ class PureChart {
             return { labels: originalLabels, datasets: originalDatasets };
         }
 
+        // If there are multiple datasets, disable trimming.
+        if (Array.isArray(originalDatasets) && originalDatasets.length > 1) {
+            return { labels: originalLabels, datasets: originalDatasets };
+        }
+
         // Check if trimming applies to this chart type
         const isBarOrLineType = this.config.type === 'bar' || this.config.type === 'line' ||
                                 (Array.isArray(originalDatasets) && originalDatasets.some(ds => ds.type === 'bar' || ds.type === 'line'));
@@ -429,6 +434,7 @@ class PureChart {
         }
 
         // If no labels or no datasets (after confirming it's a type that should have them for trimming), return original
+        // This check is also important after the multi-dataset check, for the single dataset case.
         if (!originalLabels || originalLabels.length === 0 || !Array.isArray(originalDatasets) || originalDatasets.length === 0) {
             return {
                 labels: originalLabels,
