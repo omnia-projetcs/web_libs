@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function syncInputs(rangeInput, textInput, valueDisplay, isCurrency = false, isPercent = false) {
         const updateDisplay = (value) => {
             let displayVal = value;
-            if (isCurrency) displayVal += '€';
-            if (isPercent && !isCurrency) displayVal += '%'; // Avoid double % if currency is also percent (not typical)
+            if (isCurrency) displayVal ;
+            if (isPercent && !isCurrency) displayVal; // Avoid double % if currency is also percent (not typical)
              if (valueDisplay) valueDisplay.textContent = displayVal;
         };
 
@@ -135,10 +135,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Display Summary ---
     function displaySummary(summaryData) {
-        totalInvestiDisplay.textContent = summaryData.totalInvesti.toFixed(2);
-        interetsGagnesDisplay.textContent = summaryData.interetsGagnesSimulation.toFixed(2);
-        montantFinalDisplay.textContent = summaryData.montantFinalSimulation.toFixed(2);
-        montantFinalLivretDisplay.textContent = summaryData.montantFinalLivretRef.toFixed(2);
+        totalInvestiDisplay.textContent = summaryData.totalInvesti.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        interetsGagnesDisplay.textContent = summaryData.interetsGagnesSimulation.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        montantFinalDisplay.textContent = summaryData.montantFinalSimulation.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        montantFinalLivretDisplay.textContent = summaryData.montantFinalLivretRef.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
 
     // --- Render Chart ---

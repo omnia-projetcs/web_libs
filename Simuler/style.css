@@ -50,7 +50,7 @@ h1 {
 }
 
 .control-group input[type="number"].sync-input {
-    width: 60px; /* Fixed width for the number input */
+    width: 120px; /* Fixed width for the number input */
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;

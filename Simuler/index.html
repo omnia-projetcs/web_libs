@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulateur d'Investissement</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="web_libs/PureChart/PureChart.css"> <!-- Ajout du CSS de PureChart -->
+    <link rel="stylesheet" href="../PureChart/PureChart.css"> <!-- Ajout du CSS de PureChart -->
 </head>
 <body>
     <div class="container">
@@ -20,32 +20,32 @@
 
             <div class="control-group">
                 <label for="montantPourcentage">Montant investi (% du salaire) : <span id="montantPourcentageValue">10</span>%</label>
-                <input type="range" id="montantPourcentage" name="montantPourcentage" min="1" max="50" value="10">
+                <input type="range" id="montantPourcentage" name="montantPourcentage" min="1" max="100" value="10">
                 <input type="number" id="montantPourcentageText" name="montantPourcentageText" min="1" max="50" value="10" class="sync-input">
             </div>
 
             <div class="control-group">
-                <label for="salaireInitial">Salaire initial (€) : <span id="salaireInitialValue">30000</span>€</label>
-                <input type="range" id="salaireInitial" name="salaireInitial" min="10000" max="200000" step="1000" value="30000">
-                <input type="number" id="salaireInitialText" name="salaireInitialText" min="10000" max="200000" step="1000" value="30000" class="sync-input">
+                <label for="salaireInitial">Salaire initial annuel (€) : <span id="salaireInitialValue">30000</span>€</label>
+                <input type="range" id="salaireInitial" name="salaireInitial" min="0" max="200000" step="1000" value="30000">
+                <input type="number" id="salaireInitialText" name="salaireInitialText" min="0" max="200000" step="1000" value="30000" class="sync-input">
             </div>
 
             <div class="control-group">
                 <label for="augmentationSalaire">Augmentation annuelle du salaire (%) : <span id="augmentationSalaireValue">2</span>%</label>
-                <input type="range" id="augmentationSalaire" name="augmentationSalaire" min="0" max="10" step="0.1" value="2">
-                <input type="number" id="augmentationSalaireText" name="augmentationSalaireText" min="0" max="10" step="0.1" value="2" class="sync-input">
+                <input type="range" id="augmentationSalaire" name="augmentationSalaire" min="0" max="100" step="0.1" value="2">
+                <input type="number" id="augmentationSalaireText" name="augmentationSalaireText" min="0" max="100" step="0.1" value="2" class="sync-input">
             </div>
 
             <div class="control-group">
                 <label for="tauxLivret">Taux du livret de référence (%) : <span id="tauxLivretValue">2</span>%</label>
-                <input type="range" id="tauxLivret" name="tauxLivret" min="0" max="10" step="0.1" value="2">
-                <input type="number" id="tauxLivretText" name="tauxLivretText" min="0" max="10" step="0.1" value="2" class="sync-input">
+                <input type="range" id="tauxLivret" name="tauxLivret" min="0" max="40" step="0.1" value="2">
+                <input type="number" id="tauxLivretText" name="tauxLivretText" min="0" max="40" step="0.1" value="2" class="sync-input">
             </div>
 
             <div class="control-group">
                 <label for="tauxSimulation">Taux d'intérêt simulation principale (%) : <span id="tauxSimulationValue">5</span>%</label>
-                <input type="range" id="tauxSimulation" name="tauxSimulation" min="0" max="20" step="0.1" value="5">
-                <input type="number" id="tauxSimulationText" name="tauxSimulationText" min="0" max="20" step="0.1" value="5" class="sync-input">
+                <input type="range" id="tauxSimulation" name="tauxSimulation" min="0" max="100" step="0.1" value="5">
+                <input type="number" id="tauxSimulationText" name="tauxSimulationText" min="0" max="100" step="0.1" value="5" class="sync-input">
             </div>
         </div>
 
@@ -63,7 +63,7 @@
         </div>
     </div>
 
-    <script src="web_libs/PureChart/PureChart.js"></script> <!-- Ajout du JS de PureChart -->
+    <script src="../PureChart/PureChart.js"></script> <!-- Ajout du JS de PureChart -->
     <script src="script.js"></script>
 </body>
 </html>
