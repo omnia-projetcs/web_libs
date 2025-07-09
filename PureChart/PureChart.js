@@ -60,16 +60,88 @@ const PC_DARK_THEME_PALETTE = {
  
 class PureChart {
     constructor(elementId, userOptions) {
-        const canvas = document.getElementById(elementId);
-        if (!canvas || canvas.tagName !== 'CANVAS') {
+        let canvas = document.getElementById(elementId);
+
+        if (canvas && canvas.tagName === 'CANVAS') {
+            // Canvas with the given ID already exists. Remove it and create a new one.
+            const parent = canvas.parentNode;
+            const nextSibling = canvas.nextSibling;
+
+            // Store original attributes that might be needed for the new canvas
+            const originalAttributes = {};
+            if (canvas.hasAttribute('width')) {
+                originalAttributes.width = canvas.getAttribute('width');
+            }
+            if (canvas.hasAttribute('height')) {
+                originalAttributes.height = canvas.getAttribute('height');
+            }
+            // Add any other attributes you want to preserve, e.g., class, style
+            if (canvas.hasAttribute('class')) {
+                originalAttributes.class = canvas.getAttribute('class');
+            }
+            if (canvas.hasAttribute('style')) {
+                originalAttributes.style = canvas.getAttribute('style');
+            }
+
+            if (parent) {
+                parent.removeChild(canvas);
+            }
+
+            const newCanvas = document.createElement('canvas');
+            newCanvas.id = elementId;
+
+            // Apply stored attributes
+            if (originalAttributes.width) {
+                newCanvas.setAttribute('width', originalAttributes.width);
+            }
+            if (originalAttributes.height) {
+                newCanvas.setAttribute('height', originalAttributes.height);
+            }
+            if (originalAttributes.class) {
+                newCanvas.className = originalAttributes.class;
+            }
+            if (originalAttributes.style) {
+                newCanvas.style.cssText = originalAttributes.style;
+            }
+
+            if (parent) {
+                if (nextSibling) {
+                    parent.insertBefore(newCanvas, nextSibling);
+                } else {
+                    parent.appendChild(newCanvas);
+                }
+            } else {
+                // If the original canvas had no parent, this new canvas won't be in the DOM yet.
+                // This case is unusual; the user would need to append `newCanvas` manually.
+                // For robustness, we'll proceed, but PureChart might not be visible.
+                // console.warn(`PureChart: Original canvas for ID "${elementId}" had no parent. The new canvas is not attached to the DOM.`);
+            }
+            canvas = newCanvas; // Update the canvas variable to point to the new canvas
+        } else if (canvas && canvas.tagName !== 'CANVAS') {
+            // An element with the ID exists but is not a canvas. This is an error.
+            console.error(`PureChart Error: Element with id "${elementId}" exists but is not a canvas.`);
+            this.isValid = false; return;
+        } else {
+            // No element with the ID exists. Create a new canvas.
+            // This part of the logic assumes that if no element is found,
+            // the library should create one. However, the original code
+            // errors out if no canvas is found. To maintain compatibility with
+            // the original error handling for "not found", we'll let the check below handle it.
+            // If the intention is to create a canvas if one doesn't exist, that's a different feature.
+            // For now, we just ensure that *if* a canvas was found and replaced, 'canvas' points to the new one.
+        }
+
+        // Re-check canvas after potential replacement or if it was not found initially
+        if (!canvas || canvas.tagName !== 'CANVAS') { // This will catch if canvas was not found, or if replacement somehow failed
             console.error(`PureChart Error: Element with id "${elementId}" not found or is not a canvas.`);
             this.isValid = false; return;
         }
+
         this.isValid = true;
-        this.canvas = canvas;
+        this.canvas = canvas; // `canvas` now refers to the new canvas if one was created
         this.ctx = this.canvas.getContext('2d');
 
-        // Capture initial canvas dimensions from HTML attributes
+        // Capture initial canvas dimensions from HTML attributes (from the new canvas)
         this.initialCanvasWidth = this.canvas.getAttribute('width') ? parseInt(this.canvas.getAttribute('width'), 10) : 0;
         this.initialCanvasHeight = this.canvas.getAttribute('height') ? parseInt(this.canvas.getAttribute('height'), 10) : 0;
 
