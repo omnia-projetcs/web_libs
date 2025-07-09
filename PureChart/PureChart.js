@@ -112,7 +112,7 @@ class PureChart {
             if (originalAttributes.style) {
                 newCanvas.style.cssText = originalAttributes.style;
             }
-
+            
             if (parent) {
                 if (nextSibling) {
                     parent.insertBefore(newCanvas, nextSibling);
@@ -1054,7 +1054,7 @@ class PureChart {
         this.tooltipElement = document.createElement('div');
         this.tooltipElement.style.position = 'absolute'; this.tooltipElement.style.visibility = 'hidden';
         this.tooltipElement.style.pointerEvents = 'none'; this.tooltipElement.style.zIndex = '100'; // High z-index
-
+        
         // Add class and data attribute for identification
         this.tooltipElement.classList.add('purechart-tooltip');
         if (this.canvas && this.canvas.id) {
