@@ -63,7 +63,16 @@ class PureChart {
         let canvas = document.getElementById(elementId);
 
         if (canvas && canvas.tagName === 'CANVAS') {
-            // Canvas with the given ID already exists. Remove it and create a new one.
+            // Canvas with the given ID already exists.
+            // First, remove any existing tooltip associated with this elementId.
+            const existingTooltips = document.querySelectorAll(`.purechart-tooltip[data-purechart-canvas-id="${elementId}"]`);
+            existingTooltips.forEach(tt => {
+                if (tt.parentNode) {
+                    tt.parentNode.removeChild(tt);
+                }
+            });
+
+            // Now, proceed to replace the canvas element itself.
             const parent = canvas.parentNode;
             const nextSibling = canvas.nextSibling;
 
@@ -1045,6 +1054,13 @@ class PureChart {
         this.tooltipElement = document.createElement('div');
         this.tooltipElement.style.position = 'absolute'; this.tooltipElement.style.visibility = 'hidden';
         this.tooltipElement.style.pointerEvents = 'none'; this.tooltipElement.style.zIndex = '100'; // High z-index
+
+        // Add class and data attribute for identification
+        this.tooltipElement.classList.add('purechart-tooltip');
+        if (this.canvas && this.canvas.id) {
+            this.tooltipElement.setAttribute('data-purechart-canvas-id', this.canvas.id);
+        }
+
         // Apply styles from config
         const tO = this.config.options.tooltip;
         this.tooltipElement.style.backgroundColor = tO.backgroundColor; this.tooltipElement.style.color = tO.color;
