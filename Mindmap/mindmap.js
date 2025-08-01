@@ -112,28 +112,17 @@ class Mindmap {
         const controlX2 = startX + (endX - startX) / 2;
         const controlY2 = endY;
 
-        const minX = Math.min(startX, endX, controlX1, controlX2);
-        const minY = Math.min(startY, endY, controlY1, controlY2);
-        const maxX = Math.max(startX, endX, controlX1, controlX2);
-        const maxY = Math.max(startY, endY, controlY1, controlY2);
-
-        const padding = 10;
-        const svgLeft = minX - padding;
-        const svgTop = minY - padding;
-        const svgWidth = maxX - minX + padding * 2;
-        const svgHeight = maxY - minY + padding * 2;
-
-        const pathData = `M ${startX - svgLeft} ${startY - svgTop} C ${controlX1 - svgLeft} ${controlY1 - svgTop}, ${controlX2 - svgLeft} ${controlY2 - svgTop}, ${endX - svgLeft} ${endY - svgTop}`;
+        const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
 
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
         svg.id = connectorId;
         svg.classList.add('mindmap-connector');
         svg.style.position = 'absolute';
-        svg.style.left = svgLeft + 'px';
-        svg.style.top = svgTop + 'px';
-        svg.style.width = svgWidth + 'px';
-        svg.style.height = svgHeight + 'px';
+        svg.style.left = '0';
+        svg.style.top = '0';
+        svg.style.width = '100%';
+        svg.style.height = '100%';
         svg.style.zIndex = -1;
         svg.style.overflow = 'visible';
 
@@ -144,14 +133,14 @@ class Mindmap {
         path.setAttribute("fill", "none");
 
         const startCircle = document.createElementNS(svgNS, "circle");
-        startCircle.setAttribute("cx", startX - svgLeft);
-        startCircle.setAttribute("cy", startY - svgTop);
+        startCircle.setAttribute("cx", startX);
+        startCircle.setAttribute("cy", startY);
         startCircle.setAttribute("r", 3);
         startCircle.setAttribute("fill", "black");
 
         const endCircle = document.createElementNS(svgNS, "circle");
-        endCircle.setAttribute("cx", endX - svgLeft);
-        endCircle.setAttribute("cy", endY - svgTop);
+        endCircle.setAttribute("cx", endX);
+        endCircle.setAttribute("cy", endY);
         endCircle.setAttribute("r", 3);
         endCircle.setAttribute("fill", "black");
 
