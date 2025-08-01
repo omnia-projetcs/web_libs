@@ -92,56 +92,62 @@ class Mindmap {
     }
 
     _renderConnector(parentNode, childNode) {
-        console.log("[Mindmap._renderConnector] Rendering connector between:", parentNode.id, "and", childNode.id);
-        console.log("[Mindmap._renderConnector] Connector Options:", this.options);
-
         const connectorId = "conn-" + parentNode.id + "-" + childNode.id;
         const oldConnector = document.getElementById(connectorId);
         if (oldConnector) {
             oldConnector.remove();
         }
-        const connectorElement = document.createElement('div');
-        connectorElement.id = connectorId;
-        connectorElement.classList.add('mindmap-connector');
-
-        connectorElement.style.backgroundColor = this.options.connectorColor;
-        connectorElement.style.height = this.options.connectorWidth + 'px';
 
         const pRect = document.getElementById(parentNode.id).getBoundingClientRect();
         const cRect = document.getElementById(childNode.id).getBoundingClientRect();
         const containerRect = this.container.getBoundingClientRect();
 
-        const pCenterX = pRect.left - containerRect.left + pRect.width / 2;
-        const pCenterY = pRect.top - containerRect.top + pRect.height;
-        const cCenterX = cRect.left - containerRect.left + cRect.width / 2;
-        const cCenterY = cRect.top - containerRect.top;
+        const startX = pRect.right - containerRect.left;
+        const startY = pRect.top - containerRect.top + pRect.height / 2;
+        const endX = cRect.left - containerRect.left;
+        const endY = cRect.top - containerRect.top + cRect.height / 2;
 
-        const angle = Math.atan2(cCenterY - pCenterY, cCenterX - pCenterX) * 180 / Math.PI;
-        const length = Math.sqrt(Math.pow(cCenterX - pCenterX, 2) + Math.pow(cCenterY - pCenterY, 2));
+        const controlX1 = startX + (endX - startX) / 2;
+        const controlY1 = startY;
+        const controlX2 = startX + (endX - startX) / 2;
+        const controlY2 = endY;
 
-        connectorElement.style.width = length + 'px';
-        connectorElement.style.left = pCenterX + 'px';
-        connectorElement.style.top = pCenterY + 'px';
-        connectorElement.style.transformOrigin = '0 0';
-        connectorElement.style.transform = 'rotate(' + angle + 'deg)';
+        const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
 
-        console.log(`[Mindmap._renderConnector] Calculated values: length: ${length}, angle: ${angle}`);
-        console.log(`[Mindmap._renderConnector] Parent attach point (pCenterX, pCenterY relative to container): ${pCenterX}, ${pCenterY}`);
-        console.log(`[Mindmap._renderConnector] Child attach point (cCenterX, cCenterY relative to container): ${cCenterX}, ${cCenterY}`);
-        console.log("[Mindmap._renderConnector] Connector Element ID:", connectorElement.id);
-        console.log("[Mindmap._renderConnector] Applied Styles - backgroundColor:", connectorElement.style.backgroundColor);
-        console.log("[Mindmap._renderConnector] Applied Styles - height (thickness):", connectorElement.style.height);
-        console.log("[Mindmap._renderConnector] Applied Styles - width (length):", connectorElement.style.width);
-        console.log("[Mindmap._renderConnector] Applied Styles - left:", connectorElement.style.left);
-        console.log("[Mindmap._renderConnector] Applied Styles - top:", connectorElement.style.top);
-        console.log("[Mindmap._renderConnector] Applied Styles - transformOrigin:", connectorElement.style.transformOrigin);
-        console.log("[Mindmap._renderConnector] Applied Styles - transform:", connectorElement.style.transform);
-        // Note: getComputedStyle might be more accurate for zIndex if it's set in CSS, but for direct styles, this is fine.
-        // We expect z-index to be set by the .mindmap-connector CSS rule.
-        // console.log("[Mindmap._renderConnector] Applied Styles - zIndex (from CSS or inline if set):", getComputedStyle(connectorElement).zIndex);
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.id = connectorId;
+        svg.classList.add('mindmap-connector');
+        svg.style.position = 'absolute';
+        svg.style.left = '0';
+        svg.style.top = '0';
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.zIndex = -1;
 
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pathData);
+        path.setAttribute("stroke", this.options.connectorColor);
+        path.setAttribute("stroke-width", this.options.connectorWidth);
+        path.setAttribute("fill", "none");
 
-        this.container.appendChild(connectorElement);
+        const startCircle = document.createElementNS(svgNS, "circle");
+        startCircle.setAttribute("cx", startX);
+        startCircle.setAttribute("cy", startY);
+        startCircle.setAttribute("r", 3);
+        startCircle.setAttribute("fill", this.options.connectorColor);
+
+        const endCircle = document.createElementNS(svgNS, "circle");
+        endCircle.setAttribute("cx", endX);
+        endCircle.setAttribute("cy", endY);
+        endCircle.setAttribute("r", 3);
+        endCircle.setAttribute("fill", this.options.connectorColor);
+
+        svg.appendChild(path);
+        svg.appendChild(startCircle);
+        svg.appendChild(endCircle);
+
+        this.container.appendChild(svg);
     }
 
     _renderNode(node) {
