@@ -44,6 +44,16 @@ class Mindmap {
         this.selectedConnectionPoint = null;
         this.lastAddedNodeId = null;
 
+        const svgNS = "http://www.w3.org/2000/svg";
+        this.svg = document.createElementNS(svgNS, "svg");
+        this.svg.style.position = 'absolute';
+        this.svg.style.left = '0';
+        this.svg.style.top = '0';
+        this.svg.style.width = '100%';
+        this.svg.style.height = '100%';
+        this.svg.style.zIndex = -1;
+        this.container.appendChild(this.svg);
+
         console.log('Mindmap initialized for container:', containerId, 'with options:', this.options);
     }
 
@@ -74,10 +84,25 @@ class Mindmap {
         const nodeId = this._generateId();
         const parentPosition = parentNode.position;
         const childrenCount = parentNode.children.length;
-        const newNodePosition = {
+        let newNodePosition = {
             x: parentPosition.x,
-            y: parentPosition.y + 70 + (childrenCount * 60)
+            y: parentPosition.y + 100 + (childrenCount * 80)
         };
+
+        // Prevent overlapping
+        let isOverlapping = true;
+        while(isOverlapping) {
+            isOverlapping = false;
+            for (const siblingId of parentNode.children) {
+                const siblingNode = this.nodes.get(siblingId);
+                if (Math.abs(newNodePosition.x - siblingNode.position.x) < 150 && Math.abs(newNodePosition.y - siblingNode.position.y) < 80) {
+                    newNodePosition.y += 40;
+                    isOverlapping = true;
+                    break;
+                }
+            }
+        }
+
 
         let styleForNewNode = nodeData.style;
         if (!styleForNewNode || Object.keys(styleForNewNode).length === 0) {
@@ -99,9 +124,12 @@ class Mindmap {
 
     _renderConnector(parentNode, childNode) {
         const connectorId = "conn-" + parentNode.id + "-" + childNode.id;
-        const oldConnector = document.getElementById(connectorId);
-        if (oldConnector) {
-            oldConnector.remove();
+        let path = document.getElementById(connectorId);
+        if (!path) {
+            const svgNS = "http://www.w3.org/2000/svg";
+            path = document.createElementNS(svgNS, "path");
+            path.id = connectorId;
+            this.svg.appendChild(path);
         }
 
         const startPoint = document.querySelector(`.connection-point[data-node-id="${parentNode.id}"][data-side="right"]`);
@@ -124,38 +152,17 @@ class Mindmap {
         const endX = endRect.left - containerRect.left + endRect.width / 2;
         const endY = endRect.top - containerRect.top + endRect.height / 2;
 
-        console.log(`Connector from (${startX}, ${startY}) to (${endX}, ${endY})`);
-
         const controlX1 = startX + (endX - startX) / 2;
         const controlY1 = startY;
         const controlX2 = startX + (endX - startX) / 2;
         const controlY2 = endY;
 
         const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
-        console.log("Path data:", pathData);
 
-        const svgNS = "http://www.w3.org/2000/svg";
-        const svg = document.createElementNS(svgNS, "svg");
-        svg.id = connectorId;
-        svg.classList.add('mindmap-connector');
-        svg.style.position = 'absolute';
-        svg.style.left = '0';
-        svg.style.top = '0';
-        svg.style.width = '100%';
-        svg.style.height = '100%';
-        svg.style.zIndex = -1;
-        svg.style.overflow = 'visible';
-
-        const path = document.createElementNS(svgNS, "path");
         path.setAttribute("d", pathData);
-        const parentNodeStyle = parentNode.style || {};
-        path.setAttribute("stroke", parentNodeStyle.borderColor || 'black');
-        path.setAttribute("stroke-width", 2);
+        path.setAttribute("stroke", "darkblue");
+        path.setAttribute("stroke-width", 3);
         path.setAttribute("fill", "none");
-
-        svg.appendChild(path);
-
-        this.container.appendChild(svg);
     }
 
     _renderNode(node) {
@@ -398,9 +405,9 @@ class Mindmap {
 
     removeConnector(parentNodeId, childNodeId) {
         const connectorId = "conn-" + parentNodeId + "-" + childNodeId;
-        const connector = document.getElementById(connectorId);
-        if (connector) {
-            connector.remove();
+        const path = document.getElementById(connectorId);
+        if (path) {
+            path.remove();
         }
 
         const startPoint = document.querySelector(`.connection-point[data-node-id="${parentNodeId}"][data-side="right"]`);
