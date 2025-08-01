@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démo - MindMeld.js</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Lier la feuille de style de la bibliothèque -->
+    <link rel="stylesheet" href="mindmeld.css">
+</head>
+<body>
+
+    <!-- Structure HTML requise par la bibliothèque, identique à l'application originale -->
+    <div id="app-container">
+        <!-- Barre d'outils -->
+        <div id="toolbar">
+            <span class="toolbar-title">MindMeld</span>
+            <button id="import-btn" class="btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Importer
+            </button>
+            <input type="file" id="import-file" accept=".json">
+            <button id="export-btn" class="btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exporter
+            </button>
+            <div class="toolbar-group">
+                <button id="zoom-out-btn" class="btn" title="Zoom arrière">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <button id="reset-view-btn" class="btn" title="Centrer la vue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M21 22v-6h-6"/><path d="M3 11.5A9 9 0 0 1 12 3a9 9 0 0 1 9 9.5"/><path d="M21 12.5a9 9 0 0 1-9 9 9 9 0 0 1-9-9.5"/></svg>
+                </button>
+                <button id="zoom-in-btn" class="btn" title="Zoom avant">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+            </div>
+             <button id="new-map-btn" class="btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                Nouvelle Carte
+            </button>
+        </div>
+
+        <!-- Le conteneur où la bibliothèque va générer le canevas SVG -->
+        <div id="mindmap-container"></div>
+    </div>
+
+    <!-- Menu contextuel -->
+    <div id="context-menu">
+        <div class="context-menu-item" id="ctx-add-child">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Ajouter un enfant
+        </div>
+        <div class="context-menu-item" id="ctx-add-sibling">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/><path d="M16 18h3a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+            Ajouter un frère
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="ctx-edit-node">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Éditer le nœud
+        </div>
+        <div class="context-menu-item" id="ctx-delete-node" style="color: var(--danger-color);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            Supprimer le nœud
+        </div>
+    </div>
+    
+    <!-- Modale d'édition -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Éditer le Nœud</h3>
+            <div class="form-group">
+                <label for="node-text-input">Texte du nœud (utilisez [texte](url) pour les liens)</label>
+                <textarea id="node-text-input"></textarea>
+            </div>
+            <div class="form-group-inline">
+                 <label for="node-color-input">Couleur du nœud</label>
+                 <input type="color" id="node-color-input" value="#ffffff">
+            </div>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="btn">Annuler</button>
+                <button id="modal-save" class="btn btn-primary">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modale de confirmation -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="confirm-title">Confirmation</h3>
+            <p id="confirm-text">Êtes-vous sûr ?</p>
+            <div class="modal-actions">
+                <button id="confirm-cancel" class="btn">Annuler</button>
+                <button id="confirm-ok" class="btn btn-danger">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lier le script de la bibliothèque -->
+    <!-- Le script s'initialise automatiquement -->
+    <script src="mindmeld.js"></script>
+
+</body>
+</html>
