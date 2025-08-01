@@ -39,6 +39,7 @@ class Mindmap {
         // Bind methods
         this._onMouseMove = this._onMouseMove.bind(this);
         this._onMouseUp = this._onMouseUp.bind(this);
+        this._showEditModal = this._showEditModal.bind(this);
 
         this.selectedConnectionPoint = null;
 
