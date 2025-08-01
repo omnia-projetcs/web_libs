@@ -40,6 +40,8 @@ class Mindmap {
         this._onMouseMove = this._onMouseMove.bind(this);
         this._onMouseUp = this._onMouseUp.bind(this);
 
+        this.selectedConnectionPoint = null;
+
         console.log('Mindmap initialized for container:', containerId, 'with options:', this.options);
     }
 
@@ -106,6 +108,9 @@ class Mindmap {
             return;
         }
 
+        startPoint.classList.add('visible');
+        endPoint.classList.add('visible');
+
         const startRect = startPoint.getBoundingClientRect();
         const endRect = endPoint.getBoundingClientRect();
         const containerRect = this.container.getBoundingClientRect();
@@ -115,12 +120,15 @@ class Mindmap {
         const endX = endRect.left - containerRect.left + endRect.width / 2;
         const endY = endRect.top - containerRect.top + endRect.height / 2;
 
+        console.log(`Connector from (${startX}, ${startY}) to (${endX}, ${endY})`);
+
         const controlX1 = startX + (endX - startX) / 2;
         const controlY1 = startY;
         const controlX2 = startX + (endX - startX) / 2;
         const controlY2 = endY;
 
         const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
+        console.log("Path data:", pathData);
 
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
@@ -136,7 +144,8 @@ class Mindmap {
 
         const path = document.createElementNS(svgNS, "path");
         path.setAttribute("d", pathData);
-        path.setAttribute("stroke", "black");
+        const parentNodeStyle = parentNode.style || {};
+        path.setAttribute("stroke", parentNodeStyle.borderColor || 'black');
         path.setAttribute("stroke-width", 2);
         path.setAttribute("fill", "none");
 
@@ -178,6 +187,10 @@ class Mindmap {
             point.dataset.nodeId = node.id;
             point.dataset.side = side;
             point.style.backgroundColor = style.borderColor || '#ced4da';
+            point.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._onConnectionPointClick(point);
+            });
             nodeElement.appendChild(point);
         });
 
@@ -221,6 +234,13 @@ class Mindmap {
             const connectorElementToRemove = document.getElementById(connectorToRemoveId);
             if (connectorElementToRemove) {
                 connectorElementToRemove.remove();
+            }
+            // Hide connection point on parent if it has no other children
+            if (parentNode.children.length === 1) {
+                const parentConnectionPoint = document.querySelector(`.connection-point[data-node-id="${parentNode.id}"][data-side="right"]`);
+                if (parentConnectionPoint) {
+                    parentConnectionPoint.classList.remove('visible');
+                }
             }
         }
         if (nodeToRemove.parentId && this.nodes.has(nodeToRemove.parentId)) {
@@ -342,6 +362,46 @@ class Mindmap {
                     this._renderConnector(node, childNode);
                 }
             });
+        }
+    }
+
+    _onConnectionPointClick(point) {
+        if (!this.selectedConnectionPoint) {
+            this.selectedConnectionPoint = point;
+            point.classList.add('selected');
+        } else {
+            if (this.selectedConnectionPoint !== point) {
+                const startNodeId = this.selectedConnectionPoint.dataset.nodeId;
+                const endNodeId = point.dataset.nodeId;
+
+                if (startNodeId !== endNodeId) {
+                    const startNode = this.nodes.get(startNodeId);
+                    const endNode = this.nodes.get(endNodeId);
+
+                    // For simplicity, we'll assume the first selected node is the parent
+                    this._renderConnector(startNode, endNode);
+                }
+            }
+            this.selectedConnectionPoint.classList.remove('selected');
+            this.selectedConnectionPoint = null;
+        }
+    }
+
+    removeConnector(parentNodeId, childNodeId) {
+        const connectorId = "conn-" + parentNodeId + "-" + childNodeId;
+        const connector = document.getElementById(connectorId);
+        if (connector) {
+            connector.remove();
+        }
+
+        const startPoint = document.querySelector(`.connection-point[data-node-id="${parentNodeId}"][data-side="right"]`);
+        if (startPoint) {
+            startPoint.classList.remove('visible');
+        }
+
+        const endPoint = document.querySelector(`.connection-point[data-node-id="${childNodeId}"][data-side="left"]`);
+        if (endPoint) {
+            endPoint.classList.remove('visible');
         }
     }
 }
