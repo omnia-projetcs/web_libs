@@ -147,10 +147,17 @@ class Mindmap {
         const endRect = endPoint.getBoundingClientRect();
         const containerRect = this.container.getBoundingClientRect();
 
+        console.log("containerRect", containerRect);
+        console.log("startRect", startRect);
+        console.log("endRect", endRect);
+
+
         const startX = startRect.left - containerRect.left + startRect.width / 2;
         const startY = startRect.top - containerRect.top + startRect.height / 2;
         const endX = endRect.left - containerRect.left + endRect.width / 2;
         const endY = endRect.top - containerRect.top + endRect.height / 2;
+
+        console.log(`Connector from (${startX}, ${startY}) to (${endX}, ${endY})`);
 
         const controlX1 = startX + (endX - startX) / 2;
         const controlY1 = startY;
@@ -158,6 +165,7 @@ class Mindmap {
         const controlY2 = endY;
 
         const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
+        console.log("Path data:", pathData);
 
         path.setAttribute("d", pathData);
         path.setAttribute("stroke", "darkblue");
