@@ -47,9 +47,13 @@
             cursor: pointer;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        }
+
+        #addNodeBtn span {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
 
         #editModal {
@@ -124,7 +128,7 @@
     <h1>Mindmap JS Library - Advanced Styling Demo</h1>
 
     <div id="mindmapContainer">
-        <button id="addNodeBtn">+</button>
+        <button id="addNodeBtn"><span>+</span></button>
     </div>
 
     <script src="mindmap.js"></script>
