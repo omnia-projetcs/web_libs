@@ -410,4 +410,66 @@ class Mindmap {
             endPoint.classList.remove('visible');
         }
     }
+
+    _showEditModal(node) {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('editModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'editModal';
+        modal.style.position = 'fixed';
+        modal.style.left = '50%';
+        modal.style.top = '50%';
+        modal.style.transform = 'translate(-50%, -50%)';
+        modal.style.padding = '20px';
+        modal.style.backgroundColor = 'white';
+        modal.style.border = '1px solid #ccc';
+        modal.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+        modal.style.zIndex = '100';
+
+        const style = node.style || {};
+
+        modal.innerHTML = `
+            <h4>Edit Node</h4>
+            <input type="text" id="editText" value="${node.text}" placeholder="Node Text">
+            <input type="color" id="editBgColor" value="${style.backgroundColor || '#FFFFFF'}" title="Background Color">
+            <input type="color" id="editTextColor" value="${style.textColor || '#000000'}" title="Text Color">
+            <input type="text" id="editBorderColor" value="${style.borderColor || '#CCCCCC'}" placeholder="Border Color">
+            <input type="text" id="editBorderRadius" value="${style.borderRadius || '5px'}" placeholder="Border Radius">
+            <button id="updateBtn">Update</button>
+            <button id="cancelBtn">Cancel</button>
+            <button id="removeBtn">Remove</button>
+        `;
+
+        document.body.appendChild(modal);
+
+        const updateBtn = document.getElementById('updateBtn');
+        updateBtn.addEventListener('click', () => {
+            const newText = document.getElementById('editText').value;
+            const newStyle = {
+                backgroundColor: document.getElementById('editBgColor').value,
+                textColor: document.getElementById('editTextColor').value,
+                borderColor: document.getElementById('editBorderColor').value,
+                borderRadius: document.getElementById('editBorderRadius').value,
+            };
+            this.updateNode(node.id, { text: newText, style: newStyle });
+            modal.remove();
+        });
+
+        const cancelBtn = document.getElementById('cancelBtn');
+        cancelBtn.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        const removeBtn = document.getElementById('removeBtn');
+        removeBtn.addEventListener('click', () => {
+            if (confirm(`Are you sure you want to remove node "${node.text}" and all its children?`)) {
+                this.removeNode(node.id);
+            }
+            modal.remove();
+        });
+    }
 }
