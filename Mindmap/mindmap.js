@@ -204,6 +204,11 @@ class Mindmap {
             }
         });
 
+        nodeElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this._showEditModal(node);
+        });
+
         if (node.parentId && this.nodes.has(node.parentId)) {
             const parentNode = this.nodes.get(node.parentId);
             if (document.getElementById(parentNode.id) && document.getElementById(node.id)) {
