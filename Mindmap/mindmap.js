@@ -42,6 +42,7 @@ class Mindmap {
         this._showEditModal = this._showEditModal.bind(this);
 
         this.selectedConnectionPoint = null;
+        this.lastAddedNodeId = null;
 
         console.log('Mindmap initialized for container:', containerId, 'with options:', this.options);
     }
@@ -58,6 +59,7 @@ class Mindmap {
         };
         const newNode = new MindmapNode(nodeId, topicData.text, null, [], initialPosition, topicData.style);
         this.nodes.set(nodeId, newNode);
+        this.lastAddedNodeId = nodeId;
         console.log('Central topic added:', newNode);
         this._renderNode(newNode);
         return newNode;
@@ -84,6 +86,7 @@ class Mindmap {
 
         const newNode = new MindmapNode(nodeId, nodeData.text, parentNodeId, [], newNodePosition, styleForNewNode);
         this.nodes.set(nodeId, newNode);
+        this.lastAddedNodeId = nodeId;
         parentNode.children.push(nodeId);
         console.log('Node created:', newNode, 'as child of', parentNodeId);
         this._renderNode(newNode);
@@ -427,6 +430,7 @@ class Mindmap {
         modal.style.padding = '20px';
         modal.style.backgroundColor = 'white';
         modal.style.border = '1px solid #ccc';
+        modal.style.maxWidth = '300px';
         modal.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
         modal.style.zIndex = '100';
 

@@ -45,7 +45,7 @@
             border-radius: 50%;
             font-size: 36px;
             cursor: pointer;
-            box-show: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 10;
             display: flex;
             align-items: center;
@@ -109,11 +109,12 @@
                 if (mindmap.nodes.size === 0) {
                     mindmap.addCentralTopic({ text: 'Central Topic' });
                 } else {
-                    if (!selectedNodeId) {
+                    const parentId = selectedNodeId || mindmap.lastAddedNodeId;
+                    if (!parentId) {
                         alert("Please select a parent node first.");
                         return;
                     }
-                    mindmap.createNode(selectedNodeId, { text: 'New Child' });
+                    mindmap.createNode(parentId, { text: 'New Child' });
                 }
             });
 
