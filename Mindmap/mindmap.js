@@ -107,13 +107,6 @@ class Mindmap {
         const endX = cRect.left - containerRect.left;
         const endY = cRect.top - containerRect.top + cRect.height / 2;
 
-        const controlX1 = startX + (endX - startX) / 2;
-        const controlY1 = startY;
-        const controlX2 = startX + (endX - startX) / 2;
-        const controlY2 = endY;
-
-        const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
-
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
         svg.id = connectorId;
@@ -126,27 +119,15 @@ class Mindmap {
         svg.style.zIndex = -1;
         svg.style.overflow = 'visible';
 
-        const path = document.createElementNS(svgNS, "path");
-        path.setAttribute("d", pathData);
-        path.setAttribute("stroke", "black");
-        path.setAttribute("stroke-width", 2);
-        path.setAttribute("fill", "none");
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute('x1', startX);
+        line.setAttribute('y1', startY);
+        line.setAttribute('x2', endX);
+        line.setAttribute('y2', endY);
+        line.setAttribute('stroke', 'black');
+        line.setAttribute('stroke-width', 2);
 
-        const startCircle = document.createElementNS(svgNS, "circle");
-        startCircle.setAttribute("cx", startX);
-        startCircle.setAttribute("cy", startY);
-        startCircle.setAttribute("r", 3);
-        startCircle.setAttribute("fill", "black");
-
-        const endCircle = document.createElementNS(svgNS, "circle");
-        endCircle.setAttribute("cx", endX);
-        endCircle.setAttribute("cy", endY);
-        endCircle.setAttribute("r", 3);
-        endCircle.setAttribute("fill", "black");
-
-        svg.appendChild(path);
-        svg.appendChild(startCircle);
-        svg.appendChild(endCircle);
+        svg.appendChild(line);
 
         this.container.appendChild(svg);
     }
