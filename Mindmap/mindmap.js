@@ -124,6 +124,7 @@ class Mindmap {
         svg.style.width = '100%';
         svg.style.height = '100%';
         svg.style.zIndex = -1;
+        svg.style.overflow = 'visible';
 
         const path = document.createElementNS(svgNS, "path");
         path.setAttribute("d", pathData);
