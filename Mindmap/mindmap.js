@@ -156,6 +156,17 @@ class Mindmap {
 
         this.container.appendChild(nodeElement);
 
+        // Add connection points
+        const sides = ['top', 'right', 'bottom', 'left'];
+        sides.forEach(side => {
+            const point = document.createElement('div');
+            point.classList.add('connection-point');
+            point.classList.add(`connection-point-${side}`);
+            point.dataset.nodeId = node.id;
+            point.dataset.side = side;
+            nodeElement.appendChild(point);
+        });
+
         nodeElement.addEventListener('mousedown', (e) => this._onMouseDown(e, node));
 
         nodeElement.addEventListener('dblclick', (e) => {

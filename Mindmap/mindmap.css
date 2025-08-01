@@ -7,3 +7,32 @@
     z-index: -1; /* Pour que les lignes soient derrière les nœuds */
     pointer-events: none; /* Make sure the svg doesn't capture mouse events */
 }
+
+.connection-point {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: red;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.connection-point-top {
+    top: 0;
+    left: 50%;
+}
+
+.connection-point-right {
+    top: 50%;
+    left: 100%;
+}
+
+.connection-point-bottom {
+    top: 100%;
+    left: 50%;
+}
+
+.connection-point-left {
+    top: 50%;
+    left: 0;
+}
