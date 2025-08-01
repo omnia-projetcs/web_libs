@@ -15,23 +15,30 @@ class MindmapNode {
 }
 
 class Mindmap {
-    constructor(containerId, options = {}) { // Added options parameter
+    constructor(containerId, options = {}) {
         this.container = document.getElementById(containerId);
         if (!this.container) {
             console.error('Mindmap container not found:', containerId);
             return;
         }
-        this.nodes = new Map(); // Stores MindmapNode objects, keyed by nodeId
-        this.nodeCounter = 0; // Simple ID generator
-        this.currentNodeStyle = {}; // Style for the currently selected node
+        this.nodes = new Map();
+        this.nodeCounter = 0;
+        this.currentNodeStyle = {};
 
-        // Default connector style options
         this.options = {
             connectorColor: (options && options.connectorColor) || 'black',
-            connectorWidth: (options && options.connectorWidth !== undefined) ? options.connectorWidth : 1, // in pixels
-            // Future options: connectorStyle: (options && options.connectorStyle) || 'solid',
-            ...options // Allow overriding other options if needed
+            connectorWidth: (options && options.connectorWidth !== undefined) ? options.connectorWidth : 1,
+            ...options
         };
+
+        this.isDragging = false;
+        this.draggedNodeId = null;
+        this.dragStartPos = { x: 0, y: 0 };
+        this.dragStartNodePos = { x: 0, y: 0 };
+
+        // Bind methods
+        this._onMouseMove = this._onMouseMove.bind(this);
+        this._onMouseUp = this._onMouseUp.bind(this);
 
         console.log('Mindmap initialized for container:', containerId, 'with options:', this.options);
     }
@@ -145,6 +152,7 @@ class Mindmap {
         nodeElement.style.left = node.position.x + 'px';
         nodeElement.style.top = node.position.y + 'px';
         nodeElement.style.zIndex = 1;
+        nodeElement.style.cursor = 'move'; // Add move cursor
 
         const style = node.style || {};
         nodeElement.style.backgroundColor = style.backgroundColor || '#f8f9fa';
@@ -160,7 +168,10 @@ class Mindmap {
 
         this.container.appendChild(nodeElement);
 
-        nodeElement.addEventListener('dblclick', () => {
+        nodeElement.addEventListener('mousedown', (e) => this._onMouseDown(e, node));
+
+        nodeElement.addEventListener('dblclick', (e) => {
+            e.stopPropagation(); // Prevent drag from starting on dblclick
             const newText = prompt('Enter new text for node:', node.text);
             if (newText !== null && newText.trim() !== '') {
                 this.updateNode(node.id, { text: newText });
@@ -253,4 +264,72 @@ class Mindmap {
     }
 }
 
-// Demo script removed from here. It will be in index.html
+    _onMouseDown(e, node) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.isDragging = true;
+        this.draggedNodeId = node.id;
+        this.dragStartPos = { x: e.clientX, y: e.clientY };
+        this.dragStartNodePos = { x: node.position.x, y: node.position.y };
+
+        document.addEventListener('mousemove', this._onMouseMove);
+        document.addEventListener('mouseup', this._onMouseUp);
+    }
+
+    _onMouseMove(e) {
+        if (!this.isDragging) return;
+
+        const dx = e.clientX - this.dragStartPos.x;
+        const dy = e.clientY - this.dragStartPos.y;
+
+        const newX = this.dragStartNodePos.x + dx;
+        const newY = this.dragStartNodePos.y + dy;
+
+        this.updateNodePosition(this.draggedNodeId, newX, newY);
+    }
+
+    _onMouseUp(e) {
+        this.isDragging = false;
+        this.draggedNodeId = null;
+        document.removeEventListener('mousemove', this._onMouseMove);
+        document.removeEventListener('mouseup', this._onMouseUp);
+    }
+
+    updateNodePosition(nodeId, newX, newY) {
+        const node = this.nodes.get(nodeId);
+        if (!node) return;
+
+        node.position.x = newX;
+        node.position.y = newY;
+
+        const nodeElement = document.getElementById(nodeId);
+        if (nodeElement) {
+            nodeElement.style.left = newX + 'px';
+            nodeElement.style.top = newY + 'px';
+        }
+
+        this._updateConnectors(nodeId);
+    }
+
+    _updateConnectors(nodeId) {
+        const node = this.nodes.get(nodeId);
+        if (!node) return;
+
+        // Update connector to parent
+        if (node.parentId && this.nodes.has(node.parentId)) {
+            const parentNode = this.nodes.get(node.parentId);
+            this._renderConnector(parentNode, node);
+        }
+
+        // Update connectors to children
+        if (node.children && node.children.length > 0) {
+            node.children.forEach(childId => {
+                const childNode = this.nodes.get(childId);
+                if (childNode) {
+                    this._renderConnector(node, childNode);
+                }
+            });
+        }
+    }
+}
