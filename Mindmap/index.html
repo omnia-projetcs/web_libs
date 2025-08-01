@@ -130,6 +130,7 @@
     <div id="mindmapContainer">
         <button id="addNodeBtn"><span>+</span></button>
     </div>
+    <button id="testDrawLineBtn">Test Draw Line</button>
 
     <script src="mindmap.js"></script>
     <script>
@@ -182,6 +183,11 @@
                     }
                     mindmap.createNode(parentId, { text: 'New Child' });
                 }
+            });
+
+            const testDrawLineBtn = document.getElementById('testDrawLineBtn');
+            testDrawLineBtn.addEventListener('click', () => {
+                mindmap._testDrawLine();
             });
 
             console.log("Interactive demo initialized.");
