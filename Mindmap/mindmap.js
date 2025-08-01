@@ -262,7 +262,6 @@ class Mindmap {
         }
         return nodeToUpdate;
     }
-}
 
     _onMouseDown(e, node) {
         e.preventDefault();
