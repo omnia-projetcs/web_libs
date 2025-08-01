@@ -98,14 +98,29 @@ class Mindmap {
             oldConnector.remove();
         }
 
-        const pRect = document.getElementById(parentNode.id).getBoundingClientRect();
-        const cRect = document.getElementById(childNode.id).getBoundingClientRect();
+        const startPoint = document.querySelector(`.connection-point[data-node-id="${parentNode.id}"][data-side="right"]`);
+        const endPoint = document.querySelector(`.connection-point[data-node-id="${childNode.id}"][data-side="left"]`);
+
+        if (!startPoint || !endPoint) {
+            console.warn("Could not find connection points for connector");
+            return;
+        }
+
+        const startRect = startPoint.getBoundingClientRect();
+        const endRect = endPoint.getBoundingClientRect();
         const containerRect = this.container.getBoundingClientRect();
 
-        const startX = pRect.right - containerRect.left;
-        const startY = pRect.top - containerRect.top + pRect.height / 2;
-        const endX = cRect.left - containerRect.left;
-        const endY = cRect.top - containerRect.top + cRect.height / 2;
+        const startX = startRect.left - containerRect.left + startRect.width / 2;
+        const startY = startRect.top - containerRect.top + startRect.height / 2;
+        const endX = endRect.left - containerRect.left + endRect.width / 2;
+        const endY = endRect.top - containerRect.top + endRect.height / 2;
+
+        const controlX1 = startX + (endX - startX) / 2;
+        const controlY1 = startY;
+        const controlX2 = startX + (endX - startX) / 2;
+        const controlY2 = endY;
+
+        const pathData = `M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`;
 
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
@@ -119,15 +134,13 @@ class Mindmap {
         svg.style.zIndex = -1;
         svg.style.overflow = 'visible';
 
-        const line = document.createElementNS(svgNS, "line");
-        line.setAttribute('x1', startX);
-        line.setAttribute('y1', startY);
-        line.setAttribute('x2', endX);
-        line.setAttribute('y2', endY);
-        line.setAttribute('stroke', 'black');
-        line.setAttribute('stroke-width', 2);
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pathData);
+        path.setAttribute("stroke", "black");
+        path.setAttribute("stroke-width", 2);
+        path.setAttribute("fill", "none");
 
-        svg.appendChild(line);
+        svg.appendChild(path);
 
         this.container.appendChild(svg);
     }
@@ -164,6 +177,7 @@ class Mindmap {
             point.classList.add(`connection-point-${side}`);
             point.dataset.nodeId = node.id;
             point.dataset.side = side;
+            point.style.backgroundColor = style.borderColor || '#ced4da';
             nodeElement.appendChild(point);
         });
 
