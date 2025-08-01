@@ -309,7 +309,7 @@ class Mindmap {
                 nodeElement.style.borderStyle = styleToApply.borderStyle || '';
                 nodeElement.style.fontSize = styleToApply.fontSize || '';
                 nodeElement.style.fontWeight = styleToApply.fontWeight || '';
-                nodeElement.style.fontFamily = styleToApply.fontFamily || '';
+                nodeElement.style.fontFamily = styleToApply.fontFamily || 'sans-serif';
                 nodeElement.style.borderRadius = styleToApply.borderRadius ? (typeof styleToApply.borderRadius === 'number' ? styleToApply.borderRadius + 'px' : styleToApply.borderRadius) : '';
                 nodeElement.style.padding = styleToApply.padding || '';
                 console.log("Node style updated in DOM:", nodeId);
