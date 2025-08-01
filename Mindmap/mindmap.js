@@ -437,15 +437,17 @@ class Mindmap {
         const style = node.style || {};
 
         modal.innerHTML = `
+            <button id="closeBtn">&times;</button>
             <h4>Edit Node</h4>
             <input type="text" id="editText" value="${node.text}" placeholder="Node Text">
             <input type="color" id="editBgColor" value="${style.backgroundColor || '#FFFFFF'}" title="Background Color">
             <input type="color" id="editTextColor" value="${style.textColor || '#000000'}" title="Text Color">
             <input type="text" id="editBorderColor" value="${style.borderColor || '#CCCCCC'}" placeholder="Border Color">
             <input type="text" id="editBorderRadius" value="${style.borderRadius || '5px'}" placeholder="Border Radius">
-            <button id="updateBtn">Update</button>
-            <button id="cancelBtn">Cancel</button>
-            <button id="removeBtn">Remove</button>
+            <div class="modal-buttons">
+                <button id="updateBtn">Update</button>
+                <button id="removeBtn">Remove</button>
+            </div>
         `;
 
         document.body.appendChild(modal);
@@ -463,8 +465,8 @@ class Mindmap {
             modal.remove();
         });
 
-        const cancelBtn = document.getElementById('cancelBtn');
-        cancelBtn.addEventListener('click', () => {
+        const closeBtn = document.getElementById('closeBtn');
+        closeBtn.addEventListener('click', () => {
             modal.remove();
         });
 
