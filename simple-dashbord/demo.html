@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Démo - Créateur de Dashboard</title>
     
+    <!-- Intégration des CSS des bibliothèques -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/omnia-projetcs/web_libs@main/PureChart/PureChart.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/omnia-projetcs/web_libs@main/Dynamic-table/dynamic-table.css">
+
+    <!-- Scripts externes chargés dans l'en-tête pour garantir leur disponibilité -->
+    <script src="https://cdn.jsdelivr.net/gh/omnia-projetcs/web_libs@main/PureChart/PureChart.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/omnia-projetcs/web_libs@main/Dynamic-table/dynamic-table.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
     <!-- 1. Styles de la bibliothèque directement intégrés -->
     <style>
         :root {
@@ -16,7 +25,7 @@
             --border-color: #e0e0e0;
             --shadow-color: rgba(74, 144, 226, 0.15);
             --danger-color: #e94560;
-            --grid-gap: 1.5rem;
+            --grid-gap: 1rem; /* Espace réduit entre les blocs */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,33 +37,6 @@
             line-height: 1.6;
             overflow-x: hidden;
         }
-
-        header {
-            background-color: var(--surface-color);
-            padding: 1rem 2rem;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px var(--shadow-color);
-            position: sticky; top: 0; z-index: 1000;
-        }
-
-        header h1 { font-size: 1.5rem; color: var(--primary-color); margin-right: 2rem; }
-        .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-
-        .btn {
-            background-color: var(--primary-color); color: #fff; border: none;
-            padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-        }
-        .btn:hover { background-color: #357abd; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .btn-danger { background-color: var(--danger-color); }
-        .btn-danger:hover { background-color: #c73850; }
-        #import-label { display: inline-block; }
-        #import-input { display: none; }
 
         /* --- Zone de Travail en Grille --- */
         main#workspace {
@@ -80,7 +62,7 @@
             overflow: hidden;
             cursor: move;
             grid-column: span 4;
-            grid-row: span 4; /* Augmentation de la hauteur par défaut pour les vidéos */
+            grid-row: span 3; /* Taille rectangulaire par défaut */
         }
 
         .widget.dragging { opacity: 0.5; transform: scale(1.05); }
@@ -94,35 +76,73 @@
             z-index: 10; opacity: 0;
         }
         .widget:hover .widget-delete-btn { opacity: 1; }
-        .widget-delete-btn:hover { color: #fff; background-color: var(--danger-color); }
+        .widget-delete-btn:hover {
+            color: var(--danger-color);
+            background-color: transparent;
+        }
 
         .widget-content {
-            flex-grow: 1; overflow-y: auto; word-wrap: break-word;
-            margin-top: 1rem;
+            flex-grow: 1;
+            overflow: hidden; /* Hide scrollbars by default */
             display: flex;
             flex-direction: column;
         }
-        .widget-content img { max-width: 100%; height: auto; border-radius: 8px; display: block; margin: 1rem auto; }
-        .widget-content a { color: var(--primary-color); text-decoration: none; font-weight: bold; }
-        .widget-content a:hover { text-decoration: underline; }
-        .widget-content h3 { color: var(--primary-color); margin-bottom: 0.5rem; flex-shrink: 0; }
-        .widget-content svg { width: 100%; height: 100%; min-height: 150px; }
+        
+        .widget-content h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+        
+        .widget-main-content {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .widget-main-content img, 
+        .widget-main-content canvas,
+        .widget-main-content .video-container {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* For images */
+        }
+
+        .widget-main-content.table-container {
+            overflow-y: auto; /* Only tables can scroll vertically */
+        }
+        
+        /* Style pour le tableau simple */
+        .widget-main-content table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        .widget-main-content th, .widget-main-content td {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+        .widget-main-content th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        .widget-main-content tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
 
         /* Conteneur responsive pour les iframes (vidéos) */
         .video-container {
-            position: relative;
-            padding-bottom: 56.25%; /* Ratio 16:9 */
-            height: 0;
-            overflow: hidden;
-            width: 100%;
-            background: #000;
-            border-radius: 8px;
-            flex-grow: 1;
-        }
-        .video-container iframe {
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        .video-container iframe {
             width: 100%;
             height: 100%;
             border: 0;
@@ -137,6 +157,92 @@
             cursor: nwse-resize;
             z-index: 10;
         }
+
+        /* --- Menu Flottant --- */
+        #fab-container {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .fab-toggle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            box-shadow: 0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12), 0 3px 5px -1px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fab-toggle i {
+            font-size: 28px;
+            transition: transform 0.3s ease;
+        }
+
+        .fab-toggle:hover {
+            background-color: #357abd;
+        }
+        
+        .fab-toggle.active i {
+            transform: rotate(45deg);
+        }
+
+        .fab-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem; /* Espace entre les rangées */
+            margin-bottom: 1rem;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .fab-menu.hidden {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+            pointer-events: none;
+            position: absolute;
+            right: 0;
+            bottom: 60px;
+        }
+
+        .fab-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .fab-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            color: white;
+            background-color: var(--primary-color);
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fab-item i {
+            font-size: 24px;
+        }
+        .fab-item:hover {
+            background-color: #357abd;
+            transform: translateY(-2px);
+        }
+        .fab-item.btn-danger { background-color: var(--danger-color); }
+        .fab-item.btn-danger:hover { background-color: #c73850; }
 
         /* --- Modales --- */
         .modal {
@@ -158,32 +264,73 @@
             color: var(--font-color); font-size: 1rem;
         }
         .modal-content textarea { min-height: 100px; resize: vertical; }
+        
+        .modal-footer .btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+            color: white;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+        }
+        .modal-footer .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .modal-footer .btn-danger { background-color: var(--danger-color); }
+        .modal-footer .btn-danger:hover { background-color: #c73850; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+        /* --- Responsive Grid --- */
+        @media (max-width: 1200px) {
+            main#workspace {
+                grid-template-columns: repeat(8, 1fr);
+            }
+            .widget {
+                grid-column: span 4; /* 2 widgets per row */
+            }
+        }
+
         @media (max-width: 768px) {
-            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            main#workspace { padding: 1rem; grid-template-columns: repeat(4, 1fr); }
-            .widget { grid-column: span 4; }
+            #fab-container { top: 1rem; right: 1rem; }
+            main#workspace { 
+                padding: 1rem; 
+                grid-template-columns: repeat(4, 1fr);
+            }
+            .widget { 
+                grid-column: span 4; /* 1 widget per row */
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- Structure HTML requise par la bibliothèque -->
-    <header>
-        <h1>Créateur de Dashboard</h1>
-        <div class="controls">
-            <button id="new-dashboard-btn" class="btn">Nouveau Dashboard</button>
-            <button id="add-text-btn" class="btn">Ajouter Texte</button>
-            <button id="add-image-btn" class="btn">Ajouter Image</button>
-            <button id="add-video-btn" class="btn">Ajouter Vidéo</button>
-            <button id="add-link-btn" class="btn">Ajouter Lien</button>
-            <button id="add-chart-btn" class="btn">Ajouter Graphique</button>
-            <button id="save-btn" class="btn">Sauvegarder</button>
-            <label for="import-input" id="import-label" class="btn btn-danger">Importer</label>
-            <input type="file" id="import-input" accept=".json">
+    <!-- Menu Flottant -->
+    <div id="fab-container">
+        <div id="fab-menu" class="fab-menu hidden">
+            <div class="fab-row">
+                <button id="add-text-btn" class="fab-item" title="Texte"><i class="ph-bold ph-text-t"></i></button>
+                <button id="add-image-btn" class="fab-item" title="Image"><i class="ph-bold ph-image"></i></button>
+                <button id="add-link-btn" class="fab-item" title="Lien"><i class="ph-bold ph-link"></i></button>
+            </div>
+            <div class="fab-row">
+                <button id="add-video-btn" class="fab-item" title="Vidéo"><i class="ph-bold ph-video"></i></button>
+                <button id="add-chart-btn" class="fab-item" title="Graphique"><i class="ph-bold ph-chart-bar"></i></button>
+                <button id="add-table-btn" class="fab-item" title="Tableau"><i class="ph-bold ph-table"></i></button>
+            </div>
+            <div class="fab-row">
+                <button id="new-dashboard-btn" class="fab-item" title="Nouveau"><i class="ph-bold ph-file"></i></button>
+                <button id="save-btn" class="fab-item" title="Sauvegarder"><i class="ph-bold ph-download-simple"></i></button>
+                <label for="import-input" class="fab-item btn-danger" title="Importer"><i class="ph-bold ph-upload-simple"></i></label>
+                <input type="file" id="import-input" accept=".json" style="display: none;">
+            </div>
         </div>
-    </header>
+        <button id="fab-toggle" class="fab-toggle">
+            <i class="ph-bold ph-plus"></i>
+        </button>
+    </div>
 
     <main id="workspace"></main>
 
@@ -210,413 +357,442 @@
         </div>
     </div>
 
-    <!-- 2. Script de la bibliothèque directement intégré -->
+    <!-- Script de l'application -->
     <script>
-        /**
-         * Dashboard Library
-         * A simple vanilla JS library to create dynamic dashboards.
-         * @version 1.3
-         */
-        const Dashboard = (() => {
-            // --- Private variables ---
-            let workspace = null;
-            let editModal = null;
-            let confirmModal = null;
-            let draggedWidget = null;
-            let currentResizingWidget = null;
-
-            // --- Private Functions ---
-
+        window.addEventListener('load', () => {
             /**
-             * Creates a widget and appends it to the workspace.
-             * @param {string} id - Unique ID for the widget.
-             * @param {string} type - Type of widget ('text', 'image', etc.).
-             * @param {object} content - The widget's data.
-             * @param {object} [size] - Grid size {colSpan, rowSpan}.
+             * Dashboard Library
+             * A simple vanilla JS library to create dynamic dashboards.
+             * @version 1.45
              */
-            function createWidget(id, type, content, size) {
-                const widget = document.createElement('div');
-                widget.id = id;
-                widget.className = 'widget';
-                widget.dataset.type = type;
-                widget.draggable = true;
-                widget.dataset.content = JSON.stringify(content);
+            const Dashboard = (() => {
+                // --- Private variables ---
+                let workspace = null;
+                let editModal = null;
+                let confirmModal = null;
+                let draggedWidget = null;
+                let currentResizingWidget = null;
 
-                if (size) {
-                    widget.style.gridColumn = size.colSpan;
-                    widget.style.gridRow = size.rowSpan;
-                } else if (type === 'text' || type === 'link') {
-                    widget.style.gridRow = 'span 3'; // Plus petit par défaut
-                }
+                // --- Private Functions ---
 
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'widget-delete-btn';
-                deleteBtn.innerHTML = '&times;';
-                deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showCustomConfirm('Êtes-vous sûr de vouloir supprimer ce widget ?', () => widget.remove());
-                });
-                widget.appendChild(deleteBtn);
-                
-                const widgetContent = document.createElement('div');
-                widgetContent.className = 'widget-content';
-                widget.appendChild(widgetContent);
+                function createWidget(id, type, content, size) {
+                    const widget = document.createElement('div');
+                    widget.id = id;
+                    widget.className = 'widget';
+                    widget.dataset.type = type;
+                    widget.draggable = true;
+                    widget.dataset.content = JSON.stringify(content);
 
-                const resizeHandle = document.createElement('div');
-                resizeHandle.className = 'resize-handle';
-                widget.appendChild(resizeHandle);
-                
-                updateWidgetContent(widget);
-                addEventListenersToWidget(widget);
-                workspace.appendChild(widget);
-            }
-            
-            /**
-             * Updates the inner HTML of a widget based on its content.
-             * @param {HTMLElement} widget - The widget element to update.
-             */
-            function updateWidgetContent(widget) {
-                const type = widget.dataset.type;
-                const content = JSON.parse(widget.dataset.content);
-                const widgetContent = widget.querySelector('.widget-content');
-                widgetContent.innerHTML = '';
-
-                switch (type) {
-                    case 'text':
-                        widgetContent.innerHTML = `<h3>${content.title || 'Titre'}</h3><p>${content.text || 'Paragraphe.'}</p>`;
-                        break;
-                    case 'image':
-                        const img = document.createElement('img');
-                        img.src = content.url || 'https://placehold.co/600x400/e0e0e0/333333?text=Image';
-                        img.alt = content.alt || 'Image du widget';
-                        img.draggable = false; // **BUG FIX HERE**
-                        img.onerror = () => { img.src = 'https://placehold.co/600x400/e94560/ffffff?text=Erreur+URL'; };
-                        widgetContent.appendChild(img);
-                        break;
-                    case 'video':
-                        widgetContent.innerHTML = `<h3>${content.title || 'Vidéo'}</h3>`;
-                        widgetContent.appendChild(generateYouTubeEmbed(content.url));
-                        break;
-                    case 'link':
-                        widgetContent.innerHTML = `<h3>${content.title || 'Lien'}</h3><a href="${content.url || '#'}" target="_blank">${content.label || 'Cliquez ici'}</a>`;
-                        break;
-                    case 'chart':
-                        widgetContent.innerHTML = `<h3>${content.title || 'Graphique'}</h3>`;
-                        widgetContent.appendChild(generateBarChart(content.data));
-                        break;
-                }
-            }
-
-            /**
-             * Generates a responsive YouTube embed container.
-             * @param {string} url - The full YouTube URL.
-             * @returns {HTMLElement} - The container div with the iframe.
-             */
-            function generateYouTubeEmbed(url) {
-                const container = document.createElement('div');
-                container.className = 'video-container';
-                
-                const videoId = getYouTubeID(url);
-
-                if (videoId) {
-                    const iframe = document.createElement('iframe');
-                    iframe.src = `https://www.youtube.com/embed/${videoId}`;
-                    iframe.title = "Lecteur vidéo YouTube";
-                    iframe.setAttribute('frameborder', '0');
-                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
-                    iframe.setAttribute('allowfullscreen', '');
-                    container.appendChild(iframe);
-                } else {
-                    container.textContent = "URL de la vidéo YouTube invalide ou non reconnue.";
-                    container.style.paddingBottom = '0';
-                    container.style.height = '100%';
-                    container.style.display = 'flex';
-                    container.style.alignItems = 'center';
-                    container.style.justifyContent = 'center';
-                }
-                return container;
-            }
-
-            /**
-             * Extracts YouTube video ID from various URL formats.
-             * @param {string} url - The YouTube URL.
-             * @returns {string|null} - The video ID or null.
-             */
-            function getYouTubeID(url) {
-                if (!url) return null;
-                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                const match = url.match(regExp);
-                return (match && match[2].length === 11) ? match[2] : null;
-            }
-
-            /**
-             * Generates an SVG bar chart.
-             * @param {Array<object>} data - Array of {label, value}.
-             * @returns {SVGElement} - The generated SVG element.
-             */
-            function generateBarChart(data) {
-                const svgNS = "http://www.w3.org/2000/svg";
-                const svg = document.createElementNS(svgNS, "svg");
-                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                svg.setAttribute('viewBox', `0 0 400 250`);
-
-                if (!data || data.length === 0) {
-                    const text = document.createElementNS(svgNS, 'text');
-                    text.setAttribute('x', '50%'); text.setAttribute('y', '50%');
-                    text.setAttribute('fill', 'var(--font-color)'); text.setAttribute('text-anchor', 'middle');
-                    text.textContent = 'Pas de données';
-                    svg.appendChild(text);
-                    return svg;
-                }
-
-                const maxValue = Math.max(...data.map(d => d.value), 0);
-                const padding = { top: 20, right: 20, bottom: 30, left: 40 };
-                const chartWidth = 400 - padding.left - padding.right;
-                const chartHeight = 250 - padding.top - padding.bottom;
-                const barWidth = (chartWidth / data.length) * 0.8;
-                const barSpacing = (chartWidth / data.length) * 0.2;
-
-                data.forEach((d, i) => {
-                    const barHeight = maxValue > 0 ? (d.value / maxValue) * chartHeight : 0;
-                    const x = padding.left + i * (barWidth + barSpacing);
-                    const y = padding.top + chartHeight - barHeight;
-                    const rect = document.createElementNS(svgNS, 'rect');
-                    rect.setAttribute('x', x); rect.setAttribute('y', y);
-                    rect.setAttribute('width', barWidth); rect.setAttribute('height', barHeight);
-                    rect.setAttribute('fill', 'var(--secondary-color)');
-                    svg.appendChild(rect);
-                    const text = document.createElementNS(svgNS, 'text');
-                    text.setAttribute('x', x + barWidth / 2); text.setAttribute('y', 250 - padding.bottom + 15);
-                    text.setAttribute('fill', 'var(--font-color)'); text.setAttribute('font-size', '12');
-                    text.setAttribute('text-anchor', 'middle');
-                    text.textContent = d.label;
-                    svg.appendChild(text);
-                });
-                return svg;
-            }
-
-            /**
-             * Attaches all necessary event listeners to a widget.
-             * @param {HTMLElement} widget - The widget element.
-             */
-            function addEventListenersToWidget(widget) {
-                widget.addEventListener('dblclick', (e) => {
-                    if (!e.target.classList.contains('widget-delete-btn') && !e.target.classList.contains('resize-handle')) {
-                        openEditModal(widget);
+                    if (size && size.colSpan && size.rowSpan) {
+                        widget.style.gridColumn = size.colSpan;
+                        widget.style.gridRow = size.rowSpan;
+                    } else if (type === 'table') {
+                        widget.style.gridRow = 'span 4';
                     }
-                });
-                widget.addEventListener('dragstart', handleDragStart);
-                widget.addEventListener('dragend', handleDragEnd);
-                widget.querySelector('.resize-handle').addEventListener('mousedown', initResize);
-            }
-            
-            // --- Drag & Drop Logic ---
-            function handleDragStart(e) {
-                if (e.target.classList.contains('resize-handle') || e.target.tagName === 'IMG') {
-                    e.preventDefault();
-                    return;
-                }
-                draggedWidget = e.target;
-                setTimeout(() => e.target.classList.add('dragging'), 0);
-            }
 
-            function handleDragEnd() {
-                if (draggedWidget) {
-                    draggedWidget.classList.remove('dragging');
-                    draggedWidget = null;
-                }
-            }
-
-            function handleDragOver(e) {
-                e.preventDefault();
-                if (!draggedWidget) return;
-                const afterElement = getDragAfterElement(workspace, e.clientY);
-                if (afterElement == null) {
-                    workspace.appendChild(draggedWidget);
-                } else {
-                    workspace.insertBefore(draggedWidget, afterElement);
-                }
-            }
-
-            function getDragAfterElement(container, y) {
-                const draggableElements = [...container.querySelectorAll('.widget:not(.dragging)')];
-                return draggableElements.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = y - box.top - box.height / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset: offset, element: child };
-                    } else { return closest; }
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-            }
-
-            // --- Grid Resize Logic ---
-            function initResize(e) {
-                e.preventDefault();
-                currentResizingWidget = e.target.closest('.widget');
-                window.addEventListener('mousemove', resize);
-                window.addEventListener('mouseup', stopResize);
-            }
-
-            function resize(e) {
-                if (!currentResizingWidget) return;
-                
-                const widget = currentResizingWidget;
-                const rect = widget.getBoundingClientRect();
-                const gridStyles = window.getComputedStyle(workspace);
-                const rowHeight = parseFloat(gridStyles.getPropertyValue('grid-auto-rows'));
-                const gap = parseFloat(gridStyles.getPropertyValue('gap'));
-                
-                const colCount = gridStyles.getPropertyValue('grid-template-columns').split(' ').length;
-                const colWidth = (workspace.clientWidth - (colCount - 1) * gap) / colCount;
-
-                const newWidth = e.clientX - rect.left;
-                const newHeight = e.clientY - rect.top;
-
-                const colSpan = Math.max(1, Math.ceil(newWidth / (colWidth + gap)));
-                const rowSpan = Math.max(1, Math.ceil(newHeight / (rowHeight + gap)));
-                
-                widget.style.gridColumn = `span ${colSpan}`;
-                widget.style.gridRow = `span ${rowSpan}`;
-            }
-
-            function stopResize() {
-                window.removeEventListener('mousemove', resize);
-                window.removeEventListener('mouseup', stopResize);
-                currentResizingWidget = null;
-            }
-
-            // --- Modal Logic ---
-            function openEditModal(widget) {
-                let currentEditingWidget = widget;
-                const type = widget.dataset.type;
-                const content = JSON.parse(widget.dataset.content);
-                const modalBody = editModal.querySelector('#modal-body');
-                modalBody.innerHTML = '';
-                editModal.querySelector('#modal-title').textContent = `Éditer le Widget ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-
-                switch(type) {
-                    case 'text': modalBody.innerHTML = `<label for="modal-text-title">Titre</label><input type="text" id="modal-text-title" value="${content.title || ''}"><label for="modal-text-content">Texte</label><textarea id="modal-text-content">${content.text || ''}</textarea>`; break;
-                    case 'image': modalBody.innerHTML = `<label for="modal-image-url">URL de l'image</label><input type="text" id="modal-image-url" value="${content.url || ''}"><label for="modal-image-alt">Texte alternatif</label><input type="text" id="modal-image-alt" value="${content.alt || ''}">`; break;
-                    case 'video': modalBody.innerHTML = `<label for="modal-video-title">Titre</label><input type="text" id="modal-video-title" value="${content.title || ''}"><label for="modal-video-url">URL de la vidéo YouTube</label><input type="text" id="modal-video-url" value="${content.url || ''}">`; break;
-                    case 'link': modalBody.innerHTML = `<label for="modal-link-title">Titre</label><input type="text" id="modal-link-title" value="${content.title || ''}"><label for="modal-link-url">URL du lien</label><input type="text" id="modal-link-url" value="${content.url || ''}"><label for="modal-link-label">Libellé du lien</label><input type="text" id="modal-link-label" value="${content.label || ''}">`; break;
-                    case 'chart': modalBody.innerHTML = `<label for="modal-chart-title">Titre du graphique</label><input type="text" id="modal-chart-title" value="${content.title || ''}"><label for="modal-chart-data">Données (JSON)</label><textarea id="modal-chart-data" placeholder='[{"label": "A", "value": 10}]'>${JSON.stringify(content.data, null, 2)}</textarea>`; break;
-                }
-                editModal.style.display = 'flex';
-
-                const saveHandler = () => {
-                    let newContent = {};
-                    try {
-                        switch(type) {
-                            case 'text': newContent = { title: document.getElementById('modal-text-title').value, text: document.getElementById('modal-text-content').value }; break;
-                            case 'image': newContent = { url: document.getElementById('modal-image-url').value, alt: document.getElementById('modal-image-alt').value }; break;
-                            case 'video': newContent = { title: document.getElementById('modal-video-title').value, url: document.getElementById('modal-video-url').value }; break;
-                            case 'link': newContent = { title: document.getElementById('modal-link-title').value, url: document.getElementById('modal-link-url').value, label: document.getElementById('modal-link-label').value }; break;
-                            case 'chart': newContent = { title: document.getElementById('modal-chart-title').value, data: JSON.parse(document.getElementById('modal-chart-data').value) }; break;
-                        }
-                        currentEditingWidget.dataset.content = JSON.stringify(newContent);
-                        updateWidgetContent(currentEditingWidget);
-                        closeEditModal();
-                    } catch (error) { alert("Erreur dans les données fournies.\n" + error); }
-                };
-
-                const closeEditModal = () => {
-                    editModal.style.display = 'none';
-                    editModal.querySelector('#modal-save-btn').removeEventListener('click', saveHandler);
-                };
-
-                editModal.querySelector('#modal-save-btn').addEventListener('click', saveHandler, { once: true });
-                editModal.querySelector('#modal-cancel-btn').addEventListener('click', closeEditModal, { once: true });
-            }
-
-            function showCustomConfirm(message, callback) {
-                const modalText = confirmModal.querySelector('#confirm-modal-text');
-                const yesBtn = confirmModal.querySelector('#confirm-modal-yes');
-                const noBtn = confirmModal.querySelector('#confirm-modal-no');
-                modalText.textContent = message;
-                
-                const yesHandler = () => { callback(); closeConfirm(); };
-                const closeConfirm = () => {
-                    confirmModal.style.display = 'none';
-                    yesBtn.removeEventListener('click', yesHandler);
-                    noBtn.removeEventListener('click', closeConfirm);
-                };
-                yesBtn.addEventListener('click', yesHandler, { once: true });
-                noBtn.addEventListener('click', closeConfirm, { once: true });
-                confirmModal.style.display = 'flex';
-            }
-
-            // --- Save & Import Logic ---
-            function saveState() {
-                const dashboardState = { widgets: [] };
-                document.querySelectorAll('.widget').forEach(widget => {
-                    dashboardState.widgets.push({
-                        id: widget.id, type: widget.dataset.type,
-                        content: JSON.parse(widget.dataset.content),
-                        size: { colSpan: widget.style.gridColumn, rowSpan: widget.style.gridRow }
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'widget-delete-btn';
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showCustomConfirm('Êtes-vous sûr de vouloir supprimer ce widget ?', () => widget.remove());
                     });
-                });
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dashboardState, null, 2));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", "dashboard-layout.json");
-                document.body.appendChild(downloadAnchorNode);
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
-            }
+                    widget.appendChild(deleteBtn);
+                    
+                    const widgetContent = document.createElement('div');
+                    widgetContent.className = 'widget-content';
+                    widget.appendChild(widgetContent);
 
-            function importState(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const dashboardState = JSON.parse(e.target.result);
-                        workspace.innerHTML = '';
-                        if (dashboardState.widgets && Array.isArray(dashboardState.widgets)) {
-                            dashboardState.widgets.forEach(ws => createWidget(ws.id, ws.type, ws.content, ws.size));
-                        }
-                    } catch (error) { alert("Erreur lors de la lecture du fichier.\n" + error); }
-                };
-                reader.readAsText(file);
-                event.target.value = '';
-            }
+                    const resizeHandle = document.createElement('div');
+                    resizeHandle.className = 'resize-handle';
+                    widget.appendChild(resizeHandle);
+                    
+                    updateWidgetContent(widget);
+                    addEventListenersToWidget(widget);
+                    workspace.appendChild(widget);
+                }
+                
+                function updateWidgetContent(widget) {
+                    const type = widget.dataset.type;
+                    const content = JSON.parse(widget.dataset.content);
+                    const widgetContent = widget.querySelector('.widget-content');
+                    widgetContent.innerHTML = ''; // Clear previous content
 
-            // --- Public API ---
-            return {
-                init: () => {
-                    workspace = document.getElementById('workspace');
-                    editModal = document.getElementById('edit-modal');
-                    confirmModal = document.getElementById('confirm-modal');
+                    const title = document.createElement('h3');
+                    title.textContent = content.title || 'Titre';
+                    widgetContent.appendChild(title);
 
-                    if (!workspace || !editModal || !confirmModal) {
-                        console.error("Dashboard Error: Un ou plusieurs éléments HTML requis (workspace, edit-modal, confirm-modal) sont manquants.");
+                    const mainContent = document.createElement('div');
+                    mainContent.className = 'widget-main-content';
+                    widgetContent.appendChild(mainContent);
+
+                    switch (type) {
+                        case 'text':
+                            const p = document.createElement('p');
+                            p.textContent = content.text || 'Paragraphe.';
+                            mainContent.appendChild(p);
+                            break;
+                        case 'image':
+                            const img = document.createElement('img');
+                            img.src = content.url || 'https://placehold.co/600x400/e0e0e0/333333?text=Image';
+                            img.alt = content.title || 'Image du widget';
+                            img.draggable = false;
+                            img.onerror = () => { img.src = 'https://placehold.co/600x400/e94560/ffffff?text=Erreur+URL'; };
+                            mainContent.appendChild(img);
+                            break;
+                        case 'video':
+                            mainContent.appendChild(generateYouTubeEmbed(content.url));
+                            break;
+                        case 'link':
+                            const a = document.createElement('a');
+                            a.href = content.url || '#';
+                            a.target = '_blank';
+                            a.textContent = content.label || 'Cliquez ici';
+                            mainContent.appendChild(a);
+                            break;
+                        case 'chart':
+                            const canvas = document.createElement('canvas');
+                            const canvasId = `chart-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                            canvas.id = canvasId;
+                            mainContent.appendChild(canvas);
+                            setTimeout(() => {
+                                generateBarChart(canvasId, content.data);
+                            }, 0);
+                            break;
+                        case 'table':
+                            mainContent.classList.add('table-container');
+                            const tableId = `table-${Date.now()}`;
+                            mainContent.id = tableId;
+                            setTimeout(() => {
+                                generateTable(tableId, content.data);
+                            }, 0);
+                            break;
+                    }
+                }
+
+                function generateYouTubeEmbed(url) {
+                    const container = document.createElement('div');
+                    container.className = 'video-container';
+                    const videoId = getYouTubeID(url);
+                    if (videoId) {
+                        const iframe = document.createElement('iframe');
+                        iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                        iframe.title = "Lecteur vidéo YouTube";
+                        iframe.setAttribute('frameborder', '0');
+                        iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+                        iframe.setAttribute('allowfullscreen', '');
+                        container.appendChild(iframe);
+                    } else {
+                        container.textContent = "URL de la vidéo YouTube invalide ou non reconnue.";
+                        container.style.paddingBottom = '0';
+                        container.style.height = '100%';
+                        container.style.display = 'flex';
+                        container.style.alignItems = 'center';
+                        container.style.justifyContent = 'center';
+                    }
+                    return container;
+                }
+
+                function getYouTubeID(url) {
+                    if (!url) return null;
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = url.match(regExp);
+                    return (match && match[2].length === 11) ? match[2] : null;
+                }
+
+                function generateBarChart(canvasId, data) {
+                    const canvas = document.getElementById(canvasId);
+                    if (!canvas) { return; }
+                    if (!data || data.length === 0) {
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = 300; canvas.height = 150;
+                        ctx.textAlign = 'center';
+                        ctx.fillText('Pas de données', canvas.width/2, canvas.height/2);
                         return;
                     }
-
-                    document.getElementById('new-dashboard-btn')?.addEventListener('click', () => {
-                        showCustomConfirm(
-                            'Voulez-vous vraiment effacer le tableau de bord actuel ? Cette action est irréversible.',
-                            () => {
-                                workspace.innerHTML = '';
-                            }
-                        );
+                    const chartData = {
+                        labels: data.map(d => d.label),
+                        datasets: [{
+                            label: 'Données',
+                            values: data.map(d => d.value),
+                            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim()
+                        }]
+                    };
+                    new PureChart(canvasId, {
+                        type: 'bar',
+                        data: chartData,
+                        options: { responsive: true, maintainAspectRatio: false, legend: { display: false }, title: { display: false } }
                     });
-                    document.getElementById('add-text-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'text', { title: 'Nouveau Texte', text: 'Double-cliquez pour éditer.' }));
-                    document.getElementById('add-image-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'image', { url: '', alt: 'Nouvelle image' }));
-                    document.getElementById('add-video-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'video', { title: 'Nouvelle Vidéo', url: '' }));
-                    document.getElementById('add-link-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'link', { title: 'Nouveau Lien', url: 'https://google.com', label: 'Google' }));
-                    document.getElementById('add-chart-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'chart', { title: 'Nouveau Graphique', data: [{ label: 'A', value: 20 }, { label: 'B', value: 50 }] }));
-                    
-                    document.getElementById('save-btn')?.addEventListener('click', saveState);
-                    document.getElementById('import-input')?.addEventListener('change', importState);
-
-                    workspace.addEventListener('dragover', handleDragOver);
                 }
-            };
-        })();
+                
+                function generateTable(containerId, data) {
+                    const container = document.getElementById(containerId);
+                    if (!container) return;
 
-        // 3. Initialiser la bibliothèque
-        document.addEventListener('DOMContentLoaded', () => {
+                    if (!data || !data.columns || !data.jsonData) {
+                        container.textContent = "Données du tableau invalides ou manquantes.";
+                        return;
+                    }
+                    
+                    createDynamicTable({
+                        containerId: containerId,
+                        columns: data.columns,
+                        jsonData: data.jsonData
+                    });
+                }
+
+                function addEventListenersToWidget(widget) {
+                    widget.addEventListener('dblclick', (e) => {
+                        if (!e.target.classList.contains('widget-delete-btn') && !e.target.classList.contains('resize-handle')) {
+                            openEditModal(widget);
+                        }
+                    });
+                    widget.addEventListener('dragstart', handleDragStart);
+                    widget.addEventListener('dragend', handleDragEnd);
+                    widget.querySelector('.resize-handle').addEventListener('mousedown', initResize);
+                }
+                
+                function handleDragStart(e) {
+                    if (e.target.classList.contains('resize-handle') || e.target.tagName === 'IMG') {
+                        e.preventDefault();
+                        return;
+                    }
+                    draggedWidget = e.target;
+                    setTimeout(() => e.target.classList.add('dragging'), 0);
+                }
+
+                function handleDragEnd() {
+                    if (draggedWidget) {
+                        draggedWidget.classList.remove('dragging');
+                        draggedWidget = null;
+                    }
+                }
+
+                function handleDragOver(e) {
+                    e.preventDefault();
+                    if (!draggedWidget) return;
+                    const afterElement = getDragAfterElement(workspace, e.clientY);
+                    if (afterElement == null) {
+                        workspace.appendChild(draggedWidget);
+                    } else {
+                        workspace.insertBefore(draggedWidget, afterElement);
+                    }
+                }
+
+                function getDragAfterElement(container, y) {
+                    const draggableElements = [...container.querySelectorAll('.widget:not(.dragging)')];
+                    return draggableElements.reduce((closest, child) => {
+                        const box = child.getBoundingClientRect();
+                        const offset = y - box.top - box.height / 2;
+                        if (offset < 0 && offset > closest.offset) {
+                            return { offset: offset, element: child };
+                        } else { return closest; }
+                    }, { offset: Number.NEGATIVE_INFINITY }).element;
+                }
+
+                function initResize(e) {
+                    e.preventDefault();
+                    currentResizingWidget = e.target.closest('.widget');
+                    window.addEventListener('mousemove', resize);
+                    window.addEventListener('mouseup', stopResize);
+                }
+
+                function resize(e) {
+                    if (!currentResizingWidget) return;
+                    
+                    const widget = currentResizingWidget;
+                    const rect = widget.getBoundingClientRect();
+                    const gridStyles = window.getComputedStyle(workspace);
+                    const rowHeight = parseFloat(gridStyles.getPropertyValue('grid-auto-rows'));
+                    const gap = parseFloat(gridStyles.getPropertyValue('gap'));
+                    
+                    const colCount = gridStyles.getPropertyValue('grid-template-columns').split(' ').length;
+                    const colWidth = (workspace.clientWidth - (colCount - 1) * gap) / colCount;
+
+                    const newWidth = e.clientX - rect.left;
+                    const newHeight = e.clientY - rect.top;
+
+                    const colSpan = Math.max(1, Math.ceil(newWidth / (colWidth + gap)));
+                    const rowSpan = Math.max(1, Math.ceil(newHeight / (rowHeight + gap)));
+                    
+                    widget.style.gridColumn = `span ${colSpan}`;
+                    widget.style.gridRow = `span ${rowSpan}`;
+                }
+
+                function stopResize() {
+                    window.removeEventListener('mousemove', resize);
+                    window.removeEventListener('mouseup', stopResize);
+                    currentResizingWidget = null;
+                }
+
+                function openEditModal(widget) {
+                    let currentEditingWidget = widget;
+                    const type = widget.dataset.type;
+                    const content = JSON.parse(widget.dataset.content);
+                    const modalBody = editModal.querySelector('#modal-body');
+                    modalBody.innerHTML = '';
+                    editModal.querySelector('#modal-title').textContent = `Éditer le Widget ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+
+                    switch(type) {
+                        case 'text': modalBody.innerHTML = `<label for="modal-text-title">Titre</label><input type="text" id="modal-text-title" value="${content.title || ''}"><label for="modal-text-content">Texte</label><textarea id="modal-text-content">${content.text || ''}</textarea>`; break;
+                        case 'image': modalBody.innerHTML = `<label for="modal-image-title">Titre</label><input type="text" id="modal-image-title" value="${content.title || ''}"><label for="modal-image-url">URL de l'image</label><input type="text" id="modal-image-url" value="${content.url || ''}">`; break;
+                        case 'video': modalBody.innerHTML = `<label for="modal-video-title">Titre</label><input type="text" id="modal-video-title" value="${content.title || ''}"><label for="modal-video-url">URL de la vidéo YouTube</label><input type="text" id="modal-video-url" value="${content.url || ''}">`; break;
+                        case 'link': modalBody.innerHTML = `<label for="modal-link-title">Titre</label><input type="text" id="modal-link-title" value="${content.title || ''}"><label for="modal-link-url">URL du lien</label><input type="text" id="modal-link-url" value="${content.url || ''}"><label for="modal-link-label">Libellé du lien</label><input type="text" id="modal-link-label" value="${content.label || ''}">`; break;
+                        case 'chart': modalBody.innerHTML = `<label for="modal-chart-title">Titre du graphique</label><input type="text" id="modal-chart-title" value="${content.title || ''}"><label for="modal-chart-data">Données (JSON)</label><textarea id="modal-chart-data" placeholder='[{"label": "A", "value": 10}]'>${JSON.stringify(content.data, null, 2)}</textarea>`; break;
+                        case 'table': modalBody.innerHTML = `<label for="modal-table-title">Titre</label><input type="text" id="modal-table-title" value="${content.title || ''}"><label for="modal-table-data">Données du Tableau (JSON)</label><textarea id="modal-table-data" placeholder='{"columns": [{"key":"col1", "header":"Colonne 1"}], "jsonData": [{"col1": "Val1"}] }'>${JSON.stringify(content.data, null, 2)}</textarea>`; break;
+                    }
+                    editModal.style.display = 'flex';
+
+                    const saveHandler = () => {
+                        let newContent = {};
+                        try {
+                            switch(type) {
+                                case 'text': newContent = { title: document.getElementById('modal-text-title').value, text: document.getElementById('modal-text-content').value }; break;
+                                case 'image': newContent = { title: document.getElementById('modal-image-title').value, url: document.getElementById('modal-image-url').value }; break;
+                                case 'video': newContent = { title: document.getElementById('modal-video-title').value, url: document.getElementById('modal-video-url').value }; break;
+                                case 'link': newContent = { title: document.getElementById('modal-link-title').value, url: document.getElementById('modal-link-url').value, label: document.getElementById('modal-link-label').value }; break;
+                                case 'chart': newContent = { title: document.getElementById('modal-chart-title').value, data: JSON.parse(document.getElementById('modal-chart-data').value) }; break;
+                                case 'table': newContent = { title: document.getElementById('modal-table-title').value, data: JSON.parse(document.getElementById('modal-table-data').value) }; break;
+                            }
+                            currentEditingWidget.dataset.content = JSON.stringify(newContent);
+                            updateWidgetContent(currentEditingWidget);
+                            closeEditModal();
+                        } catch (error) { alert("Erreur dans les données fournies.\n" + error); }
+                    };
+
+                    const closeEditModal = () => {
+                        editModal.style.display = 'none';
+                        editModal.querySelector('#modal-save-btn').removeEventListener('click', saveHandler);
+                    };
+
+                    editModal.querySelector('#modal-save-btn').addEventListener('click', saveHandler, { once: true });
+                    editModal.querySelector('#modal-cancel-btn').addEventListener('click', closeEditModal, { once: true });
+                }
+
+                function showCustomConfirm(message, callback) {
+                    const modalText = confirmModal.querySelector('#confirm-modal-text');
+                    const yesBtn = confirmModal.querySelector('#confirm-modal-yes');
+                    const noBtn = confirmModal.querySelector('#confirm-modal-no');
+                    modalText.textContent = message;
+                    
+                    const yesHandler = () => { callback(); closeConfirm(); };
+                    const closeConfirm = () => {
+                        confirmModal.style.display = 'none';
+                        yesBtn.removeEventListener('click', yesHandler);
+                        noBtn.removeEventListener('click', closeConfirm);
+                    };
+                    yesBtn.addEventListener('click', yesHandler, { once: true });
+                    noBtn.addEventListener('click', closeConfirm, { once: true });
+                    confirmModal.style.display = 'flex';
+                }
+
+                function saveState() {
+                    const dashboardState = { widgets: [] };
+                    document.querySelectorAll('.widget').forEach(widget => {
+                        const computedStyle = window.getComputedStyle(widget);
+                        dashboardState.widgets.push({
+                            id: widget.id, type: widget.dataset.type,
+                            content: JSON.parse(widget.dataset.content),
+                            size: { 
+                                colSpan: computedStyle.getPropertyValue('grid-column'), 
+                                rowSpan: computedStyle.getPropertyValue('grid-row') 
+                            }
+                        });
+                    });
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dashboardState, null, 2));
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    downloadAnchorNode.setAttribute("download", "dashboard-layout.json");
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                }
+
+                function importState(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const dashboardState = JSON.parse(e.target.result);
+                            workspace.innerHTML = '';
+                            if (dashboardState.widgets && Array.isArray(dashboardState.widgets)) {
+                                dashboardState.widgets.forEach(ws => createWidget(ws.id, ws.type, ws.content, ws.size));
+                            }
+                        } catch (error) { alert("Erreur lors de la lecture du fichier.\n" + error); }
+                    };
+                    reader.readAsText(file);
+                    event.target.value = '';
+                }
+
+                return {
+                    init: () => {
+                        workspace = document.getElementById('workspace');
+                        editModal = document.getElementById('edit-modal');
+                        confirmModal = document.getElementById('confirm-modal');
+                        const fabToggle = document.getElementById('fab-toggle');
+                        const fabMenu = document.getElementById('fab-menu');
+
+                        if (!workspace || !editModal || !confirmModal || !fabToggle || !fabMenu) {
+                            console.error("Dashboard Error: Un ou plusieurs éléments HTML requis sont manquants.");
+                            return;
+                        }
+
+                        fabToggle.addEventListener('click', () => {
+                            fabMenu.classList.toggle('hidden');
+                            fabToggle.classList.toggle('active');
+                        });
+
+                        document.addEventListener('click', (e) => {
+                            if (!fabToggle.contains(e.target) && !fabMenu.contains(e.target)) {
+                                fabMenu.classList.add('hidden');
+                                fabToggle.classList.remove('active');
+                            }
+                        });
+
+                        document.getElementById('new-dashboard-btn')?.addEventListener('click', () => {
+                            showCustomConfirm(
+                                'Voulez-vous vraiment effacer le tableau de bord actuel ? Cette action est irréversible.',
+                                () => { workspace.innerHTML = ''; }
+                            );
+                        });
+                        document.getElementById('add-text-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'text', { title: 'Nouveau Texte', text: 'Double-cliquez pour éditer.' }));
+                        document.getElementById('add-image-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'image', { title: 'Nouvelle Image', url: '' }));
+                        document.getElementById('add-video-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'video', { title: 'Nouvelle Vidéo', url: '' }));
+                        document.getElementById('add-link-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'link', { title: 'Nouveau Lien', url: 'https://google.com', label: 'Google' }));
+                        document.getElementById('add-chart-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'chart', { 
+                            title: 'Graphique de Démonstration', 
+                            data: [
+                                { label: 'Jan', value: 30 },
+                                { label: 'Fév', value: 55 },
+                                { label: 'Mar', value: 45 },
+                                { label: 'Avr', value: 70 }
+                            ] 
+                        }));
+                        document.getElementById('add-table-btn')?.addEventListener('click', () => createWidget(`widget-${Date.now()}`, 'table', {
+                            title: 'Tableau de Démonstration',
+                            data: {
+                                columns: [
+                                    { key: "produit", header: "Produit" },
+                                    { key: "ventes_q1", header: "Ventes (Q1)" },
+                                    { key: "ventes_q2", header: "Ventes (Q2)" }
+                                ],
+                                jsonData: [
+                                    { produit: "Widget A", ventes_q1: "1,200", ventes_q2: "1,500" },
+                                    { produit: "Widget B", ventes_q1: "850", ventes_q2: "950" },
+                                    { produit: "Widget C", ventes_q1: "2,100", ventes_q2: "2,300" }
+                                ]
+                            }
+                        }));
+                        
+                        document.getElementById('save-btn')?.addEventListener('click', saveState);
+                        document.getElementById('import-input')?.addEventListener('change', importState);
+
+                        workspace.addEventListener('dragover', handleDragOver);
+                    }
+                };
+            })();
+
             Dashboard.init();
         });
     </script>
