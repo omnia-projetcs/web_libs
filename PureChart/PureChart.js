@@ -2452,7 +2452,7 @@ class PureChart {
             
             // Map values to X/Y points
             const pts = ds.values.map((v, i) => {
-                const p = this._getPointPosition(v, i, yAxisScaleInfo);
+                const p = this._getPointPosition(v, i, yAxisScaleInfo, d.labels.length, globalType);
             // Add point to interactive elements for tooltip, using originalDsIndexToUse
             this.interactiveElements.push({ type: 'point', pos: p, radius: ds.pointRadius !== undefined ? ds.pointRadius : (lO.pointRadius !== undefined ? lO.pointRadius : 3), xLabel: d.labels ? (d.labels[i] !== undefined ? String(d.labels[i]) : `Index ${i}`) : `Index ${i}`, dataset: ds, value: v, datasetIndex: originalDsIndexToUse, pointIndex: i }); // Translated "Index"
                 return p;
@@ -2559,13 +2559,25 @@ class PureChart {
         });
     }
 
-    _getPointPosition(value, index, yAxisScaleInfo) {
-        const numLabels = this.config.data.labels ? this.config.data.labels.length : 0;
+    _getPointPosition(value, index, yAxisScaleInfo, numLabels, chartType) { // Pass in numLabels
         if (numLabels === 0 || this.drawArea.width === 0) { 
             return { x: this.drawArea.x + this.drawArea.width / 2, y: this.drawArea.y + this.drawArea.height / 2 }; // Fallback
         }
-        const xSpacing = (numLabels > 1) ? this.drawArea.width / (numLabels - 1) : this.drawArea.width / 2; // Avoid div by zero for single label
-        const x = this.drawArea.x + (index * xSpacing);
+
+        let x;
+        // For bar/mixed charts, center the point in the bar's "slot". For pure line charts, points are at the edges.
+        if (chartType === 'bar') {
+            const groupTotalWidth = this.drawArea.width / numLabels;
+            x = this.drawArea.x + (index * groupTotalWidth) + (groupTotalWidth / 2);
+        } else { // 'line' chart logic
+            if (numLabels === 1) {
+                x = this.drawArea.x + this.drawArea.width / 2;
+            } else {
+                const xSpacing = this.drawArea.width / (numLabels - 1);
+                x = this.drawArea.x + (index * xSpacing);
+            }
+        }
+
         const yValue = parseFloat(value);
 
         if (isNaN(yValue)) {
